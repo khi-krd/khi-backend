@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-
+//this is for site settings
 @Entity
 @Table(name = "archive_donations", indexes = {
         @Index(name = "idx_archive_donation_status_created", columnList = "status,created_at")
