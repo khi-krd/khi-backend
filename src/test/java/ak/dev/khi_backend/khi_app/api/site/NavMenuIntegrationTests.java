@@ -163,6 +163,63 @@ class NavMenuIntegrationTests {
                 .andExpect(jsonPath("$.data.links.length()").value(0));
     }
 
+    /**
+     * PUT is a full replace: an omitted imageUrl clears the background photo.
+     * Documented as the trap in IMAGES_MENU_AND_FEATURED.md §3.3 — the editor has
+     * to send the current URL back when changing anything else.
+     */
+    @Test
+    void omittingImageUrlOnUpdateClearsTheBackgroundPhoto() throws Exception {
+        String body = mockMvc.perform(post("/api/v1/nav-menu")
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "itemKey", "gallery",
+                                "labelCkb", "وێنە",
+                                "href", "/gallery",
+                                "imageUrl", "https://cdn.example.com/gallery-bg.jpg"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/gallery-bg.jpg"))
+                .andReturn().getResponse().getContentAsString();
+        long id = objectMapper.readTree(body).path("data").path("id").asLong();
+
+        // same item, label edited, imageUrl not sent -> photo is gone
+        mockMvc.perform(put("/api/v1/nav-menu/" + id)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "itemKey", "gallery",
+                                "labelCkb", "وێنەکان",
+                                "href", "/gallery"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.labelCkb").value("وێنەکان"))
+                .andExpect(jsonPath("$.data.imageUrl").doesNotExist());
+
+        // sending it back preserves it
+        mockMvc.perform(put("/api/v1/nav-menu/" + id)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "itemKey", "gallery",
+                                "labelCkb", "وێنەکان",
+                                "href", "/gallery",
+                                "imageUrl", "https://cdn.example.com/gallery-bg.jpg"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.imageUrl").value("https://cdn.example.com/gallery-bg.jpg"));
+
+        // explicit empty string also clears
+        mockMvc.perform(put("/api/v1/nav-menu/" + id)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "itemKey", "gallery",
+                                "labelCkb", "وێنەکان",
+                                "href", "/gallery",
+                                "imageUrl", "   "))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.imageUrl").doesNotExist());
+    }
+
     @Test
     void duplicateItemKeyIsRejected() throws Exception {
         createNewsItem();
