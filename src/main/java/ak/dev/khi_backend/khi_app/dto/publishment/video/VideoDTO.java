@@ -27,6 +27,12 @@ public class VideoDTO {
 
     private String hoverCoverUrl;
 
+    /**
+     * Hero picture for the homepage carousel. Read-only — written through
+     * {@code PATCH /api/v1/videos/{id}/featured}, not by saving the video.
+     */
+    private String featureImageUrl;
+
     // ─── Video Type & Album Flag ──────────────────────────────────────────────
     private VideoType videoType;
     private Boolean albumOfMemories;

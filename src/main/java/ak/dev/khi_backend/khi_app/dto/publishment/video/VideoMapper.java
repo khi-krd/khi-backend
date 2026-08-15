@@ -152,6 +152,7 @@ public final class VideoMapper {
                 .ckbCoverUrl(video.getCkbCoverUrl())
                 .kmrCoverUrl(video.getKmrCoverUrl())
                 .hoverCoverUrl(video.getHoverCoverUrl())
+                .featureImageUrl(video.getFeatureImageUrl())
                 .videoType(video.getVideoType())
                 .albumOfMemories(video.isAlbumOfMemories())
                 // topic

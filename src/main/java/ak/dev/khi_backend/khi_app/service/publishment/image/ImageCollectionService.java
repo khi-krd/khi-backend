@@ -955,6 +955,7 @@ public class ImageCollectionService {
                 .ckbCoverUrl(entity.getCkbCoverUrl())
                 .kmrCoverUrl(entity.getKmrCoverUrl())
                 .hoverCoverUrl(entity.getHoverCoverUrl())
+                .featureImageUrl(entity.getFeatureImageUrl())
                 .topicId(entity.getTopic()      != null ? entity.getTopic().getId()      : null)
                 .topicNameCkb(entity.getTopic() != null ? entity.getTopic().getNameCkb() : null)
                 .topicNameKmr(entity.getTopic() != null ? entity.getTopic().getNameKmr() : null)

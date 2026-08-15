@@ -1164,6 +1164,7 @@ public class SoundTrackService {
                 .id(s.getId())
                 .ckbCoverUrl(s.getCkbCoverUrl()).kmrCoverUrl(s.getKmrCoverUrl())
                 .hoverCoverUrl(s.getHoverCoverUrl())
+                .featureImageUrl(s.getFeatureImageUrl())
                 .soundType(s.getSoundType()).trackState(s.getTrackState())
                 .albumOfMemories(s.isAlbumOfMemories())
                 .topicId(s.getTopic()      != null ? s.getTopic().getId()      : null)

@@ -199,6 +199,9 @@ public class SiteContentService {
         }
         news.setFeatured(turningOn);
         news.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            news.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         newsRepository.save(news);
     }
 
@@ -214,6 +217,9 @@ public class SiteContentService {
         }
         project.setFeatured(turningOn);
         project.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            project.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         projectRepository.save(project);
     }
 
@@ -229,6 +235,9 @@ public class SiteContentService {
         }
         writing.setFeatured(turningOn);
         writing.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            writing.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         writingRepository.save(writing);
     }
 
@@ -244,6 +253,9 @@ public class SiteContentService {
         }
         video.setFeatured(turningOn);
         video.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            video.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         videoRepository.save(video);
     }
 
@@ -259,6 +271,9 @@ public class SiteContentService {
         }
         sound.setFeatured(turningOn);
         sound.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            sound.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         soundTrackRepository.save(sound);
     }
 
@@ -274,6 +289,9 @@ public class SiteContentService {
         }
         collection.setFeatured(turningOn);
         collection.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
+        if (request.getFeatureImageUrl() != null) {
+            collection.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
         imageCollectionRepository.save(collection);
     }
 
@@ -294,7 +312,8 @@ public class SiteContentService {
                 : news.getCoverThumbnailUrl();
         return featuredSlide(
                 "news", news.getId(), "article", String.valueOf(news.getId()),
-                title, description, imageUrl, locale,
+                title, description,
+                firstNonBlank(news.getFeatureImageUrl(), imageUrl), locale,
                 news.isFeatured(), news.getFeaturedOrder());
     }
 
@@ -313,7 +332,8 @@ public class SiteContentService {
                 : firstNonBlank(project.getCoverThumbnailUrl(), project.getCoverUrl());
         return featuredSlide(
                 "project", project.getId(), "archive", String.valueOf(project.getId()),
-                title, description, imageUrl, locale,
+                title, description,
+                firstNonBlank(project.getFeatureImageUrl(), imageUrl), locale,
                 project.isFeatured(), project.getFeaturedOrder());
     }
 
@@ -329,7 +349,8 @@ public class SiteContentService {
         String imageUrl = localized(writing.getCkbCoverUrl(), writing.getKmrCoverUrl(), kmr);
         return featuredSlide(
                 "writing", writing.getId(), "book", String.valueOf(writing.getId()),
-                title, description, firstNonBlank(imageUrl, writing.getHoverCoverUrl()),
+                title, description,
+                firstNonBlank(writing.getFeatureImageUrl(), imageUrl, writing.getHoverCoverUrl()),
                 locale, writing.isFeatured(), writing.getFeaturedOrder());
     }
 
@@ -345,7 +366,8 @@ public class SiteContentService {
         String imageUrl = localized(video.getCkbCoverUrl(), video.getKmrCoverUrl(), kmr);
         return featuredSlide(
                 "video", video.getId(), "video", String.valueOf(video.getId()),
-                title, description, firstNonBlank(imageUrl, video.getHoverCoverUrl()),
+                title, description,
+                firstNonBlank(video.getFeatureImageUrl(), imageUrl, video.getHoverCoverUrl()),
                 locale, video.isFeatured(), video.getFeaturedOrder());
     }
 
@@ -361,7 +383,8 @@ public class SiteContentService {
         String imageUrl = localized(sound.getCkbCoverUrl(), sound.getKmrCoverUrl(), kmr);
         return featuredSlide(
                 "sound-track", sound.getId(), "audio", String.valueOf(sound.getId()),
-                title, description, firstNonBlank(imageUrl, sound.getHoverCoverUrl()),
+                title, description,
+                firstNonBlank(sound.getFeatureImageUrl(), imageUrl, sound.getHoverCoverUrl()),
                 locale, sound.isFeatured(), sound.getFeaturedOrder());
     }
 
@@ -382,7 +405,8 @@ public class SiteContentService {
         return featuredSlide(
                 "image-collection", collection.getId(), "gallery",
                 firstNonBlank(slug, String.valueOf(collection.getId())),
-                title, description, firstNonBlank(imageUrl, collection.getHoverCoverUrl()),
+                title, description,
+                firstNonBlank(collection.getFeatureImageUrl(), imageUrl, collection.getHoverCoverUrl()),
                 locale, collection.isFeatured(), collection.getFeaturedOrder());
     }
 

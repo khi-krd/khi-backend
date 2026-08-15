@@ -249,6 +249,8 @@ public final class WritingDtos {
         private String ckbCoverUrl;
         private String kmrCoverUrl;
         private String hoverCoverUrl;
+        /** Hero picture for the homepage carousel; written via the featured PATCH. */
+        private String featureImageUrl;
 
         // ─── Language Content ─────────────────────────────────────────────────
 

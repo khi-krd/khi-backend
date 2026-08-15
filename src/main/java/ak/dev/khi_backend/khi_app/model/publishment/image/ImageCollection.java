@@ -241,6 +241,10 @@ public class ImageCollection {
     private boolean featured = false;
     private Integer featuredOrder;
 
+    /** Optional wide picture for the homepage hero; falls back to the cover when null. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT")
+    private String featureImageUrl;
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();

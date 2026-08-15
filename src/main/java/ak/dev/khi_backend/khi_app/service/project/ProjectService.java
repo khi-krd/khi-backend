@@ -488,6 +488,7 @@ public class ProjectService {
                 .coverMediaType(project.getCoverMediaType() != null
                         ? project.getCoverMediaType() : MediaKind.IMAGE)
                 .coverThumbnailUrl(project.getCoverThumbnailUrl())
+                .featureImageUrl(project.getFeatureImageUrl())
                 .mediaGallery(project.getMediaGallery() != null
                         ? new ArrayList<>(project.getMediaGallery())
                         : new ArrayList<>())

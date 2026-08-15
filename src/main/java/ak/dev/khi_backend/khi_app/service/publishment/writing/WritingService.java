@@ -489,6 +489,7 @@ public class WritingService {
                 .ckbCoverUrl(w.getCkbCoverUrl())
                 .kmrCoverUrl(w.getKmrCoverUrl())
                 .hoverCoverUrl(w.getHoverCoverUrl())
+                .featureImageUrl(w.getFeatureImageUrl())
                 .topic(w.getTopic() != null
                         ? TopicInfo.builder()
                         .id(w.getTopic().getId())

@@ -162,6 +162,10 @@ public class Project extends AuditableEntity {
     private boolean featured = false;
     private Integer featuredOrder;
 
+    /** Optional wide picture for the homepage hero; falls back to the cover when null. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT")
+    private String featureImageUrl;
+
     // project_media table dropped — inline images / audio / video now live
     // inside the Tiptap HTML stored in ckbContent.description and
     // kmrContent.description. Uploads go through POST /api/v1/media/upload.

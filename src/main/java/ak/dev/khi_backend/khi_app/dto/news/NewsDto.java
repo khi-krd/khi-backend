@@ -35,6 +35,12 @@ public class NewsDto {
     private MediaKind coverMediaType;
     /** Optional poster (VIDEO) or cover art (AUDIO) URL for the cover. */
     private String coverThumbnailUrl;
+    /**
+     * Hero picture used by the homepage carousel. Read-only here — it is written
+     * through {@code PATCH /api/v1/news/{id}/featured}, so saving an article never
+     * disturbs it.
+     */
+    private String featureImageUrl;
     /** Mixed-type gallery rendered beside the cover — images, videos, audios. */
     @Builder.Default
     private List<MediaItem> mediaGallery = new ArrayList<>();

@@ -167,6 +167,10 @@ public class News {
     private boolean featured = false;
     private Integer featuredOrder;
 
+    /** Optional wide picture for the homepage hero; falls back to the cover when null. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT")
+    private String featureImageUrl;
+
     // Media table dropped — inline images / audio / video / documents now
     // live inside the Tiptap HTML stored in ckbContent.description and
     // kmrContent.description. Uploads go through POST /api/v1/media/upload.

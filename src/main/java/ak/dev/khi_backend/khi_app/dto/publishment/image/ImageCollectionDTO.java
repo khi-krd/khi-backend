@@ -206,6 +206,8 @@ public final class ImageCollectionDTO {
         private String ckbCoverUrl;
         private String kmrCoverUrl;
         private String hoverCoverUrl;
+        /** Hero picture for the homepage carousel; written via the featured PATCH. */
+        private String featureImageUrl;
 
         // ── Topic ─────────────────────────────────────────────────────────────
         private Long   topicId;

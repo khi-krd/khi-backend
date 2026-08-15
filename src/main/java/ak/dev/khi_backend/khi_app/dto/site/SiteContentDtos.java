@@ -41,6 +41,11 @@ public final class SiteContentDtos {
         // NEW — used by SiteContentService.setNewsFeatured() / setProjectFeatured() / etc.
         private Boolean featured;      // null/omitted -> treated as true
         private Integer featuredOrder; // lower shows first; null sorts last
+
+        // Hero picture for the homepage carousel, set from the dashboard's featured screen.
+        // null/omitted -> leave whatever is stored alone (so plain feature/unfeature calls
+        // keep working); "" -> clear it and fall back to the cover.
+        private String featureImageUrl;
     }
 
     // NEW — used by the six setXFeatured() methods in SiteContentService and the matching

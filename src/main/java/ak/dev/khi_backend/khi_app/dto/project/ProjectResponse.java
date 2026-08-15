@@ -29,6 +29,8 @@ public class ProjectResponse {
     private String coverUrl;
     private MediaKind coverMediaType;
     private String coverThumbnailUrl;
+    /** Hero picture for the homepage carousel; written via the featured PATCH. */
+    private String featureImageUrl;
     private List<MediaItem> mediaGallery;
 
     private String projectTypeCkb;

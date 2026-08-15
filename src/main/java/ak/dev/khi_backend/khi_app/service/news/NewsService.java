@@ -539,6 +539,7 @@ public class NewsService {
                 .coverMediaType(news.getCoverMediaType() != null
                         ? news.getCoverMediaType() : MediaKind.IMAGE)
                 .coverThumbnailUrl(news.getCoverThumbnailUrl())
+                .featureImageUrl(news.getFeatureImageUrl())
                 .mediaGallery(news.getMediaGallery() != null
                         ? new ArrayList<>(news.getMediaGallery())
                         : new ArrayList<>())
