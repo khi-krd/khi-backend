@@ -107,20 +107,23 @@ public class SecurityConfig {
                                 "/api/v1/featured/**",
                                 "/api/v1/about/team/**",
                                 "/api/v1/about/partners/**",
-                                "/api/v1/settings/social/**"
+                                "/api/v1/settings/social/**",
+                                "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT,
                                 "/api/v1/featured/**",
                                 "/api/v1/about/team/**",
                                 "/api/v1/about/partners/**",
                                 "/api/v1/settings/social/**",
-                                "/api/v1/donations/settings"
+                                "/api/v1/donations/settings",
+                                "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE,
                                 "/api/v1/featured/**",
                                 "/api/v1/about/team/**",
                                 "/api/v1/about/partners/**",
-                                "/api/v1/settings/social/**"
+                                "/api/v1/settings/social/**",
+                                "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
 
                         // ── About Page: public reads, admin writes ────────────────
