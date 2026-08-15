@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -160,6 +162,35 @@ public class GlobalExceptionHandler {
         body.setMessageEn(reason);
         body.setMessageKu(reason);
         body.setDetails(Map.of("resource", reason));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+    /**
+     * 404 NOT_FOUND — No handler is mapped to this URL at all (a typo, or a client
+     * calling an endpoint this build does not have yet).
+     *
+     * Without this, the {@code Exception.class} fallback below catches Spring's
+     * "no route" exception and answers 500, which reads as "the server is broken"
+     * when the truth is "that path does not exist here".
+     *
+     * details:
+     *   path   → the requested path
+     *   method → HTTP method used
+     */
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiErrorResponse> handleNoHandler(
+            Exception ex, HttpServletRequest req, Locale locale) {
+        ApiErrorResponse body = base(req, 404, ErrorCode.NOT_FOUND);
+        String fallbackEn = "No endpoint " + req.getMethod() + " " + req.getRequestURI() + ".";
+        body.setMessage  (resolve(locale,         "error.http.no_handler", null, fallbackEn));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.http.no_handler", null, fallbackEn));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.http.no_handler", null, "ئەم ڕێڕەوە بوونی نییە."));
+        body.setDetails(Map.of(
+                "path",   req.getRequestURI(),
+                "method", req.getMethod(),
+                "hint",   "Check the URL, and that the deployed build actually has this endpoint."
+        ));
+        log.warn("NoHandlerFound path={} method={} traceId={}",
+                req.getRequestURI(), req.getMethod(), body.getTraceId());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
     /**
