@@ -8,8 +8,13 @@ Tiptap HTML processor all run exactly as in production.
 
 | File | Contents |
 | --- | --- |
-| `seed-data/about.json` | **3 About pages** — main "About the institute" (with stats + founder), "Mission & objectives", "History of the founding" |
+| `seed-data/about.json` | **3 About pages**, short set — "About the institute" (stats + founder), "Mission & objectives", "History of the founding" |
+| `seed-data/about-detailed.json` | **7 About pages**, long-form set — institute profile, founder Mazhar Khaleqi, archive & collections, departments & structure, the digitization project, cooperation & academic recognition, visiting & using the institute |
 | `seed-data/services.json` | **8 services** — music & maqam archive, digital archive, library, recording studio, publishing, field research, training, concert hall & events |
+
+Both About files are seeded by default and their slugs never overlap, so they coexist as 10
+pages ordered by `displayOrder` (1–3 short, 10–16 detailed). Seed only one with
+`ABOUT_FILES=about-detailed.json ./scripts/seed-about-services.sh about`.
 
 Every entry has full CKB (Sorani, Arabic script) and KMR (Kurmanji, Latin script) text: title,
 subtitle/meta, a Tiptap HTML body, and — for services — the new plain-text
@@ -50,11 +55,37 @@ It upserts: About is matched by `slugCkb` (via `GET /api/v1/about/slug/{slug}`),
 `navAnchorId` (via `GET /api/v1/services/admin/all`). Existing records are `PUT`, new ones
 `POST`. Nothing is duplicated and nothing is deleted.
 
+### Media in the seed content
+
+The content ships with **real media from the project's own S3 bucket** — every URL was taken
+from the live deployment and HEAD-checked (200), nothing is hotlinked from a third party:
+
+| Where | What |
+| --- | --- |
+| About bodies (CKB + KMR) | inline `<img>` per page, plus inline `<video>` on the profile, archive and visit pages |
+| About `heroVideoUrl` / `heroPosterUrl` | the institute documentary + its poster frame, on both profile pages |
+| Service `galleryMedia[]` | 2–6 ordered slots per service; the field-research service has six (clothing, pastoral life, tobacco, snow pit, jamadani, gopal) |
+| Service `heroVideoUrl` / `heroPosterUrl` | recording studio → documentary, concert hall → *govend* dance clip |
+| Service `thumbnailUrls[]` | one card thumbnail each |
+| Service descriptions (CKB + KMR) | inline `<img>` / `<video>` |
+
+Every `VIDEO` gallery slot carries a `posterUrl` — `serviceSlideImage()` uses a video slot's
+poster as the featured picture, so a slot without one contributes no image at all.
+
+`founderImageUrl` is deliberately left `null`: no verified portrait of Mazhar Khaleqi was
+available, and pointing that field at some other photograph would caption a real person
+wrongly. Upload one and set it when you have it.
+
 ### Featuring a slide (optional)
 
-The seed content deliberately contains **no image URLs** — nothing points at an S3 object that
-may not exist. To also put a slide on the homepage carousel, upload a wide picture first and
-pass its URL:
+To put a slide on the homepage carousel with a picture from the seed media:
+
+```bash
+SEED_FEATURED=1 ./scripts/seed-about-services.sh
+```
+
+Those fallbacks are covers, not wide 16:9 crops. For anything visitor-facing, upload a proper
+hero image and name it instead:
 
 ```bash
 curl -X POST "$BASE/api/v1/media/upload" -H "Authorization: Bearer $TOKEN" \

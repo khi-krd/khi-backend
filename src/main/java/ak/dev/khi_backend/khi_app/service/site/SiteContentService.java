@@ -3,14 +3,12 @@ package ak.dev.khi_backend.khi_app.service.site;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos.*;
 import ak.dev.khi_backend.khi_app.enums.MediaKind;
 import ak.dev.khi_backend.khi_app.model.about.About;
-import ak.dev.khi_backend.khi_app.model.about.AboutContent;
 import ak.dev.khi_backend.khi_app.model.news.News;
 import ak.dev.khi_backend.khi_app.model.project.Project;
 import ak.dev.khi_backend.khi_app.model.publishment.image.ImageCollection;
 import ak.dev.khi_backend.khi_app.model.publishment.sound.SoundTrack;
 import ak.dev.khi_backend.khi_app.model.publishment.video.Video;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.Writing;
-import ak.dev.khi_backend.khi_app.model.service.ServiceContent;
 import ak.dev.khi_backend.khi_app.model.service.ServiceMedia;
 import ak.dev.khi_backend.khi_app.model.site.*;
 import ak.dev.khi_backend.khi_app.repository.about.AboutRepository;
@@ -37,7 +35,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -52,11 +49,6 @@ public class SiteContentService {
 
     /** Allowed financial donation currencies (spec §5). */
     private static final Set<String> DONATION_CURRENCIES = Set.of("IQD", "USD");
-
-    /** Tiptap-HTML -> plain-text excerpt, used as the Service slide description fallback. */
-    private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-    private static final int FEATURED_EXCERPT_MAX_CHARS = 300;
 
     private final TeamMemberRepository teamRepository;
     private final PartnerRepository partnerRepository;
@@ -78,28 +70,26 @@ public class SiteContentService {
     // =========================================================================================
     // Featured
     //
-    // Featured slides are curated, not automatic. An admin explicitly flags individual News /
-    // Project / Writing / Video / SoundTrack / ImageCollection / About / Service records as
-    // featured (featured = true) and optionally sets featuredOrder to control sequence, plus the
-    // singleton Donation page. getFeatured() collects every flagged record across all nine
-    // sources, sorts them globally by featuredOrder (ties broken by newest id first), and
-    // renumbers displayOrder 1..N on the way out.
+    // `featured` is written the same way everywhere — PATCH /{resource}/{id}/featured — but it
+    // is CONSUMED in two different places, and that is the important distinction here.
     //
-    // The total number of featured slides across ALL sources combined is capped by
-    // SiteSettings.maxFeaturedSlides (default 5, changeable by admin via updateSiteSettings()).
+    // ─── Hero carousel (this class, getFeatured()) ─────────────────────────────────────────
+    //  News / Project / Writing / Video / SoundTrack / ImageCollection, plus the singleton
+    //  Donation page. getFeatured() pools every flagged record across those seven sources,
+    //  sorts globally by featuredOrder (ties broken by newest id first), truncates to
+    //  SiteSettings.maxFeaturedSlides (default 7) and renumbers displayOrder 1..N.
     //
-    // ─── Where each slide's title / description / image comes from ─────────────────────────
     //  The six publication types derive title + description from their bilingual content and
-    //  use featureImageUrl only as an override on top of their cover. The three institutional
-    //  sources have no cover and no carousel-ready copy, so they resolve differently:
+    //  use featureImageUrl only as a wide-crop override on top of their cover. Donation has no
+    //  cover, so its slide reads: title/description = the donation page copy,
+    //  image = featureImageUrl ?? heroImageUrl.
     //
-    //    about     title = content title, description = subtitle ?? metaDescription,
-    //              image = featureImageUrl (REQUIRED — About owns no cover of any kind)
-    //    service   title = ServiceContent.title, description = ServiceContent.featureDescription
-    //              ?? stripped excerpt of the Tiptap description,
-    //              image = featureImageUrl ?? first gallery image ?? video poster
-    //    donation  title/description = the donation page copy,
-    //              image = featureImageUrl ?? heroImageUrl
+    // ─── Page-level highlights (NOT here) ──────────────────────────────────────────────────
+    //  Service and About. Their flag highlights the record on its own page — the band at the
+    //  top of /services, the lead record on /about — so they never enter the carousel and take
+    //  no share of maxFeaturedSlides. They are read through GET /api/v1/services/featured and
+    //  the About list, which already carry featured / featuredOrder / featureImageUrl.
+    //  See new documentation/FEATURED_ON_OWN_PAGES.md.
     // =========================================================================================
 
     @Transactional(readOnly = true)
@@ -133,14 +123,11 @@ public class SiteContentService {
                 addCandidate(candidates, imageFeatured(collection, resolvedLocale, kmr),
                         collection.getFeaturedOrder(), collection.getId()));
 
-        aboutRepository.findByFeaturedTrueOrderByFeaturedOrderAscIdDesc().forEach(about ->
-                addCandidate(candidates, aboutFeatured(about, resolvedLocale, kmr),
-                        about.getFeaturedOrder(), about.getId()));
-
-        serviceRepository.findFeaturedWithContents().forEach(service ->
-                addCandidate(candidates, serviceFeatured(service, resolvedLocale, kmr),
-                        service.getFeaturedOrder(), service.getId()));
-
+        // Services and About pages are deliberately NOT collected here. Their `featured` flag
+        // highlights them on their own page (/services band, /about lead record) — see
+        // FEATURED_ON_OWN_PAGES.md. They are read through GET /api/v1/services/featured and
+        // the About list instead. Donation stays a hero slide: it promotes a call-to-action
+        // page that has no list of its own to be highlighted in.
         featuredDonationSettings().ifPresent(settings ->
                 addCandidate(candidates, donationFeatured(settings, resolvedLocale, kmr),
                         settings.getFeaturedOrder(), settings.getId()));
@@ -171,9 +158,11 @@ public class SiteContentService {
 
     // --- Global featured count and limit --------------------------------------------------
 
-    // Sums featured records across every source. Used by every set*Featured() method to enforce
-    // the global cap before flagging a new record as featured. Donation counts as at most 1 —
-    // it is a singleton settings row, not a collection.
+    // Sums featured records across every source that competes for a HERO slide: the six
+    // publication types plus the donation page (at most 1 — it is a singleton settings row).
+    //
+    // Services and About pages are excluded on purpose. Their flag is a page-level highlight,
+    // not a carousel slide, so featuring nine services can never block featuring an article.
     private long countAllFeatured() {
         return newsRepository.countByFeaturedTrue()
                 + projectRepository.countByFeaturedTrue()
@@ -181,8 +170,6 @@ public class SiteContentService {
                 + videoRepository.countByFeaturedTrue()
                 + soundTrackRepository.countByFeaturedTrue()
                 + imageCollectionRepository.countByFeaturedTrue()
-                + aboutRepository.countByFeaturedTrue()
-                + serviceRepository.countByFeaturedTrue()
                 + (featuredDonationSettings().isPresent() ? 1 : 0);
     }
 
@@ -348,37 +335,37 @@ public class SiteContentService {
         imageCollectionRepository.save(collection);
     }
 
-    // --- Institutional pages: About / Service / Donation ---------------------------------
+    // --- Page-level highlights: About / Service ------------------------------------------
     //
-    // Same contract as the six above (cap check, featuredOrder cleared on unfeature), with one
-    // extra guard: featuredSlide() drops any candidate whose image is blank, so a page featured
-    // without a resolvable picture would vanish from the carousel with no error anywhere. These
-    // three reject that up front instead.
+    // These two are NOT carousel slides. `featured` highlights the record on its own page —
+    // a band at the top of /services, the lead record on /about — so:
+    //
+    //   * no cap check: they take no share of SiteSettings.maxFeaturedSlides, and any number
+    //     of them may be featured at once;
+    //   * the image guard stays, because a highlight card with no picture has a hole in it.
+    //
+    // Everything else matches the six publication types: featuredOrder is cleared on
+    // unfeature, featureImageUrl survives it, and an omitted featureImageUrl is left alone.
 
     @Transactional
     public void setAboutFeatured(Long id, FeaturedRequest request) {
         About about = aboutRepository.findById(id)
                 .orElseThrow(() -> notFound("About page", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
-        if (turningOn && !about.isFeatured() && countAllFeatured() >= getMaxFeaturedSlides()) {
-            throw new IllegalStateException(
-                    "Maximum of " + getMaxFeaturedSlides()
-                            + " featured slides allowed across all content. Unfeature one first.");
-        }
         if (request.getFeatureImageUrl() != null) {
             about.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
         }
         if (turningOn && isBlank(about.getFeatureImageUrl())) {
             throw new IllegalArgumentException(
-                    "featureImageUrl is required to feature an About page — About has no cover "
-                            + "image to fall back on.");
+                    "featureImageUrl is required to feature an About page — it becomes the "
+                            + "About page hero image.");
         }
         about.setFeatured(turningOn);
         about.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
         aboutRepository.save(about);
     }
 
-    // Evicts the "services" cache: ServiceService caches its read paths and now returns the
+    // Evicts the "services" cache: ServiceService caches its read paths and returns the
     // featured fields, so a toggle written from here would otherwise leave stale pages behind.
     @CacheEvict(value = "services", allEntries = true)
     @Transactional
@@ -386,11 +373,6 @@ public class SiteContentService {
         ak.dev.khi_backend.khi_app.model.service.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> notFound("Service", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
-        if (turningOn && !service.isFeatured() && countAllFeatured() >= getMaxFeaturedSlides()) {
-            throw new IllegalStateException(
-                    "Maximum of " + getMaxFeaturedSlides()
-                            + " featured slides allowed across all content. Unfeature one first.");
-        }
         if (request.getFeatureImageUrl() != null) {
             service.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
         }
@@ -547,45 +529,6 @@ public class SiteContentService {
                 locale, collection.isFeatured(), collection.getFeaturedOrder());
     }
 
-    private FeaturedResponse aboutFeatured(About about, String locale, boolean kmr) {
-        AboutContent ckb = about.getCkbContent();
-        AboutContent kur = about.getKmrContent();
-        String title = localized(
-                ckb == null ? null : ckb.getTitle(),
-                kur == null ? null : kur.getTitle(),
-                kmr);
-        // About has no description field — subtitle is the human-written one-liner and
-        // metaDescription is the SEO summary, so either reads correctly on a slide.
-        String description = localized(
-                ckb == null ? null : firstNonBlank(ckb.getSubtitle(), ckb.getMetaDescription()),
-                kur == null ? null : firstNonBlank(kur.getSubtitle(), kur.getMetaDescription()),
-                kmr);
-        String slug = firstNonBlank(
-                localized(about.getSlugCkb(), about.getSlugKmr(), kmr),
-                String.valueOf(about.getId()));
-        return featuredSlide(
-                "about", about.getId(), "about", slug,
-                title, description,
-                about.getFeatureImageUrl(), locale,
-                about.isFeatured(), about.getFeaturedOrder());
-    }
-
-    private FeaturedResponse serviceFeatured(
-            ak.dev.khi_backend.khi_app.model.service.Service service, String locale, boolean kmr) {
-        ServiceContent content = serviceContentFor(service, kmr);
-        String title = content == null ? null : content.getTitle();
-        // ServiceContent.description is Tiptap HTML — never slide-safe. Prefer the authored
-        // plain-text line and only fall back to a stripped excerpt of the HTML.
-        String description = content == null ? null : firstNonBlank(
-                content.getFeatureDescription(), plainTextExcerpt(content.getDescription()));
-        return featuredSlide(
-                "service", service.getId(), "service",
-                firstNonBlank(service.getNavAnchorId(), String.valueOf(service.getId())),
-                title, description,
-                serviceSlideImage(service), locale,
-                service.isFeatured(), service.getFeaturedOrder());
-    }
-
     private FeaturedResponse donationFeatured(
             DonationSettings settings, String locale, boolean kmr) {
         String title = localized(settings.getTitleCkb(), settings.getTitleKmr(), kmr);
@@ -596,22 +539,6 @@ public class SiteContentService {
                 title, description,
                 firstNonBlank(settings.getFeatureImageUrl(), settings.getHeroImageUrl()), locale,
                 settings.isFeatured(), settings.getFeaturedOrder());
-    }
-
-    /**
-     * The requested language's content row, falling back to the other language.
-     * Service stores bilingual text as one row per languageCode rather than embedded columns.
-     */
-    private ServiceContent serviceContentFor(
-            ak.dev.khi_backend.khi_app.model.service.Service service, boolean kmr) {
-        String preferred = kmr ? "KMR" : "CKB";
-        ServiceContent fallback = null;
-        for (ServiceContent content : service.getContents()) {
-            if (content == null || content.getLanguageCode() == null) continue;
-            if (preferred.equalsIgnoreCase(content.getLanguageCode())) return content;
-            if (fallback == null) fallback = content;
-        }
-        return fallback;
     }
 
     /** featureImageUrl, else the first usable gallery picture (video slots use their poster). */
@@ -680,29 +607,6 @@ public class SiteContentService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
-    }
-
-    /**
-     * Tiptap HTML -> one short plain-text line for a carousel slide.
-     *
-     * Tags are dropped, the handful of entities Tiptap emits are decoded, whitespace is
-     * collapsed, and the result is cut at a word boundary. Fallback only — an admin-authored
-     * featureDescription always wins.
-     */
-    private String plainTextExcerpt(String html) {
-        if (isBlank(html)) return null;
-        String text = HTML_TAG.matcher(html).replaceAll(" ")
-                .replace("&nbsp;", " ")
-                .replace("&amp;", "&")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&quot;", "\"")
-                .replace("&#39;", "'");
-        text = WHITESPACE.matcher(text).replaceAll(" ").trim();
-        if (text.isEmpty()) return null;
-        if (text.length() <= FEATURED_EXCERPT_MAX_CHARS) return text;
-        int cut = text.lastIndexOf(' ', FEATURED_EXCERPT_MAX_CHARS);
-        return text.substring(0, cut > 0 ? cut : FEATURED_EXCERPT_MAX_CHARS).trim() + "…";
     }
 
     // Team and partners

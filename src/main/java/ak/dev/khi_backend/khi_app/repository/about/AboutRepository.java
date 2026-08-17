@@ -29,13 +29,18 @@ public interface AboutRepository extends JpaRepository<About, Long> {
 
     Page<About> findAllByActiveTrueOrderByDisplayOrderAsc(Pageable pageable);
 
-    // ─── Featured (homepage carousel) ─────────────────────────────────────────
+    // ─── Featured (leads the public About page) ───────────────────────────────
 
-    /** Used by SiteContentService.getFeatured(). Nulls sort last via the id tiebreak. */
+    /**
+     * Featured About pages in highlight order — lowest featuredOrder first, nulls last via the
+     * id tiebreak. The first row is the record that LEADS /about; any others render as
+     * highlighted sections below it.
+     *
+     * Not used by the hero carousel: About pages are page-level highlights and take no share of
+     * SiteSettings.maxFeaturedSlides. Callers today filter the paginated list instead; this is
+     * the query a dedicated GET /api/v1/about/featured would use.
+     */
     List<About> findByFeaturedTrueOrderByFeaturedOrderAscIdDesc();
-
-    /** Feeds the global maxFeaturedSlides cap. */
-    long countByFeaturedTrue();
 
     // ─── Existence checks ─────────────────────────────────────────────────────
 

@@ -35,16 +35,22 @@ public class AboutController {
     private final SiteContentService siteContentService;
 
     /**
-     * Feature / unfeature an About page on the homepage carousel.
+     * Feature / unfeature an About page.
      *
-     * <p>About owns no cover image of any kind, so {@code featureImageUrl} must
-     * be present (either already stored or sent in this request) before the page
-     * can be featured — otherwise the slide would be dropped silently. Omitting
-     * the field leaves the stored value alone; sending {@code ""} clears it.</p>
+     * <p>Featuring makes the record LEAD the public About page — it is not a
+     * homepage carousel slide and takes no share of the hero slide cap.</p>
+     *
+     * <p>{@code featureImageUrl} must be present (either already stored or sent
+     * in this request) before the page can be featured: it becomes the About page
+     * hero image, and About owns no cover to fall back on. Omitting the field
+     * leaves the stored value alone; sending {@code ""} clears it.</p>
+     *
+     * <p>Ordinary page content, so SUPER_ADMIN may write it too — unlike the six
+     * carousel toggles, which stay ADMIN-only.</p>
      */
-    @Operation(summary = "Mark / unmark an About page as featured (ADMIN only)")
+    @Operation(summary = "Feature / unfeature an About page on the About page (ADMIN, SUPER_ADMIN)")
     @PatchMapping("/{id}/featured")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
             @RequestBody SiteContentDtos.FeaturedRequest request) {

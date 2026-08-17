@@ -1,8 +1,20 @@
 # Featured — About, Service & Donation
 
+> ### ⚠️ Superseded in part — 2026-08-17
+> **About and Service no longer produce hero slides.** Their `featured` flag now highlights the
+> record on its own page (`/services` band, `/about` lead record), takes no share of
+> `maxFeaturedSlides`, and never appears in `GET /featured`. See
+> **`FEATURED_ON_OWN_PAGES.md`**, which is authoritative for those two.
+>
+> Still accurate here: how the flag is **written** (§2 request bodies and partial-update
+> semantics), the `featureDescription` field, the donation slide, the six publication types, and
+> the schema notes in §7. Wherever this document says About or Service reaches the carousel —
+> §3's type→href rows, §4's resolution table, §5.4's counter, §6's cap error — read
+> `FEATURED_ON_OWN_PAGES.md` instead.
+
 The homepage carousel could only be fed by the six publication types (news, projects,
-writings, videos, sound-tracks, image-collections). It can now also be fed by the three
-**institutional** pages: **About**, **Service**, and the **Donation** page.
+writings, videos, sound-tracks, image-collections). This work added the three **institutional**
+sources: **About**, **Service**, and the **Donation** page. Only donation remained a slide.
 
 Read this alongside `IMAGES_MENU_AND_FEATURED.md` — everything in there about
 `featureImageUrl`, the error envelope, and the `Accept-Language` gotcha still applies.
@@ -118,6 +130,10 @@ So the carousel itself needs **no change**. The one thing that must be added is 
 there are three new `type` values it does not know yet.
 
 ### 3.1 The three new types and their `slug`
+
+> Superseded for `about` and `service`: those slides are no longer emitted. Keep the href
+> branches as defence against a stale backend, but the live carousel only ever carries
+> `article`, `archive`, `book`, `video`, `audio`, `gallery` and `donation`.
 
 | `type` | `source` | `entityId` | What `slug` holds | Suggested link |
 | --- | --- | --- | --- | --- |
@@ -336,8 +352,11 @@ If the dashboard shows a "N of M slides used" counter, its arithmetic must becom
 
 ```
 used = news + projects + writings + videos + soundTracks + imageCollections
-     + aboutPages + services + (donationFeatured ? 1 : 0)
+     + (donationFeatured ? 1 : 0)
 ```
+
+> Superseded: featured services and About pages are **not** in this number — see
+> `FEATURED_ON_OWN_PAGES.md` §5.
 
 Over the cap, every featured PATCH — old and new — answers:
 
@@ -384,7 +403,8 @@ matters.
 
 | Action | ADMIN | SUPER_ADMIN |
 | --- | --- | --- |
-| all nine featured PATCHes | ✅ | **❌ `403`** |
+| the seven carousel PATCHes (six publication types + donation) | ✅ | **❌ `403`** |
+| `about/{id}/featured`, `services/{id}/featured` | ✅ | ✅ *(widened 2026-08-17 — they are page content now)* |
 
 The featured endpoints are annotated `@PreAuthorize("hasRole('ADMIN')")`, there is no
 `RoleHierarchy` bean, and `Role.getAuthorities()` grants exactly one `ROLE_<name>` — so a

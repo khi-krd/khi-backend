@@ -63,14 +63,21 @@ public class ServiceController {
     /**
      * Feature / unfeature a service.
      *
+     * <p>Featuring highlights the service in the band at the top of the public
+     * Services page — it is not a homepage carousel slide and takes no share of
+     * the hero slide cap, so any number of services may be featured.</p>
+     *
      * <p>{@code featureImageUrl} is optional when the service already has a
-     * gallery image; the slide falls back to the first gallery picture (or a
-     * video slot's poster). Omitting the field leaves the stored value alone;
-     * sending {@code ""} clears it.</p>
+     * gallery image; the card falls back to the first gallery picture (or a video
+     * slot's poster). Omitting the field leaves the stored value alone; sending
+     * {@code ""} clears it.</p>
+     *
+     * <p>Ordinary page content, so SUPER_ADMIN may write it too — unlike the six
+     * carousel toggles, which stay ADMIN-only.</p>
      */
-    @Operation(summary = "Mark / unmark a service as featured (ADMIN only)")
+    @Operation(summary = "Feature / unfeature a service on the Services page (ADMIN, SUPER_ADMIN)")
     @PatchMapping("/{id}/featured")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
             @RequestBody SiteContentDtos.FeaturedRequest request) {

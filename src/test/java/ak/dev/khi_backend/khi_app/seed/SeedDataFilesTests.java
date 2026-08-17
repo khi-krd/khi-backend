@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.seed;
 
 import ak.dev.khi_backend.khi_app.dto.about.AboutDTOs.AboutRequest;
+import ak.dev.khi_backend.khi_app.dto.service.ServiceDTOs.MediaItem;
 import ak.dev.khi_backend.khi_app.dto.service.ServiceDTOs.ServiceContentRequest;
 import ak.dev.khi_backend.khi_app.dto.service.ServiceDTOs.ServiceRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +31,10 @@ class SeedDataFilesTests {
     /** Strict on purpose — a typo'd or removed field must fail, not be silently dropped. */
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final Path ABOUT_FILE    = Path.of("scripts/seed-data/about.json");
+    /** Both About sets are seeded together, so their slugs share one namespace. */
+    private static final List<Path> ABOUT_FILES = List.of(
+            Path.of("scripts/seed-data/about.json"),
+            Path.of("scripts/seed-data/about-detailed.json"));
     private static final Path SERVICES_FILE = Path.of("scripts/seed-data/services.json");
 
     private static final DateTimeFormatter PUBLISHED_AT =
@@ -43,10 +47,13 @@ class SeedDataFilesTests {
     private static final int FEATURE_DESCRIPTION_MAX = 1000;
 
     @Test
-    void aboutSeedFileDeserializesIntoValidRequests() throws Exception {
-        List<AboutRequest> pages = readAll(ABOUT_FILE, AboutRequest[].class);
+    void aboutSeedFilesDeserializeIntoValidRequests() throws Exception {
+        List<AboutRequest> pages = new java.util.ArrayList<>();
+        for (Path file : ABOUT_FILES) {
+            pages.addAll(readAll(file, AboutRequest[].class));
+        }
 
-        assertThat(pages).hasSize(3);
+        assertThat(pages).hasSize(10);   // 3 short + 7 detailed
 
         for (AboutRequest page : pages) {
             // AboutService.validateSlugs: CKB required, KMR unique-and-different when present
@@ -76,8 +83,16 @@ class SeedDataFilesTests {
             }
         }
 
+        // Slug uniqueness is enforced across BOTH files, and across languages: the DB has a
+        // unique index per column, and getBySlug() matches slugCkb OR slugKmr. A collision
+        // would surface as a 400 halfway through a seed run.
         assertThat(distinct(pages, AboutRequest::getSlugCkb)).isEqualTo(pages.size());
         assertThat(distinct(pages, AboutRequest::getSlugKmr)).isEqualTo(pages.size());
+        assertThat(pages.stream()
+                .flatMap(p -> java.util.stream.Stream.of(p.getSlugCkb(), p.getSlugKmr()))
+                .collect(Collectors.toSet()))
+                .as("every slug, both languages, must be globally unique")
+                .hasSize(pages.size() * 2);
     }
 
     @Test
@@ -115,6 +130,62 @@ class SeedDataFilesTests {
         }
 
         assertThat(distinct(services, ServiceRequest::getNavAnchorId)).isEqualTo(services.size());
+    }
+
+    @Test
+    void seedContentEmbedsRealMediaOnly() throws Exception {
+        List<AboutRequest> pages = new java.util.ArrayList<>();
+        for (Path file : ABOUT_FILES) {
+            pages.addAll(readAll(file, AboutRequest[].class));
+        }
+
+        for (AboutRequest page : pages) {
+            // Media lives inline in the Tiptap body — every page carries at least one picture
+            // in BOTH languages, otherwise one locale renders as a wall of text.
+            assertThat(page.getCkbContent().getBody()).contains("<img src=\"https://");
+            assertThat(page.getKmrContent().getBody()).contains("<img src=\"https://");
+            if (page.getHeroVideoUrl() != null) {
+                assertThat(page.getHeroPosterUrl())
+                        .as("a hero video needs a poster frame, or the slot renders black")
+                        .isNotBlank();
+            }
+        }
+
+        List<ServiceRequest> services = readAll(SERVICES_FILE, ServiceRequest[].class);
+        for (ServiceRequest service : services) {
+            assertThat(service.getGalleryMedia()).as("galleryMedia").isNotEmpty();
+            for (MediaItem slot : service.getGalleryMedia()) {
+                assertThat(slot.getType()).isIn("IMAGE", "VIDEO");
+                assertThat(slot.getUrl()).isNotBlank();
+                if ("VIDEO".equals(slot.getType())) {
+                    // SiteContentService.serviceSlideImage() takes a video slot's poster as the
+                    // featured picture; without one the slot contributes no image at all.
+                    assertThat(slot.getPosterUrl()).as("VIDEO slot poster").isNotBlank();
+                }
+            }
+            assertThat(service.getThumbnailUrls()).isNotEmpty();
+            if (service.getHeroVideoUrl() != null) {
+                assertThat(service.getHeroPosterUrl()).isNotBlank();
+            }
+            for (ServiceContentRequest content : service.getContents()) {
+                assertThat(content.getDescription()).containsPattern("<(img|video) src=\"https://");
+            }
+        }
+
+        // Nothing may point anywhere but the project's own S3 bucket: no http://, no
+        // localhost, no hotlinked third-party image that can vanish or get blocked.
+        for (Path file : List.of(ABOUT_FILES.get(0), ABOUT_FILES.get(1), SERVICES_FILE)) {
+            String raw = Files.readString(file);
+            assertThat(raw).as("%s must not contain plain-http URLs", file)
+                    .doesNotContain("http://");
+            java.util.regex.Matcher hosts = java.util.regex.Pattern
+                    .compile("https://([^/\"]+)/").matcher(raw);
+            while (hosts.find()) {
+                assertThat(hosts.group(1))
+                        .as("unexpected media host in %s", file)
+                        .isEqualTo("s3-khiwebsite.s3.us-east-1.amazonaws.com");
+            }
+        }
     }
 
     private <T> List<T> readAll(Path path, Class<T[]> arrayType) throws Exception {

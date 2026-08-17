@@ -40,12 +40,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Featured behaviour for the three institutional sources — About, Service and the
- * singleton Donation page. The six publication types are covered by
- * {@link SiteContentServiceFeaturedTests}.
+ * Featured behaviour for About, Service and the singleton Donation page.
+ *
+ * Donation is a hero slide. About and Service are NOT: their flag highlights the record on
+ * its own page, so these tests assert their ABSENCE from the carousel and their freedom from
+ * the slide cap. The six publication types are covered by {@link SiteContentServiceFeaturedTests}.
  */
 @ExtendWith(MockitoExtension.class)
 class SiteContentServiceInstitutionalFeaturedTests {
@@ -71,7 +74,7 @@ class SiteContentServiceInstitutionalFeaturedTests {
     private SiteContentService siteContentService;
 
     @Test
-    void composesSlidesForAboutServiceAndDonation() {
+    void heroCarouselIgnoresFeaturedServicesAndAboutPages() {
         About about = About.builder()
                 .id(5L)
                 .slugCkb("derbare-me-ckb")
@@ -90,8 +93,8 @@ class SiteContentServiceInstitutionalFeaturedTests {
                 .featuredOrder(2)
                 .featureImageUrl("https://cdn.example.com/service-hero.jpg")
                 .contents(contents(
-                        serviceContent("CKB", "Service CKB", "<p>ignored</p>", "Slide line CKB"),
-                        serviceContent("KMR", "Service KMR", "<p>ignored</p>", "Slide line KMR")))
+                        serviceContent("CKB", "Service CKB", "<p>ignored</p>", "Card line CKB"),
+                        serviceContent("KMR", "Service KMR", "<p>ignored</p>", "Card line KMR")))
                 .build();
 
         DonationSettings donation = DonationSettings.builder()
@@ -105,83 +108,25 @@ class SiteContentServiceInstitutionalFeaturedTests {
                 .featuredOrder(3)
                 .build();
 
-        when(aboutRepository.findByFeaturedTrueOrderByFeaturedOrderAscIdDesc())
-                .thenReturn(List.of(about));
-        when(serviceRepository.findFeaturedWithContents()).thenReturn(List.of(service));
         when(donationSettingsRepository.findAll()).thenReturn(List.of(donation));
         when(siteSettingsRepository.findFirstByOrderByIdAsc())
                 .thenReturn(Optional.of(SiteSettings.builder().maxFeaturedSlides(5).build()));
 
         var result = siteContentService.getFeatured("kmr");
 
-        assertThat(result).extracting("id")
-                .containsExactly("about-5", "service-3", "donation-1");
-        assertThat(result).extracting("source")
-                .containsExactly("about", "service", "donation");
-        assertThat(result).extracting("type")
-                .containsExactly("about", "service", "donation");
-        assertThat(result).extracting("slug")
-                .containsExactly("derbare-me-kmr", "recording-studio", "donation");
-        assertThat(result).extracting("title")
-                .containsExactly("About KMR", "Service KMR", "Donation KMR");
-        assertThat(result).extracting("description")
-                .containsExactly("Subtitle KMR", "Slide line KMR", "Donation description KMR");
-        assertThat(result).extracting(slide -> slide.getImage().getUrl())
-                .containsExactly(
-                        "https://cdn.example.com/about-hero.jpg",
-                        "https://cdn.example.com/service-hero.jpg",
-                        "https://cdn.example.com/donation-hero.jpg");
-        assertThat(result).extracting("displayOrder").containsExactly(1, 2, 3);
-    }
+        // Both are featured, both have a resolvable image, and neither may reach the hero:
+        // their flag highlights them on /services and /about instead.
+        assertThat(result).extracting("source").containsExactly("donation");
+        assertThat(result).extracting("id").containsExactly("donation-1");
+        assertThat(result).extracting("title").containsExactly("Donation KMR");
+        assertThat(result).extracting("displayOrder").containsExactly(1);
 
-    @Test
-    void aboutSlideFallsBackToMetaDescriptionWhenSubtitleIsBlank() {
-        About about = About.builder()
-                .id(8L)
-                .slugCkb("mission")
-                .featured(true)
-                .featureImageUrl("https://cdn.example.com/about.jpg")
-                .ckbContent(aboutContent("About CKB", null, "Meta CKB"))
-                .build();
+        // The carousel must not even ask those two repositories for candidates.
+        verifyNoInteractions(aboutRepository);
+        verify(serviceRepository, never()).findFeaturedWithContents();
 
-        when(aboutRepository.findByFeaturedTrueOrderByFeaturedOrderAscIdDesc())
-                .thenReturn(List.of(about));
-
-        var result = siteContentService.getFeatured("ckb");
-
-        assertThat(result).singleElement()
-                .extracting("description").isEqualTo("Meta CKB");
-    }
-
-    @Test
-    void serviceSlideStripsTiptapHtmlWhenNoFeatureDescriptionIsAuthored() {
-        Service service = Service.builder()
-                .id(11L)
-                .featured(true)
-                .galleryMedia(List.of(
-                        ServiceMedia.builder()
-                                .type("VIDEO")
-                                .url("https://cdn.example.com/clip.mp4")
-                                .posterUrl("https://cdn.example.com/clip-poster.jpg")
-                                .build()))
-                .contents(contents(serviceContent(
-                        "CKB", "Studio",
-                        "<p>Full <strong>recording</strong> studio&nbsp;service.</p>", null)))
-                .build();
-
-        when(serviceRepository.findFeaturedWithContents()).thenReturn(List.of(service));
-
-        var result = siteContentService.getFeatured("ckb");
-
-        assertThat(result).singleElement()
-                .satisfies(slide -> {
-                    assertThat(slide.getDescription())
-                            .isEqualTo("Full recording studio service.");
-                    // No featureImageUrl and no image slot — a video slot's poster is used.
-                    assertThat(slide.getImage().getUrl())
-                            .isEqualTo("https://cdn.example.com/clip-poster.jpg");
-                    assertThat(slide.getSlug()).isEqualTo("11");
-                });
+        assertThat(about.isFeatured()).isTrue();
+        assertThat(service.isFeatured()).isTrue();
     }
 
     @Test
@@ -192,33 +137,76 @@ class SiteContentServiceInstitutionalFeaturedTests {
         assertThatThrownBy(() -> siteContentService.setAboutFeatured(
                 5L, FeaturedRequest.builder().featured(true).build()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("featureImageUrl is required");
+                .hasMessageContaining("becomes the About page hero image");
 
         assertThat(about.isFeatured()).isFalse();
         verify(aboutRepository, never()).save(any());
     }
 
     @Test
-    void countsInstitutionalSourcesAgainstTheGlobalSlideCap() {
+    void featuringAnAboutPageIgnoresTheHeroSlideCap() {
         About about = About.builder()
                 .id(5L)
                 .slugCkb("mission")
                 .featureImageUrl("https://cdn.example.com/about.jpg")
                 .build();
         when(aboutRepository.findById(5L)).thenReturn(Optional.of(about));
-        when(siteSettingsRepository.findFirstByOrderByIdAsc())
-                .thenReturn(Optional.of(SiteSettings.builder().maxFeaturedSlides(2).build()));
-        // One featured service + the featured donation page already fill the cap of 2.
-        when(serviceRepository.countByFeaturedTrue()).thenReturn(1L);
-        when(donationSettingsRepository.findAll())
-                .thenReturn(List.of(DonationSettings.builder().id(1L).featured(true).build()));
+        when(aboutRepository.save(any(About.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> siteContentService.setAboutFeatured(
-                5L, FeaturedRequest.builder().featured(true).build()))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Maximum of 2 featured slides");
+        siteContentService.setAboutFeatured(
+                5L, FeaturedRequest.builder().featured(true).featuredOrder(1).build());
 
-        verify(aboutRepository, never()).save(any());
+        assertThat(about.isFeatured()).isTrue();
+        assertThat(about.getFeaturedOrder()).isEqualTo(1);
+        // No cap lookup at all: page highlights do not consume hero slides.
+        verifyNoInteractions(siteSettingsRepository);
+        verifyNoInteractions(newsRepository);
+    }
+
+    @Test
+    void featuringAServiceSucceedsEvenWhenTheCarouselIsFull() {
+        Service service = Service.builder()
+                .id(16L)
+                .navAnchorId("digital-archive")
+                .galleryMedia(List.of(ServiceMedia.builder()
+                        .type("IMAGE")
+                        .url("https://cdn.example.com/gallery-1.jpg")
+                        .build()))
+                .build();
+        when(serviceRepository.findById(16L)).thenReturn(Optional.of(service));
+        when(serviceRepository.save(any(Service.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        siteContentService.setServiceFeatured(
+                16L, FeaturedRequest.builder().featured(true).featuredOrder(2).build());
+
+        assertThat(service.isFeatured()).isTrue();
+        assertThat(service.getFeaturedOrder()).isEqualTo(2);
+        // The gallery image satisfies the picture requirement, so no featureImageUrl was needed.
+        assertThat(service.getFeatureImageUrl()).isNull();
+        verifyNoInteractions(siteSettingsRepository);
+    }
+
+    @Test
+    void unfeaturingAServiceClearsTheOrderButKeepsThePicture() {
+        Service service = Service.builder()
+                .id(16L)
+                .featured(true)
+                .featuredOrder(2)
+                .featureImageUrl("https://cdn.example.com/service-hero.jpg")
+                .build();
+        when(serviceRepository.findById(16L)).thenReturn(Optional.of(service));
+        when(serviceRepository.save(any(Service.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        siteContentService.setServiceFeatured(
+                16L, FeaturedRequest.builder().featured(false).build());
+
+        assertThat(service.isFeatured()).isFalse();
+        assertThat(service.getFeaturedOrder()).isNull();
+        assertThat(service.getFeatureImageUrl())
+                .isEqualTo("https://cdn.example.com/service-hero.jpg");
     }
 
     @Test

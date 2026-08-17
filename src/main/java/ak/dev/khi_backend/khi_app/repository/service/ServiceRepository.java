@@ -128,15 +128,20 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     List<String> findDistinctServiceTypes();
 
     // =========================================================================
-    // FEATURED (homepage carousel)
+    // FEATURED (highlight band at the top of the public Services page)
     // =========================================================================
 
     /**
-     * All featured services with their bilingual contents fetched in one query.
+     * All featured services with their bilingual contents fetched in one query,
+     * in highlight order: lowest featuredOrder first, nulls last, newest id
+     * first on a tie.
      *
-     * The JOIN FETCH is required: {@code contents} is LAZY and
-     * SiteContentService reads the localized title outside the Service module's
-     * own transaction boundary.
+     * Backs {@code GET /api/v1/services/featured}. These are page-level
+     * highlights, not hero slides, so the result is NOT bounded by
+     * {@code SiteSettings.maxFeaturedSlides}.
+     *
+     * The JOIN FETCH is required: {@code contents} is LAZY and the response
+     * mapper reads the localized title after the query returns.
      */
     // NOTE: no SELECT DISTINCT here, unlike findByIdWithAll above. PostgreSQL rejects a
     // DISTINCT query whose ORDER BY contains an expression that is not in the select list
@@ -150,9 +155,6 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
             ORDER BY COALESCE(s.featuredOrder, 2147483647) ASC, s.id DESC
             """)
     List<Service> findFeaturedWithContents();
-
-    /** Feeds the global maxFeaturedSlides cap. */
-    long countByFeaturedTrue();
 
     // =========================================================================
     // NAV ANCHOR UNIQUENESS

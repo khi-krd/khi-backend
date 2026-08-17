@@ -37,9 +37,13 @@
 #     and uses the returned JWT for every following request.
 #   * That account must have the ADMIN role: SUPER_ADMIN gets 403 on the featured
 #     PATCH (see new documentation/FEATURED_ABOUT_SERVICE_DONATION.md §6.4).
-#   * No media URLs are baked into the seed content on purpose — nothing points
-#     at an S3 object that may not exist. Upload real pictures via
-#     POST /api/v1/media/upload and add them afterwards.
+#   * The seed content embeds REAL media from the project's own S3 bucket —
+#     inline <img> and <video> in every Tiptap body, gallery slots and hero
+#     videos on the services. Every URL was taken from the live deployment and
+#     checked (HTTP 200); nothing is hotlinked from a third party.
+#   * Featuring stays opt-in. SEED_FEATURED=1 uses a picture from the seed media,
+#     or pass your own with ABOUT_HERO_URL / SERVICE_HERO_URL (recommended:
+#     a wide 2560x1440 crop uploaded via POST /api/v1/media/upload).
 #   * Requires: curl, jq.
 
 set -euo pipefail
@@ -54,6 +58,18 @@ SEED_USER="${SEED_USER:-brwa}"
 SEED_PASS="${SEED_PASS:-123123}"
 TOKEN="${TOKEN:-}"
 
+# About ships in two files, both seeded by default. about.json is the short set;
+# about-detailed.json is the long-form institutional set. Slugs never overlap, so
+# both can live side by side. Narrow it with e.g. ABOUT_FILES=about-detailed.json
+ABOUT_FILES="${ABOUT_FILES:-about.json about-detailed.json}"
+
+# Fallback hero pictures for SEED_FEATURED=1, taken from the seed media itself.
+# They are covers rather than wide 16:9 crops, so replace them with a proper hero
+# image (ABOUT_HERO_URL / SERVICE_HERO_URL) before this goes in front of visitors.
+S3_MEDIA="https://s3-khiwebsite.s3.us-east-1.amazonaws.com/khi-web-folders/images"
+DEFAULT_ABOUT_HERO="$S3_MEDIA/1c7b0855-06c7-41ff-b6b2-d3d81da3413c-Poster_pekawa_zhyan.jpg"
+DEFAULT_SERVICE_HERO="$S3_MEDIA/7ac540a2-bdcf-48e5-afa7-8be2dd41ea32-Cover.jpg"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="$SCRIPT_DIR/seed-data"
 
@@ -63,7 +79,7 @@ for bin in curl jq; do
   command -v "$bin" >/dev/null 2>&1 || { echo "✖ $bin is required but not installed."; exit 1; }
 done
 
-for f in about.json services.json; do
+for f in $ABOUT_FILES services.json; do
   [[ -f "$DATA_DIR/$f" ]] || { echo "✖ missing $DATA_DIR/$f"; exit 1; }
   jq empty "$DATA_DIR/$f" || { echo "✖ $f is not valid JSON"; exit 1; }
 done
@@ -156,12 +172,21 @@ fail() {
 
 seed_about() {
   echo "── About pages ──────────────────────────────────────────"
-  local count
-  count="$(jq 'length' "$DATA_DIR/about.json")"
+  local file
+  for file in $ABOUT_FILES; do
+    echo "   ── $file"
+    seed_about_file "$DATA_DIR/$file"
+  done
+  echo
+}
+
+seed_about_file() {
+  local source_file="$1" count
+  count="$(jq 'length' "$source_file")"
 
   for i in $(seq 0 $((count - 1))); do
     local page slug_ckb title existing_id
-    page="$(jq -c ".[$i]" "$DATA_DIR/about.json")"
+    page="$(jq -c ".[$i]" "$source_file")"
     slug_ckb="$(printf '%s' "$page" | jq -r '.slugCkb')"
     title="$(printf '%s' "$page" | jq -r '.ckbContent.title')"
 
@@ -182,7 +207,6 @@ seed_about() {
       else echo "   creating $slug_ckb"; fail; fi
     fi
   done
-  echo
 }
 
 # ── Services ─────────────────────────────────────────────────────────────────
@@ -231,11 +255,19 @@ seed_services() {
 feature_samples() {
   local about_url="${ABOUT_HERO_URL:-}" service_url="${SERVICE_HERO_URL:-}"
 
+  # SEED_FEATURED=1 falls back to a picture from the seed media, so the carousel
+  # can be demoed without uploading anything first.
+  if [[ "${SEED_FEATURED:-0}" == "1" ]]; then
+    about_url="${about_url:-$DEFAULT_ABOUT_HERO}"
+    service_url="${service_url:-$DEFAULT_SERVICE_HERO}"
+  fi
+
   if [[ -z "$about_url" && -z "$service_url" ]]; then
     echo "── Featured (skipped) ───────────────────────────────────"
-    echo "   Set ABOUT_HERO_URL and/or SERVICE_HERO_URL to also feature a slide."
-    echo "   About REQUIRES an image (it has no cover); these services have no"
-    echo "   gallery image, so they need one too."
+    echo "   Re-run with SEED_FEATURED=1 to put one About page and one service on"
+    echo "   the homepage carousel, or name your own wide picture with"
+    echo "   ABOUT_HERO_URL / SERVICE_HERO_URL. About always needs one — it has no"
+    echo "   cover to fall back on."
     echo
     return
   fi
