@@ -6,8 +6,10 @@ import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos.FinancialDonationRequ
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos.FinancialDonationResponse;
 import ak.dev.khi_backend.khi_app.model.site.ArchiveDonation;
 import ak.dev.khi_backend.khi_app.model.site.FinancialDonation;
+import ak.dev.khi_backend.khi_app.repository.about.AboutRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsRepository;
 import ak.dev.khi_backend.khi_app.repository.project.ProjectRepository;
+import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.image.ImageCollectionRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundTrackRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
@@ -53,6 +55,8 @@ class SiteContentServiceDonationTests {
     @Mock private VideoRepository videoRepository;
     @Mock private SoundTrackRepository soundTrackRepository;
     @Mock private ImageCollectionRepository imageCollectionRepository;
+    @Mock private AboutRepository aboutRepository;
+    @Mock private ServiceRepository serviceRepository;
 
     @InjectMocks
     private SiteContentService siteContentService;

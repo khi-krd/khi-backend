@@ -128,6 +128,28 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     List<String> findDistinctServiceTypes();
 
     // =========================================================================
+    // FEATURED (homepage carousel)
+    // =========================================================================
+
+    /**
+     * All featured services with their bilingual contents fetched in one query.
+     *
+     * The JOIN FETCH is required: {@code contents} is LAZY and
+     * SiteContentService reads the localized title outside the Service module's
+     * own transaction boundary.
+     */
+    @Query("""
+            SELECT DISTINCT s FROM Service s
+            LEFT JOIN FETCH s.contents
+            WHERE s.featured = true
+            ORDER BY COALESCE(s.featuredOrder, 2147483647) ASC, s.id DESC
+            """)
+    List<Service> findFeaturedWithContents();
+
+    /** Feeds the global maxFeaturedSlides cap. */
+    long countByFeaturedTrue();
+
+    // =========================================================================
     // NAV ANCHOR UNIQUENESS
     // =========================================================================
 

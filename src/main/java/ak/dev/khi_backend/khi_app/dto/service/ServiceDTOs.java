@@ -87,6 +87,12 @@ public class ServiceDTOs {
          * is embedded inline here and rewritten to S3 URLs on save.
          */
         private String description;
+        /**
+         * Short plain-text line for the homepage featured carousel.
+         * Optional — blank falls back to a tag-stripped excerpt of description.
+         * Plain text only: any HTML is stripped on save.
+         */
+        private String featureDescription;
     }
 
     // =========================================================================
@@ -110,6 +116,14 @@ public class ServiceDTOs {
         private List<String> thumbnailUrls;
         private List<Long> partnerIds;
         private List<ServiceContentResponse> contents;
+        /**
+         * Featured state — read-only here. Write it through
+         * {@code PATCH /api/v1/services/{id}/featured} so the global slide cap
+         * stays enforced in one place.
+         */
+        private boolean featured;
+        private Integer featuredOrder;
+        private String featureImageUrl;
         private String createdAt;
         private String updatedAt;
     }
@@ -123,5 +137,7 @@ public class ServiceDTOs {
         private String title;
         /** Tiptap HTML description. */
         private String description;
+        /** Short plain-text line used by the homepage featured carousel. */
+        private String featureDescription;
     }
 }

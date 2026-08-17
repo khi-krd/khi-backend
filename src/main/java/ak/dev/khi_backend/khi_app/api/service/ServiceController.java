@@ -2,7 +2,10 @@ package ak.dev.khi_backend.khi_app.api.service;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
 import ak.dev.khi_backend.khi_app.dto.service.ServiceDTOs.*;
+import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.service.service.ServiceService;
+import ak.dev.khi_backend.khi_app.service.site.SiteContentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +41,8 @@ import java.util.List;
  *  POST   /api/v1/services                                → create service (JSON)
  *  PUT    /api/v1/services/{id}                           → full update (JSON)
  *  PATCH  /api/v1/services/{id}/active?value=false        → soft toggle
+ *  PATCH  /api/v1/services/{id}/featured                  → admin: feature / unfeature
+ *  GET    /api/v1/services/featured                       → featured services (paginated)
  *  DELETE /api/v1/services/{id}                           → delete
  *  DELETE /api/v1/services/bulk                           → bulk delete
  */
@@ -48,6 +54,29 @@ import java.util.List;
 public class ServiceController {
 
     private final ServiceService serviceService;
+    private final SiteContentService siteContentService;
+
+    // =========================================================================
+    // FEATURED (homepage carousel)
+    // =========================================================================
+
+    /**
+     * Feature / unfeature a service.
+     *
+     * <p>{@code featureImageUrl} is optional when the service already has a
+     * gallery image; the slide falls back to the first gallery picture (or a
+     * video slot's poster). Omitting the field leaves the stored value alone;
+     * sending {@code ""} clears it.</p>
+     */
+    @Operation(summary = "Mark / unmark a service as featured (ADMIN only)")
+    @PatchMapping("/{id}/featured")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> setFeatured(
+            @PathVariable Long id,
+            @RequestBody SiteContentDtos.FeaturedRequest request) {
+        siteContentService.setServiceFeatured(id, request);
+        return ResponseEntity.noContent().build();
+    }
 
     // =========================================================================
     // SERVICE CRUD

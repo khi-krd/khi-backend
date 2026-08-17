@@ -154,6 +154,21 @@ public class PublicSiteController {
                 "Donation settings saved");
     }
 
+    /**
+     * Feature / unfeature the donation page on the homepage carousel.
+     *
+     * Donation is a singleton settings row, so there is no id in the path — this
+     * is the donation counterpart of {@code PATCH /{resource}/{id}/featured}.
+     * The slide image falls back to heroImageUrl when featureImageUrl is blank.
+     */
+    @PatchMapping("/donations/settings/featured")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<DonationSettingsResponse> setDonationFeatured(
+            @RequestBody FeaturedRequest request) {
+        return ApiResponse.success(siteContentService.setDonationFeatured(request),
+                "Donation featured state updated");
+    }
+
     @PostMapping("/donations/financial")
     public ResponseEntity<ApiResponse<FinancialDonationResponse>> submitFinancialDonation(
             @Valid @RequestBody FinancialDonationRequest request) {

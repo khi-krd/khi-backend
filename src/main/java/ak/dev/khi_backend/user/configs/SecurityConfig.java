@@ -93,7 +93,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH,
                                 "/api/v1/contact/messages/**",
                                 "/api/v1/donations/financial/**",
-                                "/api/v1/donations/archive/**"
+                                "/api/v1/donations/archive/**",
+                                "/api/v1/donations/settings/featured"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
 
                         // ── Shared media pipeline: admin dashboard only ───────────

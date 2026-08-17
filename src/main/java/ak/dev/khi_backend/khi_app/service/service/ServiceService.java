@@ -59,6 +59,8 @@ public class ServiceService {
             Set.of(".mp4", ".webm", ".mov", ".m4v", ".ogv", ".ogg");
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** Matches the ServiceContent.feature_description column length. */
+    private static final int FEATURE_DESCRIPTION_MAX_CHARS = 1000;
 
     private final ServiceRepository         serviceRepository;
     private final ServiceAuditLogRepository auditLogRepository;
@@ -86,16 +88,30 @@ public class ServiceService {
     }
 
     /**
-     * Services do not participate in the curated featured-content model.
-     * Keep the dashboard's generic per-resource endpoint stable by returning
-     * an empty page instead of routing the literal "featured" to /{id}.
+     * Services flagged for the homepage carousel, ordered by featuredOrder
+     * (nulls last, then newest id first) — the same ordering
+     * {@code SiteContentService.getFeatured()} applies globally.
+     *
+     * <p>Not cached: the flag is written from {@code SiteContentService} and this
+     * list is small (bounded by {@code SiteSettings.maxFeaturedSlides}).</p>
      */
+    @Transactional(readOnly = true)
     public Page<ServiceResponse> getFeatured(int page, int size) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 Math.min(Math.max(size, 1), 100)
         );
-        return Page.empty(pageable);
+        List<ak.dev.khi_backend.khi_app.model.service.Service> featured =
+                serviceRepository.findFeaturedWithContents();
+        int from = (int) Math.min(pageable.getOffset(), featured.size());
+        int to   = Math.min(from + pageable.getPageSize(), featured.size());
+        return new PageImpl<>(
+                featured.subList(from, to).stream()
+                        .map(this::toResponse)
+                        .collect(Collectors.toList()),
+                pageable,
+                featured.size()
+        );
     }
 
     @Cacheable(value = "services", key = "'all:p' + #page + ':s' + #size")
@@ -451,7 +467,22 @@ public class ServiceService {
                 .languageCode(req.getLanguageCode().toUpperCase().trim())
                 .title(req.getTitle().trim())
                 .description(tiptapHtmlProcessor.process(req.getDescription()))
+                .featureDescription(cleanFeatureDescription(req.getFeatureDescription()))
                 .build();
+    }
+
+    /**
+     * The featured-carousel line is rendered as plain text, so any markup a rich-text
+     * field might send is stripped here and the result is clamped to the column length.
+     */
+    private String cleanFeatureDescription(String raw) {
+        String value = trimOrNull(raw);
+        if (value == null) return null;
+        value = trimOrNull(value.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " "));
+        if (value == null) return null;
+        return value.length() <= FEATURE_DESCRIPTION_MAX_CHARS
+                ? value
+                : value.substring(0, FEATURE_DESCRIPTION_MAX_CHARS).trim();
     }
 
     // =========================================================================
@@ -638,6 +669,9 @@ public class ServiceService {
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                         .map(this::toContentResponse)
                         .collect(Collectors.toList()))
+                .featured(service.isFeatured())
+                .featuredOrder(service.getFeaturedOrder())
+                .featureImageUrl(service.getFeatureImageUrl())
                 .createdAt(service.getCreatedAt() != null
                         ? service.getCreatedAt().format(FORMATTER) : null)
                 .updatedAt(service.getUpdatedAt() != null
@@ -651,6 +685,7 @@ public class ServiceService {
                 .languageCode(c.getLanguageCode())
                 .title(c.getTitle())
                 .description(c.getDescription())
+                .featureDescription(c.getFeatureDescription())
                 .build();
     }
 

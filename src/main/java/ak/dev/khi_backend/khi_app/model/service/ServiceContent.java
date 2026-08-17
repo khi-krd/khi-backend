@@ -70,6 +70,16 @@ public class ServiceContent {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Short PLAIN-TEXT summary used by the homepage featured carousel.
+     *
+     * {@link #description} is Tiptap HTML and cannot be rendered inside a slide,
+     * so the admin writes one short line per language here. When left blank the
+     * featured mapper falls back to a tag-stripped excerpt of the description.
+     */
+    @Column(name = "feature_description", length = 1000)
+    private String featureDescription;
+
     // ─── Parent ───────────────────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY)

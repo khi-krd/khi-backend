@@ -2,12 +2,16 @@ package ak.dev.khi_backend.khi_app.api.about;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
 import ak.dev.khi_backend.khi_app.dto.about.AboutDTOs;
+import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.service.about.AboutService;
+import ak.dev.khi_backend.khi_app.service.site.SiteContentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -28,6 +32,25 @@ import org.springframework.web.bind.annotation.*;
 public class AboutController {
 
     private final AboutService aboutService;
+    private final SiteContentService siteContentService;
+
+    /**
+     * Feature / unfeature an About page on the homepage carousel.
+     *
+     * <p>About owns no cover image of any kind, so {@code featureImageUrl} must
+     * be present (either already stored or sent in this request) before the page
+     * can be featured — otherwise the slide would be dropped silently. Omitting
+     * the field leaves the stored value alone; sending {@code ""} clears it.</p>
+     */
+    @Operation(summary = "Mark / unmark an About page as featured (ADMIN only)")
+    @PatchMapping("/{id}/featured")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> setFeatured(
+            @PathVariable Long id,
+            @RequestBody SiteContentDtos.FeaturedRequest request) {
+        siteContentService.setAboutFeatured(id, request);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<AboutDTOs.AboutResponse>>> getAll(

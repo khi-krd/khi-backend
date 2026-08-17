@@ -209,6 +209,9 @@ public class AboutService {
                 .heroVideoUrl(about.getHeroVideoUrl())
                 .heroPosterUrl(about.getHeroPosterUrl())
                 .displayOrder(about.getDisplayOrder())
+                .featured(about.isFeatured())
+                .featuredOrder(about.getFeaturedOrder())
+                .featureImageUrl(about.getFeatureImageUrl())
                 .createdAt(about.getCreatedAt() != null
                         ? about.getCreatedAt().format(FORMATTER) : null)
                 .updatedAt(about.getUpdatedAt() != null

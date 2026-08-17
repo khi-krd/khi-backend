@@ -22,4 +22,16 @@ public class DonationSettings {
     @Column(name = "payment_instructions_kmr", columnDefinition = "TEXT") private String paymentInstructionsKmr;
     @Builder.Default @Column(name = "financial_enabled") private boolean financialDonationsEnabled = true;
     @Builder.Default @Column(name = "archive_enabled") private boolean archiveDonationsEnabled = true;
+
+    // ─── Featured (homepage carousel) ─────────────────────────────────────────
+    //
+    //  Donation is a singleton settings row, so there is no "which record" to
+    //  pick — the flag simply publishes one donation slide that links to the
+    //  donation page. Title / description reuse the page copy above; the slide
+    //  image falls back to heroImageUrl when featureImageUrl is blank.
+
+    @Builder.Default @Column(name = "featured") private boolean featured = false;
+    @Column(name = "featured_order") private Integer featuredOrder;
+    /** Wide picture for the homepage hero; falls back to {@link #heroImageUrl}. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT") private String featureImageUrl;
 }

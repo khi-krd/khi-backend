@@ -104,6 +104,24 @@ public class Service {
     @Column(name = "nav_anchor_id", length = 160)
     private String navAnchorId;
 
+    // ─── Featured (homepage carousel) ─────────────────────────────────────────
+    //
+    //  Same curated model as the publication modules. The slide title comes from
+    //  {@link ServiceContent#getTitle()} and the slide copy from
+    //  {@link ServiceContent#getFeatureDescription()} — the Tiptap description
+    //  is HTML and is only used as a stripped-down fallback.
+
+    @Builder.Default
+    @Column(name = "featured")
+    private boolean featured = false;
+
+    @Column(name = "featured_order")
+    private Integer featuredOrder;
+
+    /** Wide picture for the homepage hero; falls back to the first gallery image. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT")
+    private String featureImageUrl;
+
     /**
      * RECOMMENDED gallery — ordered slots, each independently IMAGE or VIDEO.
      * List order is display order; any slot may be a video.

@@ -115,6 +115,26 @@ public class About {
     @Column(name = "hero_poster_url", columnDefinition = "TEXT")
     private String heroPosterUrl;
 
+    // ─── Featured (homepage carousel) ─────────────────────────────────────────
+    //
+    //  Same curated model as News / Project / Writing / Video / SoundTrack /
+    //  ImageCollection: an admin flags the page and optionally orders it, and
+    //  SiteContentService.getFeatured() folds it into the global slide list.
+    //
+    //  About carries no cover image — every picture lives inline in the Tiptap
+    //  body — so featureImageUrl is NOT an override here, it is the only image
+    //  the slide can use.  setAboutFeatured() rejects turning featured on while
+    //  it is blank, otherwise the slide would silently never render.
+
+    @Builder.Default
+    private boolean featured = false;
+
+    private Integer featuredOrder;
+
+    /** Wide picture for the homepage hero. Required while {@link #featured} is true. */
+    @Column(name = "feature_image_url", columnDefinition = "TEXT")
+    private String featureImageUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

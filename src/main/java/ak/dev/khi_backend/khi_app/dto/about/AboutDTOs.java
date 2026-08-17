@@ -110,6 +110,15 @@ public class AboutDTOs {
         private String heroPosterUrl;
         private Integer displayOrder;
 
+        /**
+         * Featured state — read-only here. Write it through
+         * {@code PATCH /api/v1/about/{id}/featured}, never through the About form,
+         * so the global slide cap stays enforced in one place.
+         */
+        private boolean featured;
+        private Integer featuredOrder;
+        private String featureImageUrl;
+
         private String createdAt;
         private String updatedAt;
     }

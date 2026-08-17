@@ -15,8 +15,10 @@ import ak.dev.khi_backend.khi_app.model.publishment.video.VideoContent;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.Writing;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.WritingContent;
 import ak.dev.khi_backend.khi_app.model.site.SiteSettings;
+import ak.dev.khi_backend.khi_app.repository.about.AboutRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsRepository;
 import ak.dev.khi_backend.khi_app.repository.project.ProjectRepository;
+import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.image.ImageCollectionRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundTrackRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
@@ -65,6 +67,8 @@ class SiteContentServiceFeatureImageTests {
     @Mock private VideoRepository videoRepository;
     @Mock private SoundTrackRepository soundTrackRepository;
     @Mock private ImageCollectionRepository imageCollectionRepository;
+    @Mock private AboutRepository aboutRepository;
+    @Mock private ServiceRepository serviceRepository;
 
     @InjectMocks
     private SiteContentService siteContentService;

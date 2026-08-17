@@ -202,6 +202,14 @@ public final class SiteContentDtos {
         private String paymentInstructionsKmr;
         private Boolean financialDonationsEnabled;
         private Boolean archiveDonationsEnabled;
+
+        // Featured slide fields. All three are null-tolerant: omitting them leaves
+        // the stored value untouched, so a dashboard that saves the donation form
+        // without knowing about featuring cannot silently unfeature the page.
+        // Turning featured ON is still capped by SiteSettings.maxFeaturedSlides.
+        private Boolean featured;
+        private Integer featuredOrder;
+        private String featureImageUrl;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -221,6 +229,9 @@ public final class SiteContentDtos {
         private String paymentInstructionsKmr;
         private Boolean financialDonationsEnabled;
         private Boolean archiveDonationsEnabled;
+        private Boolean featured;
+        private Integer featuredOrder;
+        private String featureImageUrl;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
