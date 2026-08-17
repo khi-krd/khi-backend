@@ -138,8 +138,13 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
      * SiteContentService reads the localized title outside the Service module's
      * own transaction boundary.
      */
+    // NOTE: no SELECT DISTINCT here, unlike findByIdWithAll above. PostgreSQL rejects a
+    // DISTINCT query whose ORDER BY contains an expression that is not in the select list
+    // ("for SELECT DISTINCT, ORDER BY expressions must appear in select list"), and the
+    // COALESCE below is exactly that. Hibernate 6 de-duplicates fetched collections in
+    // memory anyway, so DISTINCT was never needed.
     @Query("""
-            SELECT DISTINCT s FROM Service s
+            SELECT s FROM Service s
             LEFT JOIN FETCH s.contents
             WHERE s.featured = true
             ORDER BY COALESCE(s.featuredOrder, 2147483647) ASC, s.id DESC

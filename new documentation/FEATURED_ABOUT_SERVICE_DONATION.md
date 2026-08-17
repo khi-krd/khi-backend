@@ -404,7 +404,8 @@ cap and must reflect a toggle immediately.
 
 ## 7 · Schema changes
 
-`ddl-auto: update` — Hibernate adds these on boot. No migration file, no manual SQL.
+`ddl-auto: update` — Hibernate adds these on boot **on a healthy database**. Do not assume it
+worked: on the Railway deployment it did not (see the warning below).
 
 | Table | New columns |
 | --- | --- |
@@ -413,8 +414,37 @@ cap and must reflect a toggle immediately.
 | `service_contents` | `feature_description` (varchar 1000) |
 | `donation_settings` | `featured` (boolean), `featured_order` (int), `feature_image_url` (text) |
 
-Every existing row gets `featured = false` / `NULL`, so the carousel output is unchanged until
-an admin features something. Safe to deploy at any time; rolling back only loses the flags.
+The three `featured` booleans are declared `nullable = false` with `@ColumnDefault("false")` on
+purpose. A plain nullable boolean column leaves every pre-existing row at `NULL`, and Hibernate
+**cannot map NULL into a primitive `boolean`** — every read of that table then fails with a 500.
+With the default, Hibernate emits `add column featured boolean default false not null`, which
+backfills existing rows.
+
+> ### ⚠️ Verify the schema after deploying — 2026-08-17
+> On the Railway deployment `ddl-auto` did **not** apply all of it:
+>
+> | Table | State found | Symptom |
+> | --- | --- | --- |
+> | `services`, `service_contents` | columns present, `featured` NULL in existing rows | every list read → `500` |
+> | `about_pages` | columns absent | every About read → `500` |
+> | `donation_settings` | columns absent | `GET /donations/settings` → `500` |
+>
+> Repair with **`scripts/sql/2026-08-17-featured-about-service-donation.sql`** (idempotent: adds
+> what is missing, backfills NULLs, sets `NOT NULL DEFAULT false`). Post-deploy smoke test:
+>
+> ```bash
+> curl -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/about?size=1"        # expect 200
+> curl -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/services?size=1"     # expect 200
+> curl -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/donations/settings"  # expect 200
+> curl -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/services/featured"   # expect 200
+> curl -o /dev/null -w '%{http_code}\n' "$BASE/featured?locale=ckb"        # expect 200
+> ```
+>
+> Separately, `ServiceRepository.findFeaturedWithContents()` originally used
+> `SELECT DISTINCT … ORDER BY COALESCE(s.featuredOrder, …)`, which PostgreSQL rejects
+> ("for SELECT DISTINCT, ORDER BY expressions must appear in select list") and which took
+> `/featured` down with it. The `DISTINCT` is gone — Hibernate 6 de-duplicates fetch joins
+> itself — but that fix needs a **redeploy**, SQL alone is not enough.
 
 ---
 

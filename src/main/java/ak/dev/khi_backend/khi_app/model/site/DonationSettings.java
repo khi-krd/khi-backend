@@ -2,6 +2,7 @@ package ak.dev.khi_backend.khi_app.model.site;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "donation_settings")
@@ -30,7 +31,10 @@ public class DonationSettings {
     //  donation page. Title / description reuse the page copy above; the slide
     //  image falls back to heroImageUrl when featureImageUrl is blank.
 
-    @Builder.Default @Column(name = "featured") private boolean featured = false;
+    // nullable = false + DB default: see the note on About.featured — a nullable boolean
+    // column leaves the pre-existing settings row NULL, and NULL cannot map to a primitive.
+    @Builder.Default @Column(name = "featured", nullable = false)
+    @ColumnDefault("false") private boolean featured = false;
     @Column(name = "featured_order") private Integer featuredOrder;
     /** Wide picture for the homepage hero; falls back to {@link #heroImageUrl}. */
     @Column(name = "feature_image_url", columnDefinition = "TEXT") private String featureImageUrl;

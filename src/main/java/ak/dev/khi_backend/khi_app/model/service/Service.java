@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -111,8 +112,11 @@ public class Service {
     //  {@link ServiceContent#getFeatureDescription()} — the Tiptap description
     //  is HTML and is only used as a stripped-down fallback.
 
+    // nullable = false + DB default: see the note on About.featured — a nullable boolean
+    // column leaves pre-existing rows NULL, which cannot be mapped into a primitive boolean.
     @Builder.Default
-    @Column(name = "featured")
+    @Column(name = "featured", nullable = false)
+    @ColumnDefault("false")
     private boolean featured = false;
 
     @Column(name = "featured_order")

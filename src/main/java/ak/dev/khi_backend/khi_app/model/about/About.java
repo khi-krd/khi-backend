@@ -3,6 +3,7 @@ package ak.dev.khi_backend.khi_app.model.about;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -126,9 +127,16 @@ public class About {
     //  the slide can use.  setAboutFeatured() rejects turning featured on while
     //  it is blank, otherwise the slide would silently never render.
 
+    // nullable = false + a DB default is deliberate: ddl-auto adds a plain nullable column,
+    // every pre-existing row would then hold NULL, and Hibernate cannot map NULL into a
+    // primitive boolean — every read of this table would blow up. With the default,
+    // "alter table … add column featured boolean default false not null" backfills instead.
     @Builder.Default
+    @Column(name = "featured", nullable = false)
+    @ColumnDefault("false")
     private boolean featured = false;
 
+    @Column(name = "featured_order")
     private Integer featuredOrder;
 
     /** Wide picture for the homepage hero. Required while {@link #featured} is true. */
