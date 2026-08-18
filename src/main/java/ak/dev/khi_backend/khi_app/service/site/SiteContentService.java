@@ -338,11 +338,11 @@ public class SiteContentService {
     // --- Page-level highlights: About / Service ------------------------------------------
     //
     // These two are NOT carousel slides. `featured` highlights the record on its own page —
-    // a band at the top of /services, the lead record on /about — so:
+    // the index rail inside the /services hero, the lead record on /about — so:
     //
     //   * no cap check: they take no share of SiteSettings.maxFeaturedSlides, and any number
     //     of them may be featured at once;
-    //   * the image guard stays, because a highlight card with no picture has a hole in it.
+    //   * the image guard stays, because a highlight with no picture has a hole in it.
     //
     // Everything else matches the six publication types: featuredOrder is cleared on
     // unfeature, featureImageUrl survives it, and an omitted featureImageUrl is left alone.
