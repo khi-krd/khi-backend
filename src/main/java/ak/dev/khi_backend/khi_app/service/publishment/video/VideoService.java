@@ -10,7 +10,9 @@ import ak.dev.khi_backend.khi_app.model.publishment.video.VideoClipItem;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoLog;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoSourceFile;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
+import ak.dev.khi_backend.khi_app.model.publishment.video.FilmReklamVideo;
 import ak.dev.khi_backend.khi_app.repository.publishment.topic.PublishmentTopicRepository;
+import ak.dev.khi_backend.khi_app.repository.publishment.video.FilmReklamVideoRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoLogRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
 import ak.dev.khi_backend.khi_app.service.S3Service;
@@ -25,6 +27,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -65,9 +68,14 @@ public class VideoService {
 
     private static final String TOPIC_ENTITY_TYPE = "VIDEO";
     private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "createdAt");
+
+    private static final String FILM_REKLAM_VIDEO_NOT_FOUND      = "video.reklamVideo.not_found";
+    private static final String FILM_REKLAM_VIDEO_ALREADY_EXISTS = "video.reklamVideo.already_exists";
+
     private final VideoRepository            videoRepository;
     private final VideoLogRepository         videoLogRepository;
     private final PublishmentTopicRepository topicRepository;
+    private final FilmReklamVideoRepository  filmReklamVideoRepository;
     private final S3Service                  s3Service;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
 
@@ -836,6 +844,129 @@ public class VideoService {
         }
         return videoRepository.findById(id)
                 .orElseThrow(() -> Errors.videoNotFound(id));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FILM REKLAM VIDEO — the homepage Film section background
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // A singleton: at most one row site-wide, so no id, no pagination, no locale.
+    // The first upload is create(); every upload after that is update(). Mirrors
+    // SoundTrackService's sound reklam video, which does the same job for the
+    // Sound section — keep the two in step.
+
+    /**
+     * دروستکردنی ڤیدیۆی ڕیکلامی فیلم — تەنها یەک جار
+     *
+     * @throws ak.dev.khi_backend.khi_app.exceptions.publishment.video.VideoMediaException
+     *         400 — فایل نەنێردراوە، یان ڤیدیۆ نییە، یان پێشتر هەیە
+     */
+    @Transactional
+    public VideoDTO.FilmReklamVideoResponse createFilmReklamVideo(MultipartFile videoFile) {
+        validatePromoVideoFile(videoFile);
+
+        if (filmReklamVideoRepository.findTopByOrderByIdAsc().isPresent()) {
+            throw Errors.videoMediaInvalid(FILM_REKLAM_VIDEO_ALREADY_EXISTS, Map.of());
+        }
+
+        FilmReklamVideo created = filmReklamVideoRepository.save(
+                FilmReklamVideo.builder()
+                        .videoUrl(uploadToS3(videoFile))
+                        .sizeBytes(videoFile.getSize())
+                        .mimeType(trimOrNull(videoFile.getContentType()))
+                        .build()
+        );
+
+        return toFilmReklamVideoResponse(created);
+    }
+
+    /**
+     * خوێندنەوەی ڤیدیۆی ڕیکلامی فیلم
+     *
+     * @throws ak.dev.khi_backend.khi_app.exceptions.AppException
+     *         404 — هێشتا هیچ ڤیدیۆیەک نەنێردراوە (دۆخی ئاسایی، نەک هەڵە)
+     */
+    @Transactional(readOnly = true)
+    public VideoDTO.FilmReklamVideoResponse getFilmReklamVideo() {
+        return toFilmReklamVideoResponse(findFilmReklamVideoOrThrow());
+    }
+
+    /**
+     * گۆڕینی فایلی ڤیدیۆی ڕیکلامی فیلم
+     *
+     * <p>Full replacement — there is no other field to patch. The new file is stored
+     * first and the old S3 object is removed only after the row is saved, so a failed
+     * upload leaves the existing video untouched.</p>
+     */
+    @Transactional
+    public VideoDTO.FilmReklamVideoResponse updateFilmReklamVideo(MultipartFile videoFile) {
+        validatePromoVideoFile(videoFile);
+
+        FilmReklamVideo reklamVideo = findFilmReklamVideoOrThrow();
+        String previousVideoUrl = reklamVideo.getVideoUrl();
+
+        reklamVideo.setVideoUrl(uploadToS3(videoFile));
+        reklamVideo.setSizeBytes(videoFile.getSize());
+        reklamVideo.setMimeType(trimOrNull(videoFile.getContentType()));
+
+        FilmReklamVideo saved = filmReklamVideoRepository.save(reklamVideo);
+        if (!isBlank(previousVideoUrl)) {
+            s3Service.deleteFile(previousVideoUrl);
+        }
+
+        return toFilmReklamVideoResponse(saved);
+    }
+
+    /**
+     * سڕینەوەی ڤیدیۆی ڕیکلامی فیلم — بەشی فیلم دەگەڕێتەوە بۆ پاشبنەمای ڕەش
+     */
+    @Transactional
+    public void deleteFilmReklamVideo() {
+        FilmReklamVideo reklamVideo = findFilmReklamVideoOrThrow();
+        String videoUrl = reklamVideo.getVideoUrl();
+
+        filmReklamVideoRepository.delete(reklamVideo);
+        if (!isBlank(videoUrl)) {
+            s3Service.deleteFile(videoUrl);
+        }
+    }
+
+    private FilmReklamVideo findFilmReklamVideoOrThrow() {
+        return filmReklamVideoRepository.findTopByOrderByIdAsc()
+                .orElseThrow(() -> Errors.notFound(FILM_REKLAM_VIDEO_NOT_FOUND, Map.of()));
+    }
+
+    private VideoDTO.FilmReklamVideoResponse toFilmReklamVideoResponse(FilmReklamVideo reklamVideo) {
+        return VideoDTO.FilmReklamVideoResponse.builder()
+                .id(reklamVideo.getId())
+                .videoUrl(reklamVideo.getVideoUrl())
+                .sizeBytes(reklamVideo.getSizeBytes())
+                .mimeType(reklamVideo.getMimeType())
+                .createdAt(reklamVideo.getCreatedAt())
+                .updatedAt(reklamVideo.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * پشکنینی فایلی ڤیدیۆی ڕیکلام — بەکارهاتوو لە دروستکردن و گۆڕیندا
+     *
+     * <p>No size or duration cap beyond the Spring multipart limit; enforce any
+     * ceiling in the dashboard before uploading.</p>
+     */
+    private void validatePromoVideoFile(MultipartFile videoFile) {
+        if (videoFile == null || videoFile.isEmpty()) {
+            throw Errors.videoMediaInvalid("error.validation", Map.of(
+                    "field", "videoFile",
+                    "message", "ڤیدیۆ پێویستە"
+            ));
+        }
+        String contentType = trimOrNull(videoFile.getContentType());
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("video/")) {
+            throw Errors.videoMediaInvalid("error.validation", Map.of(
+                    "field", "videoFile",
+                    "message", "فایلی نێردراو دەبێت ڤیدیۆ بێت"
+            ));
+        }
     }
 
     /**

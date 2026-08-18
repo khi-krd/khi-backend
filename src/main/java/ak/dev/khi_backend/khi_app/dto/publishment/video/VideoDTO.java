@@ -200,4 +200,24 @@ public class VideoDTO {
         private String embedUrl;
         private Integer durationSeconds;
     }
+
+    // =========================================================================
+    // FILM REKLAM VIDEO RESPONSE
+    // =========================================================================
+    //
+    // The homepage Film section background. A singleton, unrelated to any Video
+    // row — see FilmReklamVideo. Same shape as SoundReklamVideoResponse so the
+    // dashboard can reuse one component for both sections.
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class FilmReklamVideoResponse {
+        private Long id;
+        private String videoUrl;
+        private long sizeBytes;
+        private String mimeType;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+    }
 }

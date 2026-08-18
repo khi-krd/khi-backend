@@ -74,18 +74,34 @@ public final class SiteContentDtos {
         private Boolean active;
     }
 
+    /**
+     * Branding and global site configuration.
+     *
+     * <p>Every field is optional — nothing here may block a save. Each one is
+     * tri-state, the same convention as {@code featureImageUrl}: omitted leaves the
+     * stored value alone, {@code ""} clears it, a value is trimmed and stored.
+     * {@code maxFeaturedSlides} has no clear form; omit it to leave it alone.</p>
+     */
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SiteSettingsRequest {
-        @NotNull
         @Min(1)
         @Max(20)
         private Integer maxFeaturedSlides;
+
+        /** Header and footer logo. Transparent PNG — it sits on cream and on near-black. */
+        private String logoUrl;
+
+        /** Photograph for the donate band above the footer. */
+        private String donateImageUrl;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SiteSettingsResponse {
         private Long id;
+        private String logoUrl;
+        private String donateImageUrl;
         private Integer maxFeaturedSlides;
+        private LocalDateTime updatedAt;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

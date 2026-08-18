@@ -190,27 +190,54 @@ public class SiteContentService {
 
     // --- Site settings (admin) -----------------------------------------------------------
 
+    // Read never 404s: with no row stored yet it answers with the defaults, so the
+    // website can render its bundled logo and a plain donate band on a fresh database.
     @Transactional(readOnly = true)
     public SiteSettingsResponse getSiteSettings() {
         return siteSettingsRepository.findFirstByOrderByIdAsc()
-                .map(s -> SiteSettingsResponse.builder()
-                        .id(s.getId())
-                        .maxFeaturedSlides(s.getMaxFeaturedSlides())
-                        .build())
+                .map(this::toSiteSettingsResponse)
                 .orElseGet(() -> SiteSettingsResponse.builder()
                         .maxFeaturedSlides(SiteSettings.DEFAULT_MAX_FEATURED_SLIDES)
                         .build());
     }
 
+    /**
+     * Save branding and global settings.
+     *
+     * <p>Every field is optional and tri-state, matching the {@code featureImageUrl}
+     * convention: omitted leaves the stored value alone, {@code ""} clears it, a value
+     * is trimmed and stored. Nothing here can block a save — an empty body is a no-op
+     * that returns the current settings.</p>
+     */
     @Transactional
     public SiteSettingsResponse updateSiteSettings(SiteSettingsRequest request) {
         SiteSettings settings = siteSettingsRepository.findFirstByOrderByIdAsc()
                 .orElseGet(SiteSettings::new);
-        settings.setMaxFeaturedSlides(request.getMaxFeaturedSlides());
-        SiteSettings saved = siteSettingsRepository.save(settings);
+
+        if (request.getMaxFeaturedSlides() != null) {
+            settings.setMaxFeaturedSlides(request.getMaxFeaturedSlides());
+        } else if (settings.getMaxFeaturedSlides() == null) {
+            // First-ever save from the Branding screen: the row is being created by a
+            // request that carries only a picker, and max_featured_slides is NOT NULL.
+            settings.setMaxFeaturedSlides(SiteSettings.DEFAULT_MAX_FEATURED_SLIDES);
+        }
+        if (request.getLogoUrl() != null) {
+            settings.setLogoUrl(trimToNull(request.getLogoUrl()));
+        }
+        if (request.getDonateImageUrl() != null) {
+            settings.setDonateImageUrl(trimToNull(request.getDonateImageUrl()));
+        }
+
+        return toSiteSettingsResponse(siteSettingsRepository.save(settings));
+    }
+
+    private SiteSettingsResponse toSiteSettingsResponse(SiteSettings settings) {
         return SiteSettingsResponse.builder()
-                .id(saved.getId())
-                .maxFeaturedSlides(saved.getMaxFeaturedSlides())
+                .id(settings.getId())
+                .logoUrl(settings.getLogoUrl())
+                .donateImageUrl(settings.getDonateImageUrl())
+                .maxFeaturedSlides(settings.getMaxFeaturedSlides())
+                .updatedAt(settings.getUpdatedAt())
                 .build();
     }
 

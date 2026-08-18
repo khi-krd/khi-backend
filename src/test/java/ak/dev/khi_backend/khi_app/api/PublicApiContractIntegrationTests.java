@@ -82,6 +82,27 @@ class PublicApiContractIntegrationTests {
     }
 
     @Test
+    void filmReklamVideoRouteIsPublicAndDoesNotFallThroughToTheIdRoute() throws Exception {
+        // "film-reklam-video" is not a Long. If /{id} won the match this would be a 400
+        // from path-variable conversion; a 404 with an AppException body proves the
+        // literal route is selected and simply has nothing stored yet.
+        mockMvc.perform(get("/api/v1/videos/film-reklam-video"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.path").value("/api/v1/videos/film-reklam-video"));
+    }
+
+    @Test
+    void siteSettingsAreReadableWithoutAuthAndNeverEmpty() throws Exception {
+        // The website needs the logo on first paint, and a fresh database must still
+        // answer 200 so both branding images can fall back rather than error.
+        mockMvc.perform(get("/api/v1/site-settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.maxFeaturedSlides").isNumber());
+    }
+
+    @Test
     void numericResourceLookupsStillUseIdRoutes() throws Exception {
         String[] numericRoutes = {
                 "/api/v1/news/999999",

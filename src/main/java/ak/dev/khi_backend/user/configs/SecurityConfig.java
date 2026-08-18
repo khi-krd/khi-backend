@@ -117,6 +117,7 @@ public class SecurityConfig {
                                 "/api/v1/about/partners/**",
                                 "/api/v1/settings/social/**",
                                 "/api/v1/donations/settings",
+                                "/api/v1/site-settings",
                                 "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE,
@@ -157,6 +158,13 @@ public class SecurityConfig {
                                 "/api/v1/projects/**", "/api/v1/news/**", "/api/v1/videos/**",
                                 "/api/v1/image-collections/**", "/api/v1/sound-tracks/**",
                                 "/api/v1/albums/**", "/api/v1/writings/**"
+                        ).hasAnyRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")
+
+                        // ── Content: PATCH writes require EMPLOYEE+ ──────────────
+                        // Covers PATCH /api/v1/videos/film-reklam-video. The /{id}/featured
+                        // toggles under the same prefix stay ADMIN-only via @PreAuthorize.
+                        .requestMatchers(HttpMethod.PATCH,
+                                "/api/v1/videos/**"
                         ).hasAnyRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")
 
                         // ── Content: deletes require ADMIN+ ──────────────────────

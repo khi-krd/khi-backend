@@ -1,5 +1,6 @@
 package ak.dev.khi_backend.khi_app.api.publishment.video;
 
+import ak.dev.khi_backend.khi_app.dto.ApiResponse;
 import ak.dev.khi_backend.khi_app.dto.publishment.video.VideoDTO;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
@@ -74,6 +75,90 @@ public class VideoController {
             @PathVariable Long id,
             @RequestBody SiteContentDtos.FeaturedRequest request) {
         siteContentService.setVideoFeatured(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    // =========================================================================
+    // FILM REKLAM VIDEO — homepage Film section background
+    // =========================================================================
+    //
+    // The Film counterpart of GET /api/v1/sound-tracks/sound-reklam-video. A
+    // singleton: one video site-wide, so no id in the path. It plays muted and
+    // looping behind the film cards and is unrelated to any Video row.
+    //
+    // Dashboard flow: GET on screen open — 200 means show replace/remove, 404
+    // means show upload. The first upload is POST, every one after that is PATCH.
+
+    /**
+     * Upload the Film section background video — first time only.
+     *
+     * <p>Fails with 400 when a video already exists; use {@code PATCH} to replace it.</p>
+     */
+    @Operation(summary = "Upload the Film section background video (EMPLOYEE, ADMIN, SUPER_ADMIN)")
+    @PostMapping(
+            value = "/film-reklam-video",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<VideoDTO.FilmReklamVideoResponse>> createFilmReklamVideo(
+            @Parameter(description = "The video file — content type must start with video/")
+            @RequestPart("videoFile") MultipartFile videoFile
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                videoService.createFilmReklamVideo(videoFile),
+                "Film reklam video created successfully"
+        ));
+    }
+
+    /**
+     * Read the Film section background video.
+     *
+     * <p>Returns 404 when nothing has been uploaded. That is the normal empty state —
+     * the website hides the background and renders the Film section as usual.</p>
+     */
+    @Operation(summary = "Get the Film section background video (public)")
+    @GetMapping(value = "/film-reklam-video", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<VideoDTO.FilmReklamVideoResponse>> getFilmReklamVideo() {
+        return ResponseEntity.ok(ApiResponse.success(
+                videoService.getFilmReklamVideo(),
+                "Film reklam video fetched successfully"
+        ));
+    }
+
+    /**
+     * Replace the Film section background video file.
+     *
+     * <p>A full replacement despite the PATCH verb — there is no other field to patch.
+     * Fails with 404 when no video exists yet; fall back to {@code POST}.</p>
+     */
+    @Operation(summary = "Replace the Film section background video (EMPLOYEE, ADMIN, SUPER_ADMIN)")
+    @PatchMapping(
+            value = "/film-reklam-video",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<VideoDTO.FilmReklamVideoResponse>> updateFilmReklamVideo(
+            @Parameter(description = "The replacement video file — content type must start with video/")
+            @RequestPart("videoFile") MultipartFile videoFile
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                videoService.updateFilmReklamVideo(videoFile),
+                "Film reklam video updated successfully"
+        ));
+    }
+
+    /**
+     * Remove the Film section background video.
+     *
+     * <p>Not idempotent — deleting twice returns 404 the second time.</p>
+     */
+    @Operation(summary = "Delete the Film section background video (ADMIN, SUPER_ADMIN)")
+    @DeleteMapping(value = "/film-reklam-video", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<Void> deleteFilmReklamVideo() {
+        videoService.deleteFilmReklamVideo();
         return ResponseEntity.noContent().build();
     }
 

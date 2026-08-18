@@ -109,6 +109,40 @@ public class PublicSiteController {
                 "Contact message status updated");
     }
 
+    // Branding and global site settings
+    //
+    // Public read so the website can pick up the logo and the donate-band picture on
+    // first paint; admin write from the dashboard's Branding screen. Both fields are
+    // nullable and every field on the request is optional — the website has a working
+    // fallback for each, so saving an empty form is legal and does nothing.
+
+    /**
+     * Read branding and global site settings.
+     *
+     * <p>Never 404s: with no row stored yet it returns the defaults, so a fresh
+     * database serves a usable response.</p>
+     */
+    @GetMapping("/site-settings")
+    public ApiResponse<SiteSettingsResponse> getSiteSettings() {
+        return ApiResponse.success(siteContentService.getSiteSettings(), "Site settings fetched");
+    }
+
+    /**
+     * Save branding and global site settings.
+     *
+     * <p>Tri-state per field, as with {@code featureImageUrl}: omitted leaves the
+     * stored value alone, {@code ""} clears it, a value is trimmed and stored. URLs
+     * must be absolute {@code https://} — the website and the API are on different
+     * hosts and insecure requests are upgraded.</p>
+     */
+    @PutMapping("/site-settings")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ApiResponse<SiteSettingsResponse> updateSiteSettings(
+            @Valid @RequestBody SiteSettingsRequest request) {
+        return ApiResponse.success(siteContentService.updateSiteSettings(request),
+                "Site settings updated");
+    }
+
     // Global social settings
 
     @GetMapping("/settings/social")
