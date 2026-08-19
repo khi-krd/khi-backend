@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+import java.io.Serializable;
 
 /**
  * ProjectResponse — Tiptap migration.
@@ -23,7 +24,8 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProjectResponse {
+public class ProjectResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private Long id;
     private String coverUrl;
@@ -59,7 +61,8 @@ public class ProjectResponse {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ProjectContentBlockDto {
+    public static class ProjectContentBlockDto implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String title;
         /** Tiptap HTML output. */
         private String description;

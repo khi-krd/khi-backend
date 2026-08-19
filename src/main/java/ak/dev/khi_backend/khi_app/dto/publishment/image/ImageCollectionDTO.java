@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.io.Serializable;
 
 public final class ImageCollectionDTO {
 
@@ -22,7 +23,8 @@ public final class ImageCollectionDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class LanguageContentDto {
+    public static class LanguageContentDto implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String title;
         private String description;
         private String topic;       // free-text topic name inside the content block
@@ -37,7 +39,8 @@ public final class ImageCollectionDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class BilingualSet {
+    public static class BilingualSet implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Set<String> ckb;
         private Set<String> kmr;
     }
@@ -63,7 +66,8 @@ public final class ImageCollectionDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class ImageItemDto {
+    public static class ImageItemDto implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         /**
          * Existing album item ID. On update, this keeps the persisted item and
@@ -195,7 +199,8 @@ public final class ImageCollectionDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class Response {
+    public static class Response implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         private Long id;
         private String slugCkb;

@@ -290,7 +290,7 @@ public class GlobalSearchService {
                             .id(ic.getId())
                             .type("IMAGE")
                             .titleCkb(title(ic.getCkbContent() != null ? ic.getCkbContent().getTitle() : null))
-                            .titleKmr(ic.getKmrContent() != null ? ic.getKmrContent().getTitle() : null)
+                            .titleKmr(title(ic.getKmrContent() != null ? ic.getKmrContent().getTitle() : null))
                             .descriptionCkb(snippet(ic.getCkbContent() != null ? ic.getCkbContent().getDescription() : null))
                             .descriptionKmr(snippet(ic.getKmrContent() != null ? ic.getKmrContent().getDescription() : null))
                             .coverUrl(firstNonNull(ic.getCkbCoverUrl(), ic.getKmrCoverUrl()))

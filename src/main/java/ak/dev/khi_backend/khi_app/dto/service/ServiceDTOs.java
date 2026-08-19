@@ -3,6 +3,7 @@ package ak.dev.khi_backend.khi_app.dto.service;
 import lombok.*;
 
 import java.util.List;
+import java.io.Serializable;
 
 /**
  * ServiceDTOs — Request / response DTOs for the Service module.
@@ -64,7 +65,8 @@ public class ServiceDTOs {
      * Each slot is independently an IMAGE or a VIDEO.
      */
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
-    public static class MediaItem {
+    public static class MediaItem implements Serializable {
+        private static final long serialVersionUID = 1L;
         /** "IMAGE" or "VIDEO". Optional on input — auto-detected from the URL when omitted. */
         private String type;
         /** Image URL, or video file URL. Required when a slot is present. */
@@ -100,7 +102,8 @@ public class ServiceDTOs {
     // =========================================================================
 
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
-    public static class ServiceResponse {
+    public static class ServiceResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Long id;
         private String serviceType;
         private String location;
@@ -131,7 +134,8 @@ public class ServiceDTOs {
     // ─── Bilingual Service Content ────────────────────────────────────────────
 
     @Data @NoArgsConstructor @AllArgsConstructor @Builder
-    public static class ServiceContentResponse {
+    public static class ServiceContentResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Long id;
         private String languageCode;
         private String title;

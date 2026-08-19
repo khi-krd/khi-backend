@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.io.Serializable;
 
 /**
  * NewsDto — request / response DTO for the News module (Tiptap migration).
@@ -27,7 +28,8 @@ import java.util.Set;
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class NewsDto {
+public class NewsDto implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private Long id;
     private String coverUrl;
@@ -69,7 +71,8 @@ public class NewsDto {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class CategoryDto {
+    public static class CategoryDto implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String ckbName;
         private String kmrName;
     }
@@ -77,7 +80,8 @@ public class NewsDto {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class SubCategoryDto {
+    public static class SubCategoryDto implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String ckbName;
         private String kmrName;
     }
@@ -85,7 +89,8 @@ public class NewsDto {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class LanguageContentDto {
+    public static class LanguageContentDto implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String title;
         /** Tiptap HTML produced by the editor. */
         private String description;
@@ -94,7 +99,8 @@ public class NewsDto {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class BilingualSet {
+    public static class BilingualSet implements Serializable {
+        private static final long serialVersionUID = 1L;
         @Builder.Default
         private Set<String> ckb = new LinkedHashSet<>();
         @Builder.Default

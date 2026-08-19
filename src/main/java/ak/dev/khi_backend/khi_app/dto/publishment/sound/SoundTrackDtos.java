@@ -14,6 +14,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.io.Serializable;
 
 public final class SoundTrackDtos {
 
@@ -26,7 +27,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class LanguageContentDto {
+    public static class LanguageContentDto implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         @Size(max = 200)
         private String title;
@@ -44,7 +46,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class BilingualSet {
+    public static class BilingualSet implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Set<String> ckb;
         private Set<String> kmr;
     }
@@ -99,7 +102,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class BrochureResponse {
+    public static class BrochureResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Long id;
         private String imageUrl;
         private String caption;
@@ -147,7 +151,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class AttachmentResponse {
+    public static class AttachmentResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
         private Long id;
         private String fileUrl;
         private String title;
@@ -221,7 +226,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class FileResponse {
+    public static class FileResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         private Long id;
 
@@ -438,7 +444,8 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class Response {
+    public static class Response implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         private Long id;
 
