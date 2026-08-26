@@ -748,10 +748,16 @@ public class SiteContentService {
 
     // Social links
 
+    /**
+     * @param includeInactive dashboard passes {@code true} to see hidden rows;
+     *                        the website leaves it {@code false}.
+     */
     @Transactional(readOnly = true)
-    public List<SocialLinkResponse> getSocialLinks() {
-        return socialLinkRepository.findAllByActiveTrueOrderByDisplayOrderAsc().stream()
-                .map(this::socialResponse).toList();
+    public List<SocialLinkResponse> getSocialLinks(boolean includeInactive) {
+        List<SocialLink> links = includeInactive
+                ? socialLinkRepository.findAllByOrderByDisplayOrderAsc()
+                : socialLinkRepository.findAllByActiveTrueOrderByDisplayOrderAsc();
+        return links.stream().map(this::socialResponse).toList();
     }
 
     @Transactional

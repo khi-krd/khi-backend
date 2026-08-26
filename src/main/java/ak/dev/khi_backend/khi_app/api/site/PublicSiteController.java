@@ -145,9 +145,11 @@ public class PublicSiteController {
 
     // Global social settings
 
+    /** @param includeInactive dashboard only — the website never sends it. */
     @GetMapping("/settings/social")
-    public ApiResponse<List<SocialLinkResponse>> getSocialLinks() {
-        return ApiResponse.success(siteContentService.getSocialLinks(), "Social links fetched");
+    public ApiResponse<List<SocialLinkResponse>> getSocialLinks(
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ApiResponse.success(siteContentService.getSocialLinks(includeInactive), "Social links fetched");
     }
 
     @PostMapping("/settings/social")
