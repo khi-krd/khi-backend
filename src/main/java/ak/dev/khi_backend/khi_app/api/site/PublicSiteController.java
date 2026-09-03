@@ -183,6 +183,39 @@ public class PublicSiteController {
         return ApiResponse.success(siteContentService.getDonationTypes(), "Donation types fetched");
     }
 
+    // "What can I donate?" cards — full CRUD from the dashboard, public reads.
+    // The website draws the first card (lowest displayOrder) big with its
+    // description; the rest are small tiles. Zero active cards hides the section.
+
+    /** @param includeInactive dashboard only — the website never sends it. */
+    @GetMapping("/donations/type-cards")
+    public ApiResponse<List<DonationTypeCardResponse>> getDonationTypeCards(
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ApiResponse.success(siteContentService.getDonationTypeCards(includeInactive),
+                "Donation type cards fetched");
+    }
+
+    @PostMapping("/donations/type-cards")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<DonationTypeCardResponse> createDonationTypeCard(
+            @Valid @RequestBody DonationTypeCardRequest request) {
+        return ApiResponse.success(siteContentService.createDonationTypeCard(request),
+                "Donation type card created");
+    }
+
+    @PutMapping("/donations/type-cards/{id}")
+    public ApiResponse<DonationTypeCardResponse> updateDonationTypeCard(
+            @PathVariable Long id, @Valid @RequestBody DonationTypeCardRequest request) {
+        return ApiResponse.success(siteContentService.updateDonationTypeCard(id, request),
+                "Donation type card updated");
+    }
+
+    @DeleteMapping("/donations/type-cards/{id}")
+    public ApiResponse<Void> deleteDonationTypeCard(@PathVariable Long id) {
+        siteContentService.deleteDonationTypeCard(id);
+        return ApiResponse.success(null, "Donation type card deleted");
+    }
+
     @PutMapping("/donations/settings")
     public ApiResponse<DonationSettingsResponse> saveDonationSettings(
             @Valid @RequestBody DonationSettingsRequest request) {

@@ -55,6 +55,7 @@ public class SiteContentService {
     private final ContactMessageRepository contactMessageRepository;
     private final SocialLinkRepository socialLinkRepository;
     private final DonationSettingsRepository donationSettingsRepository;
+    private final DonationTypeCardRepository donationTypeCardRepository;
     private final FinancialDonationRepository financialDonationRepository;
     private final ArchiveDonationRepository archiveDonationRepository;
     private final SiteSettingsRepository siteSettingsRepository;
@@ -788,6 +789,76 @@ public class SiteContentService {
         link.setLabelKmr(trimToNull(request.getLabelKmr()));
         link.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
         link.setActive(request.getActive() == null || request.getActive());
+    }
+
+    // Donation type cards — the "What can I donate?" mosaic on the donate page.
+    // Same shape as social links: public reads with an includeInactive switch for
+    // the dashboard, admin-only writes, rows sorted by displayOrder. The website
+    // treats the first card as the big featured one and derives the number chips
+    // from list position, so order is the only layout control stored here.
+
+    /**
+     * @param includeInactive dashboard passes {@code true} to see hidden rows;
+     *                        the website leaves it {@code false}.
+     */
+    @Transactional(readOnly = true)
+    public List<DonationTypeCardResponse> getDonationTypeCards(boolean includeInactive) {
+        List<DonationTypeCard> cards = includeInactive
+                ? donationTypeCardRepository.findAllByOrderByDisplayOrderAsc()
+                : donationTypeCardRepository.findAllByActiveTrueOrderByDisplayOrderAsc();
+        return cards.stream().map(this::donationTypeCardResponse).toList();
+    }
+
+    @Transactional
+    public DonationTypeCardResponse createDonationTypeCard(DonationTypeCardRequest request) {
+        DonationTypeCard card = new DonationTypeCard();
+        applyDonationTypeCard(card, request);
+        return donationTypeCardResponse(donationTypeCardRepository.save(card));
+    }
+
+    @Transactional
+    public DonationTypeCardResponse updateDonationTypeCard(Long id, DonationTypeCardRequest request) {
+        DonationTypeCard card = donationTypeCardRepository.findById(id)
+                .orElseThrow(() -> notFound("Donation type card", id));
+        applyDonationTypeCard(card, request);
+        return donationTypeCardResponse(donationTypeCardRepository.save(card));
+    }
+
+    @Transactional
+    public void deleteDonationTypeCard(Long id) {
+        if (!donationTypeCardRepository.existsById(id)) throw notFound("Donation type card", id);
+        donationTypeCardRepository.deleteById(id);
+    }
+
+    private void applyDonationTypeCard(DonationTypeCard card, DonationTypeCardRequest request) {
+        String titleCkb = trimToNull(request.getTitleCkb());
+        String titleKmr = trimToNull(request.getTitleKmr());
+        // The website falls back to the other language when one is missing, but a
+        // card with no title at all cannot be drawn.
+        if (titleCkb == null && titleKmr == null) {
+            throw new IllegalArgumentException(
+                    "At least one of titleCkb / titleKmr is required.");
+        }
+        card.setTitleCkb(titleCkb);
+        card.setTitleKmr(titleKmr);
+        card.setDescriptionCkb(trimToNull(request.getDescriptionCkb()));
+        card.setDescriptionKmr(trimToNull(request.getDescriptionKmr()));
+        card.setImageUrl(request.getImageUrl().trim());
+        card.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
+        card.setActive(request.getActive() == null || request.getActive());
+    }
+
+    private DonationTypeCardResponse donationTypeCardResponse(DonationTypeCard card) {
+        return DonationTypeCardResponse.builder()
+                .id(card.getId())
+                .titleCkb(card.getTitleCkb())
+                .titleKmr(card.getTitleKmr())
+                .descriptionCkb(card.getDescriptionCkb())
+                .descriptionKmr(card.getDescriptionKmr())
+                .imageUrl(card.getImageUrl())
+                .displayOrder(card.getDisplayOrder())
+                .active(card.isActive())
+                .build();
     }
 
     // Donations

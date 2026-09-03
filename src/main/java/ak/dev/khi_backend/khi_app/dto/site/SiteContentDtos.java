@@ -258,6 +258,36 @@ public final class SiteContentDtos {
         private Boolean enabled;
     }
 
+    /**
+     * One card of the donate page's "What can I donate?" mosaic.
+     *
+     * <p>At least one of {@code titleCkb} / {@code titleKmr} must be non-blank —
+     * enforced in the service, since bean validation cannot express either-or.
+     * Blank strings are trimmed to {@code null} on save.</p>
+     */
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class DonationTypeCardRequest {
+        @Size(max = 200) private String titleCkb;
+        @Size(max = 200) private String titleKmr;
+        @Size(max = 1000) private String descriptionCkb;
+        @Size(max = 1000) private String descriptionKmr;
+        @NotBlank @Size(max = 2000) private String imageUrl;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class DonationTypeCardResponse {
+        private Long id;
+        private String titleCkb;
+        private String titleKmr;
+        private String descriptionCkb;
+        private String descriptionKmr;
+        private String imageUrl;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class FinancialDonationRequest {
         @NotBlank private String donorName;
