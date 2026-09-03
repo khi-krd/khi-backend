@@ -16,10 +16,17 @@ documented separately in [`../external/WRITING_API.md`](../external/WRITING_API.
 | **Controller** | `src/main/java/ak/dev/khi_backend/khi_app/api/publishment/writing/WritingController.java` |
 | **Services** | `src/main/java/ak/dev/khi_backend/khi_app/service/publishment/writing/WritingService.java`, `src/main/java/ak/dev/khi_backend/khi_app/service/site/SiteContentService.java` |
 | **DTOs** | `src/main/java/ak/dev/khi_backend/khi_app/dto/publishment/writing/WritingDtos.java`, `src/main/java/ak/dev/khi_backend/khi_app/dto/site/SiteContentDtos.java` |
-| **Entities** | `Writing`, `WritingContent` (embeddable), `WritingLog`, `PublishmentTopic`, `SiteSettings` |
-| **Enums** | `Language`, `BookGenre`, `WritingFileFormat` |
+| **Entities** | `Writing`, `WritingContent` (embeddable), `WritingLog`, `PublishmentTopic`, `SiteSettings`, `BookGenre` (editor-managed genre rows) |
+| **Enums** | `Language`, `WritingFileFormat` (plus the legacy `BookGenre` request shim) |
 | **Storage** | AWS S3, region `us-east-1`, bucket `s3-khiwebsite`, base folder `khi-web-folders` |
-| **Verified against source** | 2026-08-26 |
+| **Verified against source** | 2026-09-03 |
+
+> **Update 2026-09-03 — genres are now editor-managed rows.** Books link to `book_genres` rows
+> instead of carrying enum values. Create/update accept a new preferred field
+> `"genreIds": [1, 5, 12]`; the old `"bookGenres": ["POETRY"]` keeps working for one release
+> (each code resolved against the rows' slugs, aliases normalised as before) and is ignored when
+> `genreIds` is non-empty. Genre CRUD itself lives at `/api/v1/book-genres` (admin writes) — full
+> contract, migration and seed data in [`../BOOK_GENRES.md`](../BOOK_GENRES.md).
 
 ---
 
@@ -32,6 +39,9 @@ documented separately in [`../external/WRITING_API.md`](../external/WRITING_API.
 | 3 | `DELETE` | `/api/v1/writings/{id}` | JWT | `ADMIN`, `SUPER_ADMIN` | Hard-delete a book |
 | 4 | `POST` | `/api/v1/writings/series/link` | JWT | `EMPLOYEE`, `ADMIN`, `SUPER_ADMIN` | Attach an existing book to a series |
 | 5 | `PATCH` | `/api/v1/writings/{id}/featured` | JWT | `ADMIN` only | Toggle the homepage carousel flag |
+| 6 | `POST` | `/api/v1/book-genres` | JWT | `ADMIN`, `SUPER_ADMIN` | Create a genre row — see [`../BOOK_GENRES.md`](../BOOK_GENRES.md) |
+| 7 | `PUT` | `/api/v1/book-genres/{id}` | JWT | `ADMIN`, `SUPER_ADMIN` | Replace a genre row (slug immutable while books use it) |
+| 8 | `DELETE` | `/api/v1/book-genres/{id}` | JWT | `ADMIN`, `SUPER_ADMIN` | Delete a genre, detaching it from every book |
 
 ### Where those roles come from
 
@@ -163,7 +173,8 @@ outside `[A-Za-z0-9._-]` is replaced with `_`.
 | Field | Type | Required | Constraints | Description |
 |-------|------|----------|-------------|-------------|
 | `contentLanguages` | array of `Language` | **yes** | non-empty, enforced by the service | Which language blocks this book declares — `["CKB"]`, `["KMR"]` or both |
-| `bookGenres` | array of `BookGenre` | **yes** | non-empty, enforced by the service | One or more genres. A historical novel is `["HISTORY", "NOVEL"]`. |
+| `genreIds` | array of integer (int64) | one of the two genre fields | at least one genre required, enforced by the service | Ids of `book_genres` rows — the preferred way. An unknown id is a `400` (`Unknown genre id: {id}`). |
+| `bookGenres` | array of `BookGenre` codes | one of the two genre fields | — | Legacy alternative, kept for one release: enum codes resolved against the rows' slugs. Ignored when `genreIds` is non-empty. A historical novel is `["HISTORY", "NOVEL"]`. |
 | `ckbContent` | `LanguageContentDto` | conditional | required, with a non-blank `title`, when `contentLanguages` contains `CKB` | Sorani text and file metadata |
 | `kmrContent` | `LanguageContentDto` | conditional | required, with a non-blank `title`, when `contentLanguages` contains `KMR` | Kurmanji text and file metadata |
 | `ckbCoverUrl` | string | no | declared `@Size(max=2000)` | Sorani cover URL. Ignored if `ckbCoverImage` is uploaded. Trimmed; blank becomes null. |
@@ -234,8 +245,9 @@ remapped, and **anything unrecognised becomes `OTHER` without an error**:
 whole request fails with `400 BAD_REQUEST` and `details.reason` = `Invalid JSON: Cannot construct
 instance of ...`. Both are case-insensitive for valid values (`"pdf"` → `PDF`).
 
-> **Note:** because unknown genres silently collapse to `OTHER`, a typo in `bookGenres` will not be
-> reported. Send values from the enum table verbatim.
+> **Note:** because unknown legacy codes silently collapse to `OTHER`, a typo in `bookGenres` will
+> not be reported. Prefer `genreIds` — an unknown id fails loudly with
+> `400 Unknown genre id: {id}`.
 
 ### Order of operations
 
@@ -370,7 +382,8 @@ Field-by-field documentation of this object lives in the external doc's
 |--------|--------|------|
 | 400 | `BAD_REQUEST` | `data` is not valid JSON, carries an unknown field (other than `id`), or contains an invalid `Language` / `WritingFileFormat`. `details.reason` starts with `Invalid JSON:`. |
 | 400 | `BAD_REQUEST` | `contentLanguages` missing or empty — `details` = `{ "field": "contentLanguages" }` |
-| 400 | `BAD_REQUEST` | `bookGenres` missing or empty — `details` = `{ "field": "bookGenres" }` |
+| 400 | `BAD_REQUEST` | Both `genreIds` and `bookGenres` missing or empty — `details` = `{ "field": "genreIds" }` |
+| 400 | `BAD_REQUEST` | A `genreIds` entry matches no genre row — message `Unknown genre id: {id}` |
 | 400 | `BAD_REQUEST` | A declared language has no content object — `details` = `{ "language": "KMR", "message": "ناوەڕۆک بۆ KMR دیاری نەکراوە" }` |
 | 400 | `BAD_REQUEST` | A declared language's `title` is blank — `details` = `{ "language": "CKB", "message": "ناونیشان بۆ CKB پێویستە" }` |
 | 400 | `BAD_REQUEST` | A part could not be read from the request — `details` = `{ "description": "فایلی کتێبی CKB", "error": "…" }` |
@@ -442,7 +455,8 @@ Identical to endpoint 1 — `data` (required) plus `ckbCoverImage`, `kmrCoverIma
 | Field | Type | Omitting it means | Notes |
 |-------|------|-------------------|-------|
 | `contentLanguages` | array of `Language` | unchanged | Replaced wholesale when non-null **and non-empty**. Every language you list must have its content object present in the same request, or you get a `400`. |
-| `bookGenres` | array of `BookGenre` | unchanged | Replaced wholesale when non-null **and non-empty**. See the callout below about `[]`. |
+| `genreIds` | array of integer (int64) | unchanged | Ids of `book_genres` rows — the preferred way. Replaces the genre set wholesale when non-null **and non-empty**; wins over `bookGenres`. |
+| `bookGenres` | array of `BookGenre` codes | unchanged | Legacy alternative (codes resolved against slugs). Replaced wholesale when non-null **and non-empty**. See the callout below about `[]`. |
 | `ckbContent` | `LanguageContentDto` | unchanged | Merged field-by-field into the stored block. Creates the block if the book had none. |
 | `kmrContent` | `LanguageContentDto` | unchanged | Same |
 | `ckbCoverUrl` | string | unchanged | `""` clears the cover to null; a URL replaces it. Overridden by `ckbCoverImage`. |
@@ -461,10 +475,9 @@ Identical to endpoint 1 — `data` (required) plus `ckbCoverImage`, `kmrCoverIma
 There is **no `seriesId` field on `UpdateRequest`.** The only way to change a book's series through
 this endpoint is `parentBookId`; use endpoint 4 for the explicit version.
 
-> **Note — `"bookGenres": []` does nothing.** The guard is
-> `if (request.getBookGenres() != null && !request.getBookGenres().isEmpty())`, so an empty array is
-> treated exactly like an omitted field. A book cannot be stripped of all its genres through this
-> API. Send at least one genre, or leave the key out.
+> **Note — `"genreIds": []` / `"bookGenres": []` do nothing.** The resolved genre set is applied
+> only when non-empty, so an empty array is treated exactly like an omitted field. A book cannot be
+> stripped of all its genres through this API. Send at least one genre, or leave the keys out.
 
 > **Note — you cannot un-link a book from its parent.** `parentBookId` is only applied when non-null;
 > sending `null` is indistinguishable from omitting it. Detaching a child volume requires either a
@@ -879,7 +892,13 @@ Accepted in `contentLanguages`. Case-insensitive on input; an unrecognised value
 | `CKB` | Central Kurdish / Sorani |
 | `KMR` | Northern Kurdish / Kurmanji |
 
-### `BookGenre`
+### `BookGenre` (legacy request shim)
+
+> **Since 2026-09-03 genres are editor-managed rows** (`book_genres`, CRUD at
+> `/api/v1/book-genres` — see [`../BOOK_GENRES.md`](../BOOK_GENRES.md)) and the preferred request
+> field is `genreIds`. This enum survives only to parse the legacy `bookGenres` request field:
+> each parsed value's canonical code is looked up against the rows' slugs. The table below is
+> therefore also the seeded starting set of rows.
 
 Accepted as an array in `bookGenres`. Case-insensitive; **unrecognised values silently become
 `OTHER`**.

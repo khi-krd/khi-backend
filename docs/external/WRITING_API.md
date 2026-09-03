@@ -19,9 +19,17 @@ featuring a book all require a JWT and are documented in
 | **Service** | `src/main/java/ak/dev/khi_backend/khi_app/service/publishment/writing/WritingService.java` |
 | **DTOs** | `src/main/java/ak/dev/khi_backend/khi_app/dto/publishment/writing/WritingDtos.java` |
 | **Repository** | `src/main/java/ak/dev/khi_backend/khi_app/repository/publishment/writing/WritingRepository.java` |
-| **Entities** | `Writing`, `WritingContent` (embeddable), `WritingLog`, `PublishmentTopic` |
-| **Enums** | `Language`, `BookGenre`, `WritingFileFormat` |
-| **Verified against source** | 2026-08-26 |
+| **Entities** | `Writing`, `WritingContent` (embeddable), `WritingLog`, `PublishmentTopic`, `BookGenre` (editor-managed genre rows) |
+| **Enums** | `Language`, `WritingFileFormat` (plus the legacy `BookGenre` request shim) |
+| **Verified against source** | 2026-09-03 |
+
+> **Update 2026-09-03 — genres are now editor-managed rows.** The fixed `BookGenre` enum has been
+> replaced by database rows (`book_genres`) with public reads and admin CRUD at
+> `/api/v1/book-genres` — see [`../BOOK_GENRES.md`](../BOOK_GENRES.md). Book responses keep the
+> `bookGenres` string array unchanged (now the linked rows' slugs — identical values for the 22
+> seeded genres) and additionally carry a `genres` array with the full row objects (id, slug,
+> bilingual names). Nothing on this page breaks; the enum table further down now documents the
+> seeded rows rather than compiled code.
 
 ---
 
@@ -38,6 +46,7 @@ featuring a book all require a JWT and are documented in
 | 7 | `GET` | `/api/v1/writings/search/tag` | None | — | Search by tag |
 | 8 | `GET` | `/api/v1/writings/search/keyword` | None | — | Search by keyword |
 | 9 | `GET` | `/api/v1/writings/topics` | None | — | The `WRITING` topic registry (for filter chips) |
+| 10 | `GET` | `/api/v1/book-genres` | None | — | The editor-managed genre rows (for the genre chips) — full contract in [`../BOOK_GENRES.md`](../BOOK_GENRES.md) |
 
 There is no authentication header on any of these. Sending one is harmless — the JWT filter simply
 populates the security context and the `permitAll()` rule still applies.
@@ -124,7 +133,8 @@ This is the `WritingDtos.Response` class. It is the `data` of endpoint 3 and eve
 | `topicId` | integer (int64) | yes | Flattened alias for `topic.id` |
 | `topicNameCkb` | string | yes | Flattened alias for `topic.nameCkb` |
 | `topicNameKmr` | string | yes | Flattened alias for `topic.nameKmr` |
-| `bookGenres` | array of `BookGenre` | no | All genres on this book. Always present; may be `[]` for legacy rows. |
+| `bookGenres` | array of string | no | The linked genre rows' slugs (`"POETRY"`, `"HISTORY"`…) — backward-compatible with the old enum array. Always present; may be `[]` for legacy rows. Ordered by the genres' `displayOrder`. |
+| `genres` | array of `GenreInfo` | no | The full linked genre rows: `{ id, slug, nameCkb, nameKmr }`. Same order as `bookGenres`. Always present; may be `[]`. |
 | `publishedByInstitute` | boolean | no | `true` when KHI itself published the book (as opposed to merely archiving it) |
 | `tags` | `BilingualSet` | no | Short display labels, per language |
 | `keywords` | `BilingualSet` | no | Search terms, per language |
@@ -224,6 +234,10 @@ insertion order of the underlying `LinkedHashSet` and is stable across reads, bu
     },
     "topic": { "id": 7, "nameCkb": "مێژووی هاوچەرخ", "nameKmr": "Dîroka hevçerx" },
     "bookGenres": ["HISTORY", "POLITICS"],
+    "genres": [
+      { "id": 5,  "slug": "HISTORY",  "nameCkb": "مێژوو",  "nameKmr": "Dîrok" },
+      { "id": 10, "slug": "POLITICS", "nameCkb": "سیاسەت", "nameKmr": "Siyaset" }
+    ],
     "publishedByInstitute": true,
     "tags": {
       "ckb": ["مێژوو", "کوردستان"],
@@ -977,7 +991,12 @@ Used in `contentLanguages`.
 | `CKB` | Central Kurdish / Sorani |
 | `KMR` | Northern Kurdish / Kurmanji |
 
-### `BookGenre`
+### Book genres (`bookGenres` values)
+
+> **No longer an enum in responses.** Since 2026-09-03 these are editor-managed rows read from
+> `GET /api/v1/book-genres` ([`../BOOK_GENRES.md`](../BOOK_GENRES.md)); editors can add, rename,
+> re-order and hide them. The table below is the seeded starting set — its slugs equal the old
+> enum codes, so existing clients see identical values until an editor changes something.
 
 The machine-readable, multi-valued classification returned in `bookGenres`. A book carries a set,
 not a single value — a historical novel is `["HISTORY", "NOVEL"]`.
@@ -1007,19 +1026,12 @@ not a single value — a historical novel is `["HISTORY", "NOVEL"]`.
 | `TRAVEL` | گەشتوگوزار | Travel and geography |
 | `OTHER` | یتر | Uncategorised |
 
-The Java enum additionally declares three legacy constants — `ESSAY`, `POLITICAL` and `ACADEMIC` —
-that exist only so rows written by older builds still deserialise. A `@JsonValue` method normalises
-them on the way out, so **they can never appear in a response**:
+The legacy Java enum's alias constants — `ESSAY`, `POLITICAL` and `ACADEMIC` — were folded into
+the canonical rows by the one-time migration (`POLITICAL → POLITICS`, `ACADEMIC → EDUCATIONAL`,
+`ESSAY → OTHER`), so **they can never appear in a response**. A client only ever needs to handle
+the slugs the genre endpoint returns — which start as the 22 values in the first table.
 
-| Stored legacy value | Serialised as |
-|---------------------|---------------|
-| `POLITICAL` | `POLITICS` |
-| `ACADEMIC` | `EDUCATIONAL` |
-| `ESSAY` | `OTHER` |
-
-A client only ever needs to handle the 22 values in the first table.
-
-> **Note:** do not confuse `bookGenres` (this enum, machine-readable, on the book) with
+> **Note:** do not confuse `bookGenres` (machine-readable slugs, on the book) with
 > `ckbContent.genre` / `kmrContent.genre` (free text, per language, editor-typed, display only).
 > They are unrelated fields and are not kept in sync.
 
@@ -1071,10 +1083,11 @@ same applies to non-numeric `page` / `size`.
 configured for the application (`khi:` key prefix, 10-minute default TTL) but this domain does not
 use it — every request hits PostgreSQL. Cache on the CDN or in the browser if you need to.
 
-**Ordering inside `tags` / `keywords` / `bookGenres` / `contentLanguages`.** All four are backed by
-`LinkedHashSet`, so ordering is stable per record but arbitrary in meaning. Do not rely on
-`bookGenres[0]` being "the primary genre" — the entity has a `getPrimaryGenre()` helper that does
-exactly that internally, but it is only used for log lines and is not exposed.
+**Ordering inside `tags` / `keywords` / `contentLanguages`.** These are backed by
+`LinkedHashSet`, so ordering is stable per record but arbitrary in meaning. `bookGenres` and
+`genres` are the exception since the genre migration: both follow the genres' `displayOrder`
+(lowest first). Do not read editorial meaning into `bookGenres[0]` — it is the earliest-ordered
+chip, not "the primary genre".
 
 **`totalBooks` can lag.** `seriesTotalBooks` is denormalised. It is re-stamped on every book in a
 series on create, update, delete and series-link, but the series-link path only recounts the

@@ -23,7 +23,7 @@ If an endpoint needs a token, it is not here — look in [`../internal/`](../int
 | [`IMAGE_COLLECTION_API.md`](IMAGE_COLLECTION_API.md) | 6 | `/api/v1/image-collections` | Photo collections and album items |
 | [`SOUNDTRACK_API.md`](SOUNDTRACK_API.md) | 12 | `/api/v1/sound-tracks` | Audio tracks, state and type filters, album of memories |
 | [`VIDEO_API.md`](VIDEO_API.md) | 7 | `/api/v1/videos` | Videos, cast, clips, and the film advert banner |
-| [`WRITING_API.md`](WRITING_API.md) | 9 | `/api/v1/writings` | Books, genres, series linking, writer search |
+| [`WRITING_API.md`](WRITING_API.md) | 10 | `/api/v1/writings` | Books, genres (editor-managed, `/api/v1/book-genres`), series linking, writer search |
 | [`TOPIC_API.md`](TOPIC_API.md) | 2 | `/api/v1/topics` | The shared VIDEO / SOUND / IMAGE / WRITING taxonomy |
 | [`SEARCH_API.md`](SEARCH_API.md) | 1 | `/api/v1/search` | One endpoint that searches every content type at once |
 | [`SITE_SETTINGS_API.md`](SITE_SETTINGS_API.md) | 8 | `/api/v1/featured`, `/nav-menu`, `/settings/social`, `/site-settings`, `/sitemap` | Homepage featured rail, navigation, team, partners, sitemap |

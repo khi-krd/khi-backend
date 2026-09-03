@@ -2,7 +2,6 @@ package ak.dev.khi_backend.khi_app.service.publishment.writing;
 
 import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.*;
 import ak.dev.khi_backend.khi_app.enums.Language;
-import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
 import ak.dev.khi_backend.khi_app.exceptions.NotFoundException;
 import ak.dev.khi_backend.khi_app.exceptions.Errors;
@@ -38,6 +37,7 @@ public class WritingService {
     private final WritingRepository          writingRepository;
     private final WritingLogRepository       writingLogRepository;
     private final PublishmentTopicRepository topicRepository;
+    private final BookGenreService           bookGenreService;
     private final S3Service                  s3Service;
     private final ObjectMapper               objectMapper;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
@@ -85,7 +85,7 @@ public class WritingService {
                 .kmrCoverUrl(kmrCoverUrl)
                 .hoverCoverUrl(hoverCoverUrl)
                 .topic(topic)
-                .bookGenres(new LinkedHashSet<>(safeGenres(request.getBookGenres())))
+                .genres(bookGenreService.resolve(request.getGenreIds(), request.getBookGenres()))
                 .contentLanguages(new LinkedHashSet<>(safeLangs(request.getContentLanguages())))
                 .publishedByInstitute(request.isPublishedByInstitute())
                 .tagsCkb(new LinkedHashSet<>(safeSet(request.getTags()     != null ? request.getTags().getCkb()     : null)))
@@ -152,9 +152,11 @@ public class WritingService {
         }
 
         // ─── Book Genres ─────────────────────────────────────────────────────
-        if (request.getBookGenres() != null && !request.getBookGenres().isEmpty()) {
-            writing.getBookGenres().clear();
-            writing.getBookGenres().addAll(request.getBookGenres());
+        // genreIds preferred, legacy enum codes accepted; empty = leave unchanged.
+        var resolvedGenres = bookGenreService.resolve(request.getGenreIds(), request.getBookGenres());
+        if (!resolvedGenres.isEmpty()) {
+            writing.getGenres().clear();
+            writing.getGenres().addAll(resolvedGenres);
         }
 
         if (request.getPublishedByInstitute() != null) writing.setPublishedByInstitute(request.getPublishedByInstitute());
@@ -390,8 +392,11 @@ public class WritingService {
         if (request.getContentLanguages() == null || request.getContentLanguages().isEmpty()) {
             throw new BadRequestException("writing.languages.required", Map.of("field", "contentLanguages"));
         }
-        if (request.getBookGenres() == null || request.getBookGenres().isEmpty()) {
-            throw new BadRequestException("writing.genres.required", Map.of("field", "bookGenres"));
+        boolean hasGenres =
+                (request.getGenreIds()   != null && !request.getGenreIds().isEmpty())
+             || (request.getBookGenres() != null && !request.getBookGenres().isEmpty());
+        if (!hasGenres) {
+            throw new BadRequestException("writing.genres.required", Map.of("field", "genreIds"));
         }
         for (Language lang : request.getContentLanguages()) {
             LanguageContentDto content = lang == Language.CKB ? request.getCkbContent() : request.getKmrContent();
@@ -497,8 +502,16 @@ public class WritingService {
                         .nameKmr(w.getTopic().getNameKmr())
                         .build()
                         : null)
-                .bookGenres(w.getBookGenres() != null
-                        ? new LinkedHashSet<>(w.getBookGenres()) : new LinkedHashSet<>())
+                .bookGenres(w.getGenres() != null
+                        ? w.getGenres().stream().map(g -> g.getSlug())
+                                .collect(Collectors.toCollection(LinkedHashSet::new))
+                        : new LinkedHashSet<>())
+                .genres(w.getGenres() != null
+                        ? w.getGenres().stream().map(g -> GenreInfo.builder()
+                                .id(g.getId()).slug(g.getSlug())
+                                .nameCkb(g.getNameCkb()).nameKmr(g.getNameKmr())
+                                .build()).toList()
+                        : List.of())
                 .publishedByInstitute(w.isPublishedByInstitute())
                 .createdAt(w.getCreatedAt())
                 .updatedAt(w.getUpdatedAt())
@@ -617,7 +630,6 @@ public class WritingService {
     private boolean isBlank(String s)    { return s == null || s.isBlank(); }
     private String trimOrNull(String s)   { if (s == null) return null; String t = s.trim(); return t.isEmpty() ? null : t; }
     private Set<Language> safeLangs(Set<Language> l) { return l == null ? Set.of() : l; }
-    private Set<BookGenre> safeGenres(Set<BookGenre> g) { return g == null ? Set.of() : g; }
     private <T> Set<T> safeSet(Set<T> s)             { return s == null ? Set.of() : s; }
     private Set<String> cleanStrings(Set<String> in) {
         if (in == null || in.isEmpty()) return Set.of();

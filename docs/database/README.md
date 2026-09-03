@@ -4,7 +4,7 @@ The KHI Backend stores everything in **PostgreSQL**, accessed through Spring Dat
 This folder describes that schema: what the tables are, how they relate, what the fields mean, and
 how schema changes get applied.
 
-**84 tables · 72 relationships · 38 enum-backed columns · verified against source 2026-09-03**
+**85 tables · 73 relationships · 37 enum-backed columns · verified against source 2026-09-03**
 
 ---
 
@@ -32,7 +32,7 @@ database, and it will save you from a surprise in production.
 | [`ERD.md`](ERD.md) | You need to see how tables connect. 14 Mermaid diagrams: one system overview plus one per domain, rendered inline by GitHub |
 | [`FIELDS.md`](FIELDS.md) | You need to know what a field *means*. Slugs, the bilingual pattern, Tiptap bodies, S3 URLs, flags, ordering, audit columns, personal data. The fields people get wrong |
 | [`MIGRATIONS.md`](MIGRATIONS.md) | You are about to change the schema, or you want to adopt Flyway properly |
-| [`schema.sql`](schema.sql) | You need executable DDL — provisioning a fresh database, or diffing one that has drifted. 84 tables, generated from the entities by [`../../scripts/render-schema.sh`](../../scripts/render-schema.sh); nothing runs it at startup |
+| [`schema.sql`](schema.sql) | You need executable DDL — provisioning a fresh database, or diffing one that has drifted. 85 tables, generated from the entities by [`../../scripts/render-schema.sh`](../../scripts/render-schema.sh); nothing runs it at startup |
 
 `SCHEMA.md` is breadth; `FIELDS.md` is depth. If you are new to the codebase, read `ERD.md` then
 `FIELDS.md`, and treat `SCHEMA.md` as a lookup table.

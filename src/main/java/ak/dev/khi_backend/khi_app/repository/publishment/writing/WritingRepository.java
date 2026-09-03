@@ -1,7 +1,6 @@
 package ak.dev.khi_backend.khi_app.repository.publishment.writing;
 
 import ak.dev.khi_backend.khi_app.model.publishment.writing.Writing;
-import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -79,11 +78,6 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     )
     Page<Writing> findAllWithTopic(Pageable pageable);
 
-    /**
-     * All writings filtered by genre, paged.
-     */
-    @Query("SELECT w FROM Writing w LEFT JOIN FETCH w.topic WHERE :genre MEMBER OF w.bookGenres")
-    Page<Writing> findAllByGenre(@Param("genre") BookGenre genre, Pageable pageable);
     // ═══════════════════════════════════════════════════════════════════════════
     // ── SERIES QUERIES ──
     // ═══════════════════════════════════════════════════════════════════════════

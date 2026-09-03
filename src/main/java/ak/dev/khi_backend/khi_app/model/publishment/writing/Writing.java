@@ -1,7 +1,6 @@
 package ak.dev.khi_backend.khi_app.model.publishment.writing;
 
 import ak.dev.khi_backend.khi_app.enums.Language;
-import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,30 +21,14 @@ import java.util.List;
  *  kmrCoverUrl   → Kurmanji cover  (column: kmr_cover_url)
  *  hoverCoverUrl → hover overlay   (column: hover_cover_url)
  *
- * ─── Book Genres (ElementCollection → writing_book_genres) ───────────────────
+ * ─── Book Genres (ManyToMany → book_genre_links) ─────────────────────────────
  *
  *  A book can belong to MULTIPLE genres (e.g. a historical novel = HISTORY + NOVEL).
- *  Stored in a separate collection table: writing_book_genres (writing_id, book_genre).
- *  @BatchSize(size = 25) for consistent batch-loading with other collections.
- *
- * ─── DB Migration (from single book_genre column to collection table) ────────
- *
- *  -- 1. Create new collection table
- *  CREATE TABLE IF NOT EXISTS writing_book_genres (
- *      writing_id BIGINT NOT NULL REFERENCES writings(id) ON DELETE CASCADE,
- *      book_genre VARCHAR(30) NOT NULL,
- *      PRIMARY KEY (writing_id, book_genre)
- *  );
- *  CREATE INDEX idx_wbg_genre ON writing_book_genres (book_genre);
- *
- *  -- 2. Migrate existing single-genre data into the new table
- *  INSERT INTO writing_book_genres (writing_id, book_genre)
- *  SELECT id, book_genre FROM writings WHERE book_genre IS NOT NULL
- *  ON CONFLICT DO NOTHING;
- *
- *  -- 3. Drop old single-genre column (after verifying migration)
- *  ALTER TABLE writings DROP COLUMN IF EXISTS book_genre;
- *  DROP INDEX IF EXISTS idx_writing_genre;
+ *  Genres are editor-managed BookGenre rows; the link table is
+ *  book_genre_links (book_id, genre_id). The old enum collection table
+ *  writing_book_genres is frozen — BookGenreSeeder migrated its rows into
+ *  links at first boot, and the table is only kept until the website's switch
+ *  to dynamic genres is confirmed.
  *
  * ─── Performance ──────────────────────────────────────────────────────────────
  *  @BatchSize(size = 25) on every @ElementCollection:
@@ -93,20 +76,25 @@ public class Writing {
 
     /**
      * A book can belong to multiple genres (e.g. HISTORY + NOVEL for a historical novel).
-     * Stored in collection table: writing_book_genres (writing_id, book_genre).
+     * Genres are editor-managed {@link BookGenre} rows, linked through
+     * book_genre_links (book_id, genre_id). At least one genre is required —
+     * enforced by the service layer.
      *
-     * At least one genre is required — enforced by the service layer.
+     * The old enum {@code @ElementCollection} table writing_book_genres is kept
+     * in the database untouched as a frozen pre-migration snapshot (see
+     * BookGenreSeeder); nothing reads or writes it anymore, and it can be
+     * dropped once the website's switch to dynamic genres is confirmed.
      */
     @BatchSize(size = 25)
     @Builder.Default
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "writing_book_genres",
-            joinColumns = @JoinColumn(name = "writing_id")
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "book_genre_links",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id")
     )
-    @Enumerated(EnumType.STRING)
-    @Column(name = "book_genre", nullable = false, length = 30)
-    private Set<BookGenre> bookGenres = new LinkedHashSet<>();
+    @OrderBy("displayOrder ASC, id ASC")
+    private Set<BookGenre> genres = new LinkedHashSet<>();
 
     // ─── Topic ────────────────────────────────────────────────────────────────
 
@@ -265,19 +253,4 @@ public class Writing {
         return null;
     }
 
-    /**
-     * Check if this book has a specific genre.
-     */
-    public boolean hasGenre(BookGenre genre) {
-        return bookGenres != null && bookGenres.contains(genre);
-    }
-
-    /**
-     * Backward-compatible: returns the first genre or null.
-     * Useful for logs, fallback display, etc.
-     */
-    public BookGenre getPrimaryGenre() {
-        if (bookGenres == null || bookGenres.isEmpty()) return null;
-        return bookGenres.iterator().next();
-    }
 }

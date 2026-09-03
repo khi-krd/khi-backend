@@ -43,7 +43,7 @@ per-device session revocation.
 | [`IMAGE_COLLECTION_API.md`](IMAGE_COLLECTION_API.md) | 5 | `EMPLOYEE` (delete: `ADMIN`) | Collection writes and album item management |
 | [`SOUNDTRACK_API.md`](SOUNDTRACK_API.md) | 7 | `EMPLOYEE` (delete: `ADMIN`) | Track writes, files, brochures, attachments, advert banner |
 | [`VIDEO_API.md`](VIDEO_API.md) | 9 | `EMPLOYEE` (delete: `ADMIN`) | Video writes, topics, film advert banner |
-| [`WRITING_API.md`](WRITING_API.md) | 5 | `EMPLOYEE` (delete: `ADMIN`) | Book writes and series linking |
+| [`WRITING_API.md`](WRITING_API.md) | 8 | `EMPLOYEE` (delete: `ADMIN`) | Book writes, series linking and genre CRUD |
 | [`TOPIC_API.md`](TOPIC_API.md) | 3 | `EMPLOYEE` | Create, update and delete taxonomy topics |
 | [`SITE_SETTINGS_API.md`](SITE_SETTINGS_API.md) | 13 | `ADMIN` | Featured rail, navigation, team, partners, social links, site settings |
 | [`DONATION_API.md`](DONATION_API.md) | 9 | `ADMIN` | Donation settings, "What can I donate?" cards, and reading and triaging donor submissions |

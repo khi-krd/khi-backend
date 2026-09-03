@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Editor-managed book genres** — the genre chips on the writings page are no longer a fixed
+  Java enum. New `book_genres` table (slug + bilingual names + order + active) with public
+  `GET /api/v1/book-genres` (plus `?includeInactive=true`) and admin-only `POST` / `PUT /{id}` /
+  `DELETE /{id}`; books link to genre rows through the new `book_genre_links` many-to-many.
+  Book create/update accept the preferred `genreIds` array while the legacy `bookGenres` enum
+  codes keep working for one release; book responses keep the `bookGenres` string array
+  (now the linked rows' slugs, byte-identical for the seeded genres) and gain a full `genres`
+  object array. An idempotent startup seeder (`BookGenreSeeder`) inserts the 22 former enum
+  values with their Sorani/Kurmanji names and converts every book's enum rows into links,
+  folding the legacy aliases (`POLITICAL`, `ACADEMIC`, `ESSAY`); the old `writing_book_genres`
+  table is left frozen as a rollback snapshot. Guide with contract, migration and seed data:
+  `docs/BOOK_GENRES.md`.
+
 - **Donation type cards** — the donate page's "دەتوانم چی ببەخشم؟ / What can I donate?"
   picture cards are now database rows (`donation_type_cards`) instead of hardcoded website
   content. New public read `GET /api/v1/donations/type-cards` (with `?includeInactive=true`
@@ -25,8 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SiteContentService`, security rules in `SecurityConfig`, and unit tests. Documented in
   `docs/DONATION_TYPE_CARDS.md` (with seed data for the five current cards) and folded into
   the donate/donation API docs.
-- `docs/database/schema.sql` — the full PostgreSQL DDL for all 84 tables (617 columns,
-  84 indexes, 1 sequence, 63 foreign keys), generated from the JPA entities rather than
+- `docs/database/schema.sql` — the full PostgreSQL DDL for all 85 tables (623 columns,
+  84 indexes, 1 sequence, 64 foreign keys), generated from the JPA entities rather than
   hand-written. Build output, not source: nothing executes it at startup, since
   `ddl-auto: update` still reconciles the live database. Use it to provision a fresh
   database or to diff against an existing one.
@@ -41,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `Writing`'s enum genre `@ElementCollection`, the unused `WritingRepository.findAllByGenre()`
+  query, and the entity's `hasGenre()` / `getPrimaryGenre()` helpers — all replaced by the
+  `Writing.genres` many-to-many. The `BookGenre` enum itself survives only as the request shim
+  for the legacy `bookGenres` field.
 - The 14 SVG exports of `docs/database/ERD.md` diagrams, which duplicated a reference that
   belongs with the schema. The 65 diagrams of the six `docs/diagrams/` documents are kept.
 - `docs/diagrams/svg/README.md`, whose per-file index described the removed folder layout.

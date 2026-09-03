@@ -85,6 +85,53 @@ public final class WritingDtos {
     }
 
     // =========================================================================
+    // BOOK GENRE DTOS (editor-managed rows, /api/v1/book-genres)
+    // =========================================================================
+
+    /**
+     * One genre chip on a book response — the linked BookGenre row.
+     */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class GenreInfo {
+        private Long   id;
+        private String slug;
+        private String nameCkb;
+        private String nameKmr;
+    }
+
+    /**
+     * Create/replace a genre row. At least one of nameCkb / nameKmr must be
+     * non-blank, and the slug format (UPPERCASE letters/digits/underscore) —
+     * enforced in the service. Blank names are saved as null.
+     */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class BookGenreRequest {
+        @NotBlank @Size(max = 60) private String slug;
+        @Size(max = 200) private String nameCkb;
+        @Size(max = 200) private String nameKmr;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class BookGenreResponse {
+        private Long    id;
+        private String  slug;
+        private String  nameCkb;
+        private String  nameKmr;
+        private Integer displayOrder;
+        private Boolean active;
+        /** How many books link to this genre — the dashboard's delete warning. */
+        private Long    bookCount;
+    }
+
+    // =========================================================================
     // SERIES DTOS
     // =========================================================================
 
@@ -148,11 +195,17 @@ public final class WritingDtos {
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 
         /**
-         * One or more genres for this book (e.g. [HISTORY, NOVEL] for a historical novel).
-         * At least one genre is required.
+         * Ids of BookGenre rows for this book — the preferred way to set genres.
+         * At least one genre is required (via genreIds or legacy bookGenres) —
+         * enforced in the service, where the two fields are reconciled.
          */
-        @NotNull(message = "At least one book genre is required")
-        @NotEmpty(message = "At least one book genre is required")
+        private Set<Long> genreIds;
+
+        /**
+         * Legacy alternative to genreIds, kept for one release so the dashboard
+         * can migrate: enum codes (e.g. ["HISTORY", "NOVEL"]) resolved against
+         * BookGenre.slug. Ignored when genreIds is non-empty.
+         */
         private Set<BookGenre> bookGenres;
 
         // ─── Shared ───────────────────────────────────────────────────────────
@@ -207,9 +260,16 @@ public final class WritingDtos {
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 
         /**
-         * Replace the current genre set with a new one.
-         * Nullable — omit or pass null to leave the current genres unchanged.
-         * Pass a non-empty set to replace all genres.
+         * Replace the current genre set with these BookGenre row ids — the
+         * preferred way. Nullable — omit or pass null/empty to leave the
+         * current genres unchanged.
+         */
+        private Set<Long> genreIds;
+
+        /**
+         * Legacy alternative to genreIds (enum codes resolved against
+         * BookGenre.slug), kept for one release. Ignored when genreIds is
+         * non-empty; null/empty leaves the current genres unchanged.
          */
         private Set<BookGenre> bookGenres;
 
@@ -264,10 +324,17 @@ public final class WritingDtos {
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 
         /**
-         * All genres assigned to this book.
-         * Always a non-null set (may be empty for legacy data).
+         * Backward-compatible genre codes — the linked BookGenre rows' slugs.
+         * Serialises exactly like the old enum array, so the website keeps
+         * working unchanged. Always a non-null set (may be empty for legacy data).
          */
-        private Set<BookGenre> bookGenres;
+        private Set<String> bookGenres;
+
+        /**
+         * The full linked genre rows (id, slug and bilingual names) — what the
+         * website will switch to for labels. Always non-null, may be empty.
+         */
+        private List<GenreInfo> genres;
 
         // ─── Shared ───────────────────────────────────────────────────────────
 

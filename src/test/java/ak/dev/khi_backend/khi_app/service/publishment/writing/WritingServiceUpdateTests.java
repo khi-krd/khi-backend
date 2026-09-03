@@ -34,6 +34,7 @@ class WritingServiceUpdateTests {
     @Mock private WritingRepository writingRepository;
     @Mock private WritingLogRepository writingLogRepository;
     @Mock private PublishmentTopicRepository topicRepository;
+    @Mock private BookGenreService bookGenreService;
     @Mock private S3Service s3Service;
     @Mock private ObjectMapper objectMapper;
     @Mock private TiptapHtmlProcessor tiptapHtmlProcessor;
@@ -43,6 +44,7 @@ class WritingServiceUpdateTests {
 
     @Test
     void metadataOnlyUpdateKeepsExistingBookFileSource() {
+        when(bookGenreService.resolve(any(), any())).thenReturn(new java.util.LinkedHashSet<>());
         Writing writing = Writing.builder()
                 .id(8L)
                 .ckbContent(WritingContent.builder()

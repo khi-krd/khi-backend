@@ -1026,9 +1026,18 @@ erDiagram
         timestamp updated_at
     }
 
-    writing_book_genres {
-        bigint writing_id FK
-        varchar book_genre "POETRY NOVEL DRAMA HISTORY and more"
+    book_genres {
+        bigint id PK
+        varchar slug UK "POETRY NOVEL and editor-created"
+        varchar name_ckb
+        varchar name_kmr
+        integer display_order
+        boolean active
+    }
+
+    book_genre_links {
+        bigint book_id FK
+        bigint genre_id FK
     }
 
     writing_content_languages {
@@ -1071,7 +1080,8 @@ erDiagram
 
     publishment_topics ||--o{ writings : "topic_id"
     writings ||--o{ writings : "parent_book_id - series volumes"
-    writings ||--o{ writing_book_genres : "multiple genres per book"
+    writings ||--o{ book_genre_links : "multiple genres per book"
+    book_genres ||--o{ book_genre_links : "editor-managed genre rows"
     writings ||--o{ writing_content_languages : "declared languages"
     writings ||--o{ writing_keywords_ckb : "sorani keywords"
     writings ||--o{ writing_keywords_kmr : "kurmanji keywords"
@@ -1086,10 +1096,11 @@ erDiagram
   populated. `WritingService` calls `writingLogRepository.detachFromWriting(id)` to NULL
   `writing_id` before deleting the book, keeping the log rows alive via the `writing_id_ref`
   snapshot.
-- `BookGenre` carries three legacy alias constants — `POLITICAL`, `ACADEMIC`, `ESSAY` — that
-  `@JsonCreator` folds into `POLITICS`, `EDUCATIONAL` and `OTHER`. The folding happens only at the
-  JSON boundary, so older rows can hold the literal alias strings in
-  `writing_book_genres.book_genre` and queries filtering on `POLITICS` will silently miss them.
+- Genres are editor-managed `book_genres` rows since 2026-09-03 (CRUD at `/api/v1/book-genres`,
+  see [`../BOOK_GENRES.md`](../BOOK_GENRES.md)); the old enum collection table
+  `writing_book_genres` survives in live databases only as a frozen rollback snapshot and is not
+  drawn here. The migration folded the enum's legacy aliases (`POLITICAL` → `POLITICS`,
+  `ACADEMIC` → `EDUCATIONAL`, `ESSAY` → `OTHER`) into the canonical rows.
 
 Sources: [`Writing.java`](../../src/main/java/ak/dev/khi_backend/khi_app/model/publishment/writing/Writing.java),
 [`WritingContent.java`](../../src/main/java/ak/dev/khi_backend/khi_app/model/publishment/writing/WritingContent.java),
