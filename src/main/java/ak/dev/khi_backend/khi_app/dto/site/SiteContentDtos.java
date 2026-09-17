@@ -1,5 +1,6 @@
 package ak.dev.khi_backend.khi_app.dto.site;
 
+import ak.dev.khi_backend.khi_app.enums.Language;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
@@ -105,6 +106,27 @@ public final class SiteContentDtos {
         /** Same pair for the Kurmanji (Latin-script) pages. */
         private String kmrFontUrl;
         private String kmrFontName;
+    }
+
+    /**
+     * One entry of the site typeface library. The file itself is uploaded through
+     * {@code POST /api/v1/media/upload} first — this record only stores the
+     * resulting URL plus a display label and the language it is meant for.
+     */
+    @Data
+    public static class SiteFontRequest {
+        @NotNull private Language language;
+        @NotBlank @Size(max = 200) private String name;
+        @NotBlank @Size(max = 1200) private String url;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class SiteFontResponse {
+        private Long id;
+        private Language language;
+        private String name;
+        private String url;
+        private LocalDateTime createdAt;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

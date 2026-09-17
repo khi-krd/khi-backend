@@ -59,6 +59,7 @@ public class SiteContentService {
     private final FinancialDonationRepository financialDonationRepository;
     private final ArchiveDonationRepository archiveDonationRepository;
     private final SiteSettingsRepository siteSettingsRepository;
+    private final SiteFontRepository siteFontRepository;
     private final NewsRepository newsRepository;
     private final ProjectRepository projectRepository;
     private final WritingRepository writingRepository;
@@ -265,6 +266,71 @@ public class SiteContentService {
                 .kmrFontName(settings.getKmrFontName())
                 .maxFeaturedSlides(settings.getMaxFeaturedSlides())
                 .updatedAt(settings.getUpdatedAt())
+                .build();
+    }
+
+    // --- Site typeface library -----------------------------------------------------------
+    //
+    // The library can hold several uploaded fonts per language; which one is live
+    // is decided by the site_settings font fields, so the website contract stays
+    // unchanged. Activating a font is a normal site-settings update carrying the
+    // library entry's URL + name.
+
+    @Transactional(readOnly = true)
+    public List<SiteFontResponse> listSiteFonts() {
+        return siteFontRepository.findAllByOrderByLanguageAscCreatedAtAsc().stream()
+                .map(this::toSiteFontResponse)
+                .toList();
+    }
+
+    @Transactional
+    public SiteFontResponse createSiteFont(SiteFontRequest request) {
+        SiteFont font = SiteFont.builder()
+                .language(request.getLanguage())
+                .name(request.getName().trim())
+                .url(request.getUrl().trim())
+                .build();
+        return toSiteFontResponse(siteFontRepository.save(font));
+    }
+
+    /**
+     * Remove a library entry. If the deleted font is the one currently live for
+     * its language, the settings fields are cleared too — otherwise the website
+     * would keep requesting a file whose library record is gone.
+     */
+    @Transactional
+    public void deleteSiteFont(Long id) {
+        SiteFont font = siteFontRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Site font not found: " + id));
+        String url = font.getUrl();
+
+        siteFontRepository.delete(font);
+
+        siteSettingsRepository.findFirstByOrderByIdAsc().ifPresent(settings -> {
+            boolean changed = false;
+            if (url.equals(settings.getCkbFontUrl())) {
+                settings.setCkbFontUrl(null);
+                settings.setCkbFontName(null);
+                changed = true;
+            }
+            if (url.equals(settings.getKmrFontUrl())) {
+                settings.setKmrFontUrl(null);
+                settings.setKmrFontName(null);
+                changed = true;
+            }
+            if (changed) {
+                siteSettingsRepository.save(settings);
+            }
+        });
+    }
+
+    private SiteFontResponse toSiteFontResponse(SiteFont font) {
+        return SiteFontResponse.builder()
+                .id(font.getId())
+                .language(font.getLanguage())
+                .name(font.getName())
+                .url(font.getUrl())
+                .createdAt(font.getCreatedAt())
                 .build();
     }
 

@@ -143,6 +143,39 @@ public class PublicSiteController {
                 "Site settings updated");
     }
 
+    // Site typeface library
+    //
+    // The library can hold several uploaded fonts per language; which one is
+    // live is decided by the site_settings font fields. Activation is therefore
+    // a normal PUT /site-settings — no dedicated endpoint needed.
+
+    /** List every uploaded typeface. Public read, like the rest of /api/v1 GETs. */
+    @GetMapping("/site-fonts")
+    public ApiResponse<List<SiteFontResponse>> getSiteFonts() {
+        return ApiResponse.success(siteContentService.listSiteFonts(), "Site fonts fetched");
+    }
+
+    /**
+     * Register an uploaded font file. The file goes through
+     * {@code POST /api/v1/media/upload} first — this only stores the URL,
+     * a display label and the language the face is meant for.
+     */
+    @PostMapping("/site-fonts")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ApiResponse<SiteFontResponse> createSiteFont(
+            @Valid @RequestBody SiteFontRequest request) {
+        return ApiResponse.success(siteContentService.createSiteFont(request), "Site font created");
+    }
+
+    /** Remove a library entry; clears the active selection if it pointed at it. */
+    @DeleteMapping("/site-fonts/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ApiResponse<Void> deleteSiteFont(@PathVariable Long id) {
+        siteContentService.deleteSiteFont(id);
+        return ApiResponse.success(null, "Site font deleted");
+    }
+
     // Global social settings
 
     /** @param includeInactive dashboard only — the website never sends it. */
