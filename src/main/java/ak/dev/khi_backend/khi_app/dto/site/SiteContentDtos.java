@@ -106,6 +106,16 @@ public final class SiteContentDtos {
         /** Same pair for the Kurmanji (Latin-script) pages. */
         private String kmrFontUrl;
         private String kmrFontName;
+
+        /**
+         * Admin-picked surface colors, hex like {@code #F7F4EC}. Empty string
+         * clears — the website then falls back to its bundled token for that
+         * surface, which is also the reset path.
+         */
+        private String bodyColor;
+        private String navbarColor;
+        private String footerColor;
+        private String collectionColor;
     }
 
     /**
@@ -138,6 +148,10 @@ public final class SiteContentDtos {
         private String ckbFontName;
         private String kmrFontUrl;
         private String kmrFontName;
+        private String bodyColor;
+        private String navbarColor;
+        private String footerColor;
+        private String collectionColor;
         private Integer maxFeaturedSlides;
         private LocalDateTime updatedAt;
     }

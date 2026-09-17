@@ -251,6 +251,18 @@ public class SiteContentService {
         if (request.getKmrFontName() != null) {
             settings.setKmrFontName(trimToNull(request.getKmrFontName()));
         }
+        if (request.getBodyColor() != null) {
+            settings.setBodyColor(trimToNull(request.getBodyColor()));
+        }
+        if (request.getNavbarColor() != null) {
+            settings.setNavbarColor(trimToNull(request.getNavbarColor()));
+        }
+        if (request.getFooterColor() != null) {
+            settings.setFooterColor(trimToNull(request.getFooterColor()));
+        }
+        if (request.getCollectionColor() != null) {
+            settings.setCollectionColor(trimToNull(request.getCollectionColor()));
+        }
 
         return toSiteSettingsResponse(siteSettingsRepository.save(settings));
     }
@@ -264,6 +276,10 @@ public class SiteContentService {
                 .ckbFontName(settings.getCkbFontName())
                 .kmrFontUrl(settings.getKmrFontUrl())
                 .kmrFontName(settings.getKmrFontName())
+                .bodyColor(settings.getBodyColor())
+                .navbarColor(settings.getNavbarColor())
+                .footerColor(settings.getFooterColor())
+                .collectionColor(settings.getCollectionColor())
                 .maxFeaturedSlides(settings.getMaxFeaturedSlides())
                 .updatedAt(settings.getUpdatedAt())
                 .build();

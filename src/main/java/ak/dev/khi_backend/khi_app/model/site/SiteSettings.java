@@ -78,6 +78,23 @@ public class SiteSettings {
     @Column(name = "kmr_font_name", length = 200)
     private String kmrFontName;
 
+    /**
+     * Admin-picked surface colors, hex strings like {@code #F7F4EC}. Every one
+     * nullable: null means the website's bundled token keeps rendering, which is
+     * also the reset path — clearing the field restores the default look.
+     */
+    @Column(name = "body_color", length = 20)
+    private String bodyColor;
+
+    @Column(name = "navbar_color", length = 20)
+    private String navbarColor;
+
+    @Column(name = "footer_color", length = 20)
+    private String footerColor;
+
+    @Column(name = "collection_color", length = 20)
+    private String collectionColor;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
