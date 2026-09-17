@@ -93,6 +93,18 @@ public final class SiteContentDtos {
 
         /** Photograph for the donate band above the footer. */
         private String donateImageUrl;
+
+        /**
+         * Uploaded typeface for the Sorani pages — a woff2/ttf/otf URL in the
+         * media bucket, plus a display label for the dashboard. Empty string
+         * clears the pair; the website then falls back to Vazirmatn.
+         */
+        private String ckbFontUrl;
+        private String ckbFontName;
+
+        /** Same pair for the Kurmanji (Latin-script) pages. */
+        private String kmrFontUrl;
+        private String kmrFontName;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -100,6 +112,10 @@ public final class SiteContentDtos {
         private Long id;
         private String logoUrl;
         private String donateImageUrl;
+        private String ckbFontUrl;
+        private String ckbFontName;
+        private String kmrFontUrl;
+        private String kmrFontName;
         private Integer maxFeaturedSlides;
         private LocalDateTime updatedAt;
     }

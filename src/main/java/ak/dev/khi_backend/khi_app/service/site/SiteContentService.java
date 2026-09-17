@@ -228,6 +228,28 @@ public class SiteContentService {
         if (request.getDonateImageUrl() != null) {
             settings.setDonateImageUrl(trimToNull(request.getDonateImageUrl()));
         }
+        // Clearing the URL also drops the label — a nameless file would linger
+        // on the dashboard as an orphan "active font" otherwise.
+        if (request.getCkbFontUrl() != null) {
+            String url = trimToNull(request.getCkbFontUrl());
+            settings.setCkbFontUrl(url);
+            if (url == null) {
+                settings.setCkbFontName(null);
+            }
+        }
+        if (request.getCkbFontName() != null) {
+            settings.setCkbFontName(trimToNull(request.getCkbFontName()));
+        }
+        if (request.getKmrFontUrl() != null) {
+            String url = trimToNull(request.getKmrFontUrl());
+            settings.setKmrFontUrl(url);
+            if (url == null) {
+                settings.setKmrFontName(null);
+            }
+        }
+        if (request.getKmrFontName() != null) {
+            settings.setKmrFontName(trimToNull(request.getKmrFontName()));
+        }
 
         return toSiteSettingsResponse(siteSettingsRepository.save(settings));
     }
@@ -237,6 +259,10 @@ public class SiteContentService {
                 .id(settings.getId())
                 .logoUrl(settings.getLogoUrl())
                 .donateImageUrl(settings.getDonateImageUrl())
+                .ckbFontUrl(settings.getCkbFontUrl())
+                .ckbFontName(settings.getCkbFontName())
+                .kmrFontUrl(settings.getKmrFontUrl())
+                .kmrFontName(settings.getKmrFontName())
                 .maxFeaturedSlides(settings.getMaxFeaturedSlides())
                 .updatedAt(settings.getUpdatedAt())
                 .build();

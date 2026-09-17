@@ -53,6 +53,31 @@ public class SiteSettings {
     @Column(name = "donate_image_url", length = 1200)
     private String donateImageUrl;
 
+    /**
+     * Uploaded typeface for the Sorani (CKB) pages of the website — an
+     * uploaded font file (woff2/ttf/otf) stored in the media bucket, loaded
+     * there through the same-origin font proxy. Nullable: no upload means the
+     * bundled Vazirmatn keeps rendering.
+     *
+     * <p>{@code ckbFontName} is a display label only ("Rabar", "NRT"…), shown
+     * in the dashboard so the editor can tell which file is active.</p>
+     */
+    @Column(name = "ckb_font_url", length = 1200)
+    private String ckbFontUrl;
+
+    @Column(name = "ckb_font_name", length = 200)
+    private String ckbFontName;
+
+    /**
+     * Same pair for the Kurmanji (ku, Latin-script) pages. Nullable: no upload
+     * means Archivo/Clash Display keep rendering.
+     */
+    @Column(name = "kmr_font_url", length = 1200)
+    private String kmrFontUrl;
+
+    @Column(name = "kmr_font_name", length = 200)
+    private String kmrFontName;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

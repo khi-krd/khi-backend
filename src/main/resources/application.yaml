@@ -130,7 +130,7 @@ jwt:
 # ===============================
 app:
   cors:
-    allowed-origins: https://khi-dashboard-production.up.railway.app,https://khi-website-production.up.railway.app,https://khi-frontend.vercel.app,https://khi-frontend-*.vercel.app,http://localhost:5173,http://localhost:3000
+    allowed-origins: https://khi-dashboard-production.up.railway.app,https://khi-dashboard-wine.vercel.app,https://khi-dashboard-*.vercel.app,https://khi-website-production.up.railway.app,https://khi-frontend.vercel.app,https://khi-frontend-*.vercel.app,http://localhost:5173,http://localhost:3000
     allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
     allowed-headers: "*"
     allow-credentials: true
