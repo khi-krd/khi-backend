@@ -272,6 +272,9 @@ public class SiteContentService {
         if (request.getCaptionFontScale() != null) {
             settings.setCaptionFontScale(trimToNull(request.getCaptionFontScale()));
         }
+        if (request.getNavFontScale() != null) {
+            settings.setNavFontScale(trimToNull(request.getNavFontScale()));
+        }
 
         return toSiteSettingsResponse(siteSettingsRepository.save(settings));
     }
@@ -292,6 +295,7 @@ public class SiteContentService {
                 .titleFontScale(settings.getTitleFontScale())
                 .bodyFontScale(settings.getBodyFontScale())
                 .captionFontScale(settings.getCaptionFontScale())
+                .navFontScale(settings.getNavFontScale())
                 .maxFeaturedSlides(settings.getMaxFeaturedSlides())
                 .updatedAt(settings.getUpdatedAt())
                 .build();

@@ -111,6 +111,9 @@ public class SiteSettings {
     @Column(name = "caption_font_scale", length = 10)
     private String captionFontScale;
 
+    @Column(name = "nav_font_scale", length = 10)
+    private String navFontScale;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

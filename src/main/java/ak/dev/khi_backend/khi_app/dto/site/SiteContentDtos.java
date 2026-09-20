@@ -125,6 +125,7 @@ public final class SiteContentDtos {
         private String titleFontScale;
         private String bodyFontScale;
         private String captionFontScale;
+        private String navFontScale;
     }
 
     /**
@@ -164,6 +165,7 @@ public final class SiteContentDtos {
         private String titleFontScale;
         private String bodyFontScale;
         private String captionFontScale;
+        private String navFontScale;
         private Integer maxFeaturedSlides;
         private LocalDateTime updatedAt;
     }
