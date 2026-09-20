@@ -116,6 +116,15 @@ public final class SiteContentDtos {
         private String navbarColor;
         private String footerColor;
         private String collectionColor;
+
+        /**
+         * Type scales as percent strings ({@code "115"} = 115% of the bundled
+         * size). Empty string clears — the website then renders its bundled
+         * scale, which is also the reset path.
+         */
+        private String titleFontScale;
+        private String bodyFontScale;
+        private String captionFontScale;
     }
 
     /**
@@ -152,6 +161,9 @@ public final class SiteContentDtos {
         private String navbarColor;
         private String footerColor;
         private String collectionColor;
+        private String titleFontScale;
+        private String bodyFontScale;
+        private String captionFontScale;
         private Integer maxFeaturedSlides;
         private LocalDateTime updatedAt;
     }

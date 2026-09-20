@@ -95,6 +95,22 @@ public class SiteSettings {
     @Column(name = "collection_color", length = 20)
     private String collectionColor;
 
+    /**
+     * Admin-picked type scales, percent strings like {@code "115"} (100 = the
+     * website's bundled size). Nullable like the colors: null means the
+     * bundled scale renders, so clearing the field is the reset path.
+     * Title covers display/h1/h2/h3, body covers body/lead, caption covers
+     * small/label — the website multiplies its type tokens by the value.
+     */
+    @Column(name = "title_font_scale", length = 10)
+    private String titleFontScale;
+
+    @Column(name = "body_font_scale", length = 10)
+    private String bodyFontScale;
+
+    @Column(name = "caption_font_scale", length = 10)
+    private String captionFontScale;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

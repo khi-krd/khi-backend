@@ -263,6 +263,15 @@ public class SiteContentService {
         if (request.getCollectionColor() != null) {
             settings.setCollectionColor(trimToNull(request.getCollectionColor()));
         }
+        if (request.getTitleFontScale() != null) {
+            settings.setTitleFontScale(trimToNull(request.getTitleFontScale()));
+        }
+        if (request.getBodyFontScale() != null) {
+            settings.setBodyFontScale(trimToNull(request.getBodyFontScale()));
+        }
+        if (request.getCaptionFontScale() != null) {
+            settings.setCaptionFontScale(trimToNull(request.getCaptionFontScale()));
+        }
 
         return toSiteSettingsResponse(siteSettingsRepository.save(settings));
     }
@@ -280,6 +289,9 @@ public class SiteContentService {
                 .navbarColor(settings.getNavbarColor())
                 .footerColor(settings.getFooterColor())
                 .collectionColor(settings.getCollectionColor())
+                .titleFontScale(settings.getTitleFontScale())
+                .bodyFontScale(settings.getBodyFontScale())
+                .captionFontScale(settings.getCaptionFontScale())
                 .maxFeaturedSlides(settings.getMaxFeaturedSlides())
                 .updatedAt(settings.getUpdatedAt())
                 .build();
