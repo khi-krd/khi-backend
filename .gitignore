@@ -31,5 +31,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### macOS ###
+.DS_Store
+
+# logs
+*.log
+logs/
+
+# env / secrets — never commit real values; `.env.example` stays tracked
 .env
-target/
+.env.*
+!.env.example
+*.pem
+*.key
