@@ -251,6 +251,8 @@ public final class SoundTrackDtos {
         private String genre;
         private String recordingVenue;
 
+        private Integer sortOrder;
+
         private List<BrochureResponse> brochures;
     }
 
@@ -494,6 +496,9 @@ public final class SoundTrackDtos {
 
         /** Optional supplementary attachments. */
         private List<AttachmentResponse> attachments;
+
+        /** Manual position of this track in list views; lower renders first. */
+        private Integer sortOrder;
 
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;

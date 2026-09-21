@@ -440,6 +440,27 @@ public class ImageCollectionService {
         imageCollectionRepository.delete(entity);
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @CacheEvict(value = "imageCollections", allEntries = true)
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<ImageCollection> collections = imageCollectionRepository.findAllById(orderedIds);
+        Map<Long, Integer> positions = new HashMap<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+        }
+        for (ImageCollection collection : collections) {
+            Integer position = positions.get(collection.getId());
+            if (position != null) collection.setSortOrder(position);
+        }
+        imageCollectionRepository.saveAll(collections);
+    }
+
     // =========================================================================
     // CORE HYDRATION HELPER
     // =========================================================================
@@ -964,6 +985,7 @@ public class ImageCollectionService {
                 .contentLanguages(entity.getContentLanguages() != null
                         ? new LinkedHashSet<>(entity.getContentLanguages())
                         : new LinkedHashSet<>())
+                .sortOrder(entity.getSortOrder())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt());
 

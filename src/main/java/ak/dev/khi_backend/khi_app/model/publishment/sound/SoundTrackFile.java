@@ -160,6 +160,14 @@ public class SoundTrackFile {
     @Column(name = "recording_venue", length = 500)
     private String recordingVenue;
 
+    /**
+     * Position of this file inside the parent track's file list.
+     * Lower values render first. Set by the service layer from the
+     * submitted list position (or explicit sortOrder).
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     // ─── Brochures ────────────────────────────────────────────────────────────
     //
     // NEW: ordered list of brochure image URLs for this file.
@@ -174,7 +182,7 @@ public class SoundTrackFile {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    @OrderBy("id ASC")
+    @OrderBy("brochureOrder ASC, id ASC")
     private List<SoundTrackBrochure> brochures = new ArrayList<>();
 
     // ─── Owner ────────────────────────────────────────────────────────────────

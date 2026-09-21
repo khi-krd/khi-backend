@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.api.publishment.video;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
+import ak.dev.khi_backend.khi_app.dto.ReorderRequest;
 import ak.dev.khi_backend.khi_app.dto.publishment.video.VideoDTO;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
@@ -76,6 +77,18 @@ public class VideoController {
             @RequestBody SiteContentDtos.FeaturedRequest request) {
         siteContentService.setVideoFeatured(id, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Bulk list-order update — JSON body: { "orderedIds": [3, 1, 2, …] }.
+     * orderedIds[i] gets sortOrder = i. Literal path wins over PUT /{id}
+     * (which consumes multipart only).
+     */
+    @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> reorder(
+            @RequestBody ReorderRequest request) {
+        videoService.reorder(request != null ? request.getOrderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
     }
 
     // =========================================================================

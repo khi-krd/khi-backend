@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,7 +68,9 @@ import java.util.stream.Collectors;
 public class VideoService {
 
     private static final String TOPIC_ENTITY_TYPE = "VIDEO";
-    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "createdAt");
+    // Manual sortOrder first (ASC puts NULLs last on Postgres), then newest-first.
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.ASC, "sortOrder")
+            .and(Sort.by(Sort.Direction.DESC, "createdAt"));
 
     private static final String FILM_REKLAM_VIDEO_NOT_FOUND      = "video.reklamVideo.not_found";
     private static final String FILM_REKLAM_VIDEO_ALREADY_EXISTS = "video.reklamVideo.already_exists";
@@ -283,6 +286,26 @@ public class VideoService {
     public Page<VideoDTO> searchByTag(String tag, int page, int size) {
         String normalized = normalizeRequiredSearch(tag, "tag");
         return videoRepository.searchByTag(normalized, buildPageable(page, size)).map(VideoMapper::toDTO);
+    }
+
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<Video> videos = videoRepository.findAllById(orderedIds);
+        Map<Long, Integer> positions = new HashMap<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+        }
+        for (Video video : videos) {
+            Integer position = positions.get(video.getId());
+            if (position != null) video.setSortOrder(position);
+        }
+        videoRepository.saveAll(videos);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

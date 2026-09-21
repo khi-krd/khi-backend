@@ -25,11 +25,12 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
 
     /**
      * GET ALL — Phase 1
-     * Hits idx_img_publishment_date + idx_img_created_at.
+     * Manual sortOrder first (nulls last), then newest publishment/created.
      */
     @Query("""
         SELECT ic.id FROM ImageCollection ic
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
+                 ic.publishmentDate DESC, ic.createdAt DESC
         """)
     Page<Long> findAllIds(Pageable pageable);
 
@@ -42,7 +43,8 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
     @Query("""
         SELECT ic.id FROM ImageCollection ic
         WHERE ic.collectionType = :type
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
+                 ic.publishmentDate DESC, ic.createdAt DESC
         """)
     Page<Long> findIdsByType(
             @Param("type") ak.dev.khi_backend.khi_app.enums.publishment.ImageCollectionType type,
@@ -119,7 +121,8 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
     @Query("""
         SELECT ic.id FROM ImageCollection ic
         WHERE ic.topic.id = :topicId
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
+                 ic.publishmentDate DESC, ic.createdAt DESC
         """)
     Page<Long> findIdsByTopic(@Param("topicId") Long topicId, Pageable pageable);
 

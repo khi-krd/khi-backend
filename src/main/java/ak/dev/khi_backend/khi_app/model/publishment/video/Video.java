@@ -261,6 +261,10 @@ public class Video {
     private boolean featured = false;
     private Integer featuredOrder;
 
+    /** Manual position of this video in list views; lower renders first. */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     /** Optional wide picture for the homepage hero; falls back to the cover when null. */
     @Column(name = "feature_image_url", columnDefinition = "TEXT")
     private String featureImageUrl;

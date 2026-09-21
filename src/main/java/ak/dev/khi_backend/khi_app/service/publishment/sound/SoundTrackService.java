@@ -461,6 +461,27 @@ public class SoundTrackService {
         soundTrackRepository.delete(entity);
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @CacheEvict(value = "soundTracks", allEntries = true)
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<SoundTrack> tracks = soundTrackRepository.findAllById(orderedIds);
+        Map<Long, Integer> positions = new HashMap<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+        }
+        for (SoundTrack track : tracks) {
+            Integer position = positions.get(track.getId());
+            if (position != null) track.setSortOrder(position);
+        }
+        soundTrackRepository.saveAll(tracks);
+    }
+
     // =========================================================================
     // HYDRATION
     // =========================================================================
@@ -547,6 +568,8 @@ public class SoundTrackService {
                     .form(fDto != null ? trimOrNull(fDto.getForm())            : null)
                     .genre(fDto != null ? trimOrNull(fDto.getGenre())          : null)
                     .recordingVenue(fDto != null ? trimOrNull(fDto.getRecordingVenue()) : null)
+                    .sortOrder(fDto != null && fDto.getSortOrder() != null
+                            ? fDto.getSortOrder() : i)
                     .build();
 
             owner.addFile(file);
@@ -653,6 +676,8 @@ public class SoundTrackService {
             }
 
             applyFileMetadata(file, dto, isNew, hasFile(upload));
+            file.setSortOrder(dto != null && dto.getSortOrder() != null
+                    ? dto.getSortOrder() : i);
             if (dto != null && dto.getBrochures() != null) {
                 List<SoundTrackBrochure> brochures = mergeBrochures(
                         file, dto.getBrochures(), brochureFiles, brochureIndex);
@@ -1190,6 +1215,7 @@ public class SoundTrackService {
                 .albumName(s.getAlbumName()).publishmentYear(s.getPublishmentYear())
                 .cdNumber(s.getCdNumber()).totalTracks(s.getTotalTracks())
                 .attachments(attachResponses)
+                .sortOrder(s.getSortOrder())
                 .createdAt(s.getCreatedAt()).updatedAt(s.getUpdatedAt())
                 .build();
     }
@@ -1221,6 +1247,7 @@ public class SoundTrackService {
                 .bitRate(f.getBitRate()).sampleRate(f.getSampleRate())
                 .audioChannel(f.getAudioChannel()).form(f.getForm())
                 .genre(f.getGenre()).recordingVenue(f.getRecordingVenue())
+                .sortOrder(f.getSortOrder())
                 .brochures(brochures)
                 .build();
     }

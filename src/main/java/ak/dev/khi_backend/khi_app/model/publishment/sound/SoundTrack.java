@@ -207,7 +207,7 @@ public class SoundTrack {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    @OrderBy("id ASC")
+    @OrderBy("sortOrder ASC, id ASC")
     private Set<SoundTrackFile> files = new LinkedHashSet<>();
 
     // ─── Multi-Album Fields ───────────────────────────────────────────────────
@@ -238,7 +238,7 @@ public class SoundTrack {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    @OrderBy("id ASC")
+    @OrderBy("attachmentOrder ASC, id ASC")
     private Set<SoundTrackAttachment> attachments = new LinkedHashSet<>();
 
     // ─── Timestamps ───────────────────────────────────────────────────────────
@@ -255,6 +255,10 @@ public class SoundTrack {
 
     @Column(name = "featured_order")
     private Integer featuredOrder;
+
+    /** Manual position of this track in list views; lower renders first. */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
 
     /** Optional wide picture for the homepage hero; falls back to the cover when null. */
     @Column(name = "feature_image_url", columnDefinition = "TEXT")

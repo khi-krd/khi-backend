@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.api.publishment.sound;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
+import ak.dev.khi_backend.khi_app.dto.ReorderRequest;
 import ak.dev.khi_backend.khi_app.dto.publishment.sound.SoundTrackDtos.*;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.enums.publishment.TrackState;
@@ -86,6 +87,18 @@ public class SoundTrackController {
             @RequestBody SiteContentDtos.FeaturedRequest request) {
         siteContentService.setSoundTrackFeatured(id, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Bulk list-order update — JSON body: { "orderedIds": [3, 1, 2, …] }.
+     * orderedIds[i] gets sortOrder = i. Literal path wins over PUT /{id}
+     * (which consumes multipart only).
+     */
+    @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> reorder(
+            @RequestBody ReorderRequest request) {
+        soundTrackService.reorder(request != null ? request.getOrderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
     }
 
 

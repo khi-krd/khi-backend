@@ -185,6 +185,7 @@ public final class VideoMapper {
                 .highlightClips(video.getHighlightClips() == null ? null : video.getHighlightClips().stream()
                         .map(VideoMapper::toHighlightDTO).toList())
                 // timestamps
+                .sortOrder(video.getSortOrder())
                 .createdAt(video.getCreatedAt())
                 .updatedAt(video.getUpdatedAt())
                 .build();

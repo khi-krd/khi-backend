@@ -101,6 +101,9 @@ public class VideoDTO {
     private Set<String> keywordsCkb;
     private Set<String> keywordsKmr;
 
+    /** Manual position of this video in list views; lower renders first. */
+    private Integer sortOrder;
+
     // ─── Timestamps ───────────────────────────────────────────────────────────
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

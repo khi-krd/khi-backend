@@ -232,6 +232,9 @@ public final class ImageCollectionDTO {
         /** Now includes metadata: widthPx, heightPx, fileSizeBytes, mimeType, etc. */
         private List<ImageItemDto> imageAlbum;
 
+        /** Manual position of this collection in list views; lower renders first. */
+        private Integer sortOrder;
+
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
     }

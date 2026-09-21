@@ -26,11 +26,11 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
 
     /**
      * GET ALL — Phase 1
-     * Hits idx_soundtrack_created_at.
+     * Manual sortOrder first (nulls last), newest-first as fallback.
      */
     @Query("""
         SELECT s.id FROM SoundTrack s
-        ORDER BY s.createdAt DESC
+        ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findAllIds(Pageable pageable);
 
@@ -41,7 +41,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     @Query("""
         SELECT s.id FROM SoundTrack s
         WHERE s.trackState = :state
-        ORDER BY s.createdAt DESC
+        ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsByState(
             @Param("state") TrackState state,
@@ -54,7 +54,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     @Query("""
         SELECT s.id FROM SoundTrack s
         WHERE lower(s.soundType) = lower(:soundType)
-        ORDER BY s.createdAt DESC
+        ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsBySoundType(
             @Param("soundType") String soundType,
@@ -67,7 +67,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     @Query("""
         SELECT s.id FROM SoundTrack s
         WHERE s.topic.id = :topicId
-        ORDER BY s.createdAt DESC
+        ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsByTopic(
             @Param("topicId") Long topicId,
@@ -80,7 +80,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     @Query("""
         SELECT s.id FROM SoundTrack s
         WHERE s.albumOfMemories = true
-        ORDER BY s.createdAt DESC
+        ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsAlbumOfMemories(Pageable pageable);
 
