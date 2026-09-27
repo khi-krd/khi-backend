@@ -2,7 +2,10 @@ package ak.dev.khi_backend.khi_app.api.site;
 
 import ak.dev.khi_backend.khi_app.model.site.NavMenuItem;
 import ak.dev.khi_backend.khi_app.repository.site.NavMenuItemRepository;
+import ak.dev.khi_backend.khi_app.service.site.NavMenuItemKeyMigration;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +43,12 @@ class NavMenuIntegrationTests {
 
     @Autowired
     private NavMenuItemRepository repository;
+
+    @Autowired
+    private NavMenuItemKeyMigration keyMigration;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private String json(Object body) throws Exception {
         return objectMapper.writeValueAsString(body);
@@ -158,6 +167,39 @@ class NavMenuIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("imageUrl", "https://cdn.example.com/x.jpg"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void legacyItemKeysAreRenamedToTheSiteSectionKeys() throws Exception {
+        seed("audio", "https://cdn.example.com/a.jpg", true);
+        seed("videos", "https://cdn.example.com/v.jpg", true);
+
+        keyMigration.run(null);
+        // The runner renames via JDBC — drop the cached entities so the GET
+        // below re-reads the renamed rows instead of the pre-update copies.
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/v1/nav-menu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].itemKey").value("sound"))
+                .andExpect(jsonPath("$.data[0].imageUrl").value("https://cdn.example.com/a.jpg"))
+                .andExpect(jsonPath("$.data[1].itemKey").value("video"))
+                .andExpect(jsonPath("$.data[1].imageUrl").value("https://cdn.example.com/v.jpg"));
+    }
+
+    @Test
+    void legacyRenameIsSkippedWhenTheCanonicalKeyExists() throws Exception {
+        seed("audio", "https://cdn.example.com/legacy.jpg", true);
+        seed("sound", "https://cdn.example.com/canon.jpg", true);
+
+        keyMigration.run(null);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/v1/nav-menu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[1].itemKey").value("sound"))
+                .andExpect(jsonPath("$.data[1].imageUrl").value("https://cdn.example.com/canon.jpg"));
     }
 
     @Test
