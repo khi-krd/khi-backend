@@ -6,19 +6,19 @@ import ak.dev.khi_backend.khi_app.service.site.NavMenuService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * Hamburger menu of the public website. Reads are public, writes are admin-only —
- * see the {@code /api/v1/nav-menu/**} rules in {@code SecurityConfig}.
+ * Hamburger menu of the public website. Reads are public, the image update is
+ * admin-only — see the {@code /api/v1/nav-menu/**} rules in {@code SecurityConfig}.
+ * There is no create/delete: the section set is fixed by the website's nav config.
  */
 @RestController
 @RequestMapping("/api/v1/nav-menu")
 @RequiredArgsConstructor
-@Tag(name = "Nav Menu", description = "Website hamburger menu items and background images")
+@Tag(name = "Nav Menu", description = "Website hamburger menu background images")
 public class NavMenuController {
 
     private final NavMenuService service;
@@ -35,22 +35,10 @@ public class NavMenuController {
         return ApiResponse.success(service.get(id), "Nav menu item fetched");
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<NavMenuItemResponse> create(@Valid @RequestBody NavMenuItemRequest request) {
-        return ApiResponse.success(service.create(request), "Nav menu item created");
-    }
-
-    /** Replaces the item's secondary links unless {@code links} is omitted. */
+    /** Sets (or clears) the section's background photo; optionally flips {@code active}. */
     @PutMapping("/{id}")
     public ApiResponse<NavMenuItemResponse> update(@PathVariable Long id,
                                                    @Valid @RequestBody NavMenuItemRequest request) {
         return ApiResponse.success(service.update(id, request), "Nav menu item updated");
-    }
-
-    @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
-        service.delete(id);
-        return ApiResponse.success(null, "Nav menu item deleted");
     }
 }

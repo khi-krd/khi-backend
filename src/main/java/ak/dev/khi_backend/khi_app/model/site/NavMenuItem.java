@@ -3,15 +3,14 @@ package ak.dev.khi_backend.khi_app.model.site;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * One top-level entry of the website hamburger menu (news, projects, sound, …).
  *
- * <p>{@code itemKey} is the stable handle the website uses to build the secondary
- * links of the six CMS-backed sections automatically — it must not change once
- * the row exists.</p>
+ * <p>{@code itemKey} joins the row to a section in the website's static nav config;
+ * the site owns labels, hrefs and secondary links. This table only stores the
+ * full-screen background photo behind each section. The legacy label/href columns
+ * stay as display data — writes go through {@code PUT} which touches nothing but
+ * {@code imageUrl} and {@code active}.</p>
  */
 @Entity
 @Table(name = "nav_menu_items",
@@ -27,19 +26,9 @@ public class NavMenuItem {
     @Column(name = "label_ckb", nullable = false, length = 200) private String labelCkb;
     @Column(name = "label_kmr", length = 200)                   private String labelKmr;
 
-    @Column(name = "description_ckb", columnDefinition = "TEXT") private String descriptionCkb;
-    @Column(name = "description_kmr", columnDefinition = "TEXT") private String descriptionKmr;
-
     @Column(nullable = false, length = 300)                private String href;
     @Column(name = "image_url", columnDefinition = "TEXT")  private String imageUrl;
 
     @Column(name = "display_order") @Builder.Default private Integer displayOrder = 0;
     @Builder.Default private boolean active = true;
-
-    /** Secondary links shown under the item. Replaced wholesale on update. */
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("displayOrder ASC, id ASC")
-    @Builder.Default
-    @ToString.Exclude @EqualsAndHashCode.Exclude
-    private List<NavMenuLink> links = new ArrayList<>();
 }
