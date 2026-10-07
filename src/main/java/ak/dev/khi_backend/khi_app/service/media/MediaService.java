@@ -1,7 +1,6 @@
 package ak.dev.khi_backend.khi_app.service.media;
 
 import ak.dev.khi_backend.khi_app.dto.media.MediaDtos.UploadResponse;
-import ak.dev.khi_backend.khi_app.enums.project.ProjectMediaType;
 import ak.dev.khi_backend.khi_app.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +28,11 @@ public class MediaService {
      * Upload a single file to S3 and return a public URL.
      *
      * @param file the file uploaded as multipart/form-data
-     * @param type optional folder hint: "image", "audio", "video", "document",
-     *             or "gallery" (treated as image). When null, the folder is
-     *             inferred from the content type.
+     * @param type optional folder hint — media types ("image", "audio",
+     *             "video", "document", "gallery") or entity names
+     *             ("branding", "about", "book", "news", "project",
+     *             "partner", "person", ...). When null or unknown, the
+     *             folder is inferred from the content type.
      */
     public UploadResponse upload(MultipartFile file, String type) throws IOException {
         if (file == null || file.isEmpty()) {
@@ -42,13 +43,10 @@ public class MediaService {
                 file.getOriginalFilename(), type,
                 file.getContentType(), file.getSize());
 
-        ProjectMediaType mediaType = resolveMediaType(type);
+        String folder = resolveFolder(type);
 
-        String fileUrl = mediaType != null
-                ? s3Service.upload(file::getInputStream, file.getSize(),
-                file.getOriginalFilename(), file.getContentType(), mediaType)
-                : s3Service.upload(file::getInputStream, file.getSize(),
-                file.getOriginalFilename(), file.getContentType());
+        String fileUrl = s3Service.upload(file::getInputStream, file.getSize(),
+                file.getOriginalFilename(), file.getContentType(), folder);
 
         log.info("Upload successful: {}", fileUrl);
 
@@ -83,14 +81,25 @@ public class MediaService {
         }
     }
 
-    private ProjectMediaType resolveMediaType(String hint) {
+    private String resolveFolder(String hint) {
         if (hint == null || hint.isBlank()) return null;
         return switch (hint.toLowerCase().trim()) {
-            case "image", "gallery" -> ProjectMediaType.IMAGE;
-            case "video"            -> ProjectMediaType.VIDEO;
-            case "audio"            -> ProjectMediaType.AUDIO;
-            case "document", "pdf"  -> ProjectMediaType.DOCUMENT;
-            default                 -> null;
+            case "image", "images", "gallery"        -> "images";
+            case "video", "videos"                   -> "videos";
+            case "audio", "sound", "sounds"          -> "sounds";
+            case "document", "documents", "pdf",
+                 "file", "files"                    -> "documents";
+            case "book", "books"                     -> "books";
+            case "branding", "brandings"             -> "brandings";
+            case "about"                             -> "about";
+            case "news"                              -> "news";
+            case "project", "projects"               -> "projects";
+            case "partner", "partners"               -> "partners";
+            case "person", "persons"                 -> "persons";
+            case "writing", "writings"               -> "writings";
+            case "service", "services"               -> "services";
+            case "album", "albums"                   -> "albums";
+            default                                  -> null;
         };
     }
 }

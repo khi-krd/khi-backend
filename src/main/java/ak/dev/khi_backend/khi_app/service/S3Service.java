@@ -43,13 +43,16 @@ public class S3Service {
     @Value("${aws.s3.region}")
     private String region;
 
+    @Value("${aws.s3.public-url:}")
+    private String publicUrlBase;
+
     // ============================================================
     // FOLDER NAMES
     // ============================================================
     private static final String FOLDER_IMAGES = "images";
-    private static final String FOLDER_VIDEOS = "video";
-    private static final String FOLDER_AUDIO = "audio";
-    private static final String FOLDER_FILES = "files";
+    private static final String FOLDER_VIDEOS = "videos";
+    private static final String FOLDER_AUDIO = "sounds";
+    private static final String FOLDER_FILES = "documents";
     private static final String FOLDER_ALBUMS = "albums";
     private static final String FOLDER_COVERS = "covers";
     private static final String FOLDER_HOVER = "hover";
@@ -104,7 +107,7 @@ public class S3Service {
      */
     public String upload(InputStreamProvider streamProvider, long contentLength,
                          String originalFilename, String contentType) {
-        return upload(streamProvider, contentLength, originalFilename, contentType, null);
+        return upload(streamProvider, contentLength, originalFilename, contentType, (String) null);
     }
 
     /**
@@ -112,6 +115,16 @@ public class S3Service {
      */
     public String upload(InputStreamProvider streamProvider, long contentLength,
                          String originalFilename, String contentType, ProjectMediaType mediaType) {
+        return upload(streamProvider, contentLength, originalFilename, contentType,
+                mediaType != null ? getFolderForMediaType(mediaType) : null);
+    }
+
+    /**
+     * Stream a file to S3 into an explicit folder under the base folder.
+     * When folder is null/blank, it is inferred from the content type.
+     */
+    public String upload(InputStreamProvider streamProvider, long contentLength,
+                         String originalFilename, String contentType, String folder) {
         if (streamProvider == null || contentLength <= 0) {
             throw new BadRequestException("media.invalid", "File is empty or null");
         }
@@ -119,11 +132,11 @@ public class S3Service {
         String resolvedContentType = contentType == null || contentType.isBlank()
                 ? "application/octet-stream"
                 : contentType;
-        String folder = mediaType != null ? getFolderForMediaType(mediaType) : detectFolder(resolvedContentType);
-        String key = generateKey(folder, originalFilename);
+        String resolvedFolder = normalizeFolder(folder, resolvedContentType);
+        String key = generateKey(resolvedFolder, originalFilename);
 
         log.info("⬆️ Streaming to S3: bucket={}, folder={}, key={}, contentType={}, size={}",
-                bucket, folder, key, resolvedContentType, contentLength);
+                bucket, resolvedFolder, key, resolvedContentType, contentLength);
 
         try {
             PutObjectRequest request = PutObjectRequest.builder()
@@ -378,6 +391,9 @@ public class S3Service {
      * Get public URL for a key
      */
     public String getPublicUrl(String key) {
+        if (publicUrlBase != null && !publicUrlBase.isBlank()) {
+            return publicUrlBase.replaceAll("/+$", "") + "/" + key;
+        }
         return "https://" + bucket + ".s3." + region + ".amazonaws.com/" + key;
     }
 
@@ -386,6 +402,10 @@ public class S3Service {
      */
     public boolean isOurS3Url(String url) {
         if (url == null) return false;
+        if (publicUrlBase != null && !publicUrlBase.isBlank()
+                && url.startsWith(publicUrlBase.replaceAll("/+$", ""))) {
+            return true;
+        }
         return url.contains(bucket) && url.contains(".s3.");
     }
 
@@ -403,6 +423,14 @@ public class S3Service {
         if (type.startsWith("audio/")) return FOLDER_AUDIO;
 
         return FOLDER_FILES;
+    }
+
+    private String normalizeFolder(String folder, String contentType) {
+        if (folder == null || folder.isBlank()) {
+            return detectFolder(contentType);
+        }
+        String cleaned = folder.trim().replaceAll("^/+", "").replaceAll("/+$", "");
+        return cleaned.isBlank() ? detectFolder(contentType) : cleaned;
     }
 
     private String getFolderForMediaType(ProjectMediaType mediaType) {
