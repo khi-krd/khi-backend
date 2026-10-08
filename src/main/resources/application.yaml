@@ -142,7 +142,7 @@ app:
 aws:
   s3:
     region: ${AWS_S3_REGION:auto}
-    bucket: ${AWS_S3_BUCKET:khi-bucket}
+    bucket: ${AWS_S3_BUCKET:khi-bucket-r2}
     base-folder: ${AWS_S3_BASE_FOLDER:khi-web-folders}
     endpoint: ${AWS_S3_ENDPOINT:}
     public-url: ${AWS_S3_PUBLIC_URL:}
