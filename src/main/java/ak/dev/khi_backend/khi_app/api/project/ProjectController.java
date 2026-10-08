@@ -38,7 +38,7 @@ public class ProjectController {
 
     // Featured Patch
     @PatchMapping("/{id}/featured")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
             @RequestBody SiteContentDtos.FeaturedRequest request) {

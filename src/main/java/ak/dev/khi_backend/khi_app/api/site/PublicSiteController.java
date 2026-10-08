@@ -264,7 +264,7 @@ public class PublicSiteController {
      * The slide image falls back to heroImageUrl when featureImageUrl is blank.
      */
     @PatchMapping("/donations/settings/featured")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ApiResponse<DonationSettingsResponse> setDonationFeatured(
             @RequestBody FeaturedRequest request) {
         return ApiResponse.success(siteContentService.setDonationFeatured(request),
