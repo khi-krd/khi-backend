@@ -438,6 +438,16 @@ public class ImageCollectionService {
         createLog(entity.getId(), titleOf(entity), "DELETE",
                 "کۆمەڵەی وێنە سڕایەوە — جۆر=" + entity.getCollectionType());
         imageCollectionRepository.delete(entity);
+
+        // Remove every file this collection stored in S3
+        List<String> urls = new ArrayList<>();
+        urls.add(entity.getCkbCoverUrl());
+        urls.add(entity.getKmrCoverUrl());
+        urls.add(entity.getHoverCoverUrl());
+        urls.add(entity.getFeatureImageUrl());
+        if (entity.getImageAlbum() != null)
+            entity.getImageAlbum().forEach(i -> { if (i != null) urls.add(i.getImageUrl()); });
+        s3Service.deleteFiles(urls);
     }
 
     /**

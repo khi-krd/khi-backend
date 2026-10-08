@@ -459,6 +459,18 @@ public class SoundTrackService {
                 "سەدا سڕایەوە — جۆر=" + entity.getSoundType()
                         + " دۆخ=" + entity.getTrackState());
         soundTrackRepository.delete(entity);
+
+        // Remove every file this track stored in S3
+        List<String> urls = new ArrayList<>();
+        urls.add(entity.getCkbCoverUrl());
+        urls.add(entity.getKmrCoverUrl());
+        urls.add(entity.getHoverCoverUrl());
+        urls.add(entity.getFeatureImageUrl());
+        if (entity.getFiles() != null)
+            entity.getFiles().forEach(f -> { if (f != null) urls.add(f.getFileUrl()); });
+        if (entity.getAttachments() != null)
+            entity.getAttachments().forEach(a -> { if (a != null) urls.add(a.getFileUrl()); });
+        s3Service.deleteFiles(urls);
     }
 
     /**

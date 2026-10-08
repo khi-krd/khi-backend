@@ -413,6 +413,22 @@ public class VideoService {
         }
         String title = getTitle(video);
         videoRepository.delete(video);
+
+        // Remove every file this video stored in S3
+        List<String> urls = new ArrayList<>();
+        urls.add(video.getCkbCoverUrl());
+        urls.add(video.getKmrCoverUrl());
+        urls.add(video.getHoverCoverUrl());
+        urls.add(video.getFeatureImageUrl());
+        urls.add(video.getSourceUrl());
+        if (video.getVideoSources() != null)
+            video.getVideoSources().forEach(s -> { if (s != null) urls.add(s.getUrl()); });
+        if (video.getVideoClipItems() != null)
+            video.getVideoClipItems().forEach(c -> { if (c != null) urls.add(c.getUrl()); });
+        if (video.getHighlightClips() != null)
+            video.getHighlightClips().forEach(h -> { if (h != null) urls.add(h.getUrl()); });
+        s3Service.deleteFiles(urls);
+
         logAction(id, title, "DELETED", "ڤیدیۆ بە تەواوی سڕایەوە");
     }
 

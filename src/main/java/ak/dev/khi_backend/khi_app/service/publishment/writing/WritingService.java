@@ -232,6 +232,16 @@ public class WritingService {
         writingRepository.delete(writing);
         writingRepository.flush();
 
+        // Remove every file this writing stored in S3
+        List<String> urls = new ArrayList<>();
+        urls.add(writing.getCkbCoverUrl());
+        urls.add(writing.getKmrCoverUrl());
+        urls.add(writing.getHoverCoverUrl());
+        urls.add(writing.getFeatureImageUrl());
+        if (writing.getCkbContent() != null) urls.add(writing.getCkbContent().getFileUrl());
+        if (writing.getKmrContent() != null) urls.add(writing.getKmrContent().getFileUrl());
+        s3Service.deleteFiles(urls);
+
         updateSeriesCount(seriesId);
     }
 

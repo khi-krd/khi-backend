@@ -20,6 +20,7 @@ import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.WritingRepository;
 import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
 import ak.dev.khi_backend.khi_app.repository.site.*;
+import ak.dev.khi_backend.khi_app.service.S3Service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -60,6 +61,7 @@ public class SiteContentService {
     private final ArchiveDonationRepository archiveDonationRepository;
     private final SiteSettingsRepository siteSettingsRepository;
     private final SiteFontRepository siteFontRepository;
+    private final S3Service s3Service;
     private final NewsRepository newsRepository;
     private final ProjectRepository projectRepository;
     private final WritingRepository writingRepository;
@@ -337,6 +339,7 @@ public class SiteContentService {
         String url = font.getUrl();
 
         siteFontRepository.delete(font);
+        s3Service.deleteFile(url);
 
         siteSettingsRepository.findFirstByOrderByIdAsc().ifPresent(settings -> {
             boolean changed = false;
@@ -786,8 +789,10 @@ public class SiteContentService {
 
     @Transactional
     public void deleteTeamMember(Long id) {
-        if (!teamRepository.existsById(id)) throw notFound("Team member", id);
+        TeamMember member = teamRepository.findById(id)
+                .orElseThrow(() -> notFound("Team member", id));
         teamRepository.deleteById(id);
+        s3Service.deleteFile(member.getImageUrl());
     }
 
     private void applyTeam(TeamMember member, TeamMemberRequest request) {
@@ -826,8 +831,10 @@ public class SiteContentService {
 
     @Transactional
     public void deletePartner(Long id) {
-        if (!partnerRepository.existsById(id)) throw notFound("Partner", id);
+        Partner partner = partnerRepository.findById(id)
+                .orElseThrow(() -> notFound("Partner", id));
         partnerRepository.deleteById(id);
+        s3Service.deleteFile(partner.getLogoUrl());
     }
 
     private void applyPartner(Partner partner, PartnerRequest request) {
@@ -950,8 +957,10 @@ public class SiteContentService {
 
     @Transactional
     public void deleteDonationTypeCard(Long id) {
-        if (!donationTypeCardRepository.existsById(id)) throw notFound("Donation type card", id);
+        DonationTypeCard card = donationTypeCardRepository.findById(id)
+                .orElseThrow(() -> notFound("Donation type card", id));
         donationTypeCardRepository.deleteById(id);
+        s3Service.deleteFile(card.getImageUrl());
     }
 
     private void applyDonationTypeCard(DonationTypeCard card, DonationTypeCardRequest request) {

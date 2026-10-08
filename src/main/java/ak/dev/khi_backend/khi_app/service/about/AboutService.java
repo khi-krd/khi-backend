@@ -5,6 +5,7 @@ import ak.dev.khi_backend.khi_app.model.about.About;
 import ak.dev.khi_backend.khi_app.model.about.AboutContent;
 import ak.dev.khi_backend.khi_app.model.about.StatItem;
 import ak.dev.khi_backend.khi_app.repository.about.AboutRepository;
+import ak.dev.khi_backend.khi_app.service.S3Service;
 import ak.dev.khi_backend.khi_app.service.media.TiptapHtmlProcessor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class AboutService {
 
     private final AboutRepository aboutRepository;
     private final TiptapHtmlProcessor tiptapHtmlProcessor;
+    private final S3Service s3Service;
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -121,6 +123,11 @@ public class AboutService {
                         new EntityNotFoundException("About not found: " + id));
 
         aboutRepository.delete(about);
+        s3Service.deleteFiles(
+                about.getFounderImageUrl(),
+                about.getHeroVideoUrl(),
+                about.getHeroPosterUrl(),
+                about.getFeatureImageUrl());
         log.info("Deleted about page id={}", id);
     }
 

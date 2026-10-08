@@ -8,6 +8,7 @@ import ak.dev.khi_backend.khi_app.model.service.ServiceContent;
 import ak.dev.khi_backend.khi_app.model.service.ServiceMedia;
 import ak.dev.khi_backend.khi_app.repository.service.ServiceAuditLogRepository;
 import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
+import ak.dev.khi_backend.khi_app.service.S3Service;
 import ak.dev.khi_backend.khi_app.service.media.TiptapHtmlProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +64,7 @@ public class ServiceService {
     private static final int FEATURE_DESCRIPTION_MAX_CHARS = 1000;
 
     private final ServiceRepository         serviceRepository;
+    private final S3Service                 s3Service;
     private final ServiceAuditLogRepository auditLogRepository;
     private final TiptapHtmlProcessor       tiptapHtmlProcessor;
 
@@ -368,6 +370,7 @@ public class ServiceService {
                 "Service deleted: " + service.getServiceType(), traceId);
 
         serviceRepository.delete(service);
+        s3Service.deleteFiles(mediaUrlsOf(service));
 
         log.info("Service deleted | id={} | traceId={}", id, traceId);
     }
@@ -400,9 +403,28 @@ public class ServiceService {
         );
 
         serviceRepository.deleteAll(services);
+        services.forEach(s -> s3Service.deleteFiles(mediaUrlsOf(s)));
 
         log.info("Bulk delete complete | deleted={} | traceId={}",
                 services.size(), traceId);
+    }
+
+    /** Collects every media URL stored on a service so the files can be removed from S3. */
+    private List<String> mediaUrlsOf(ak.dev.khi_backend.khi_app.model.service.Service service) {
+        List<String> urls = new ArrayList<>();
+        urls.add(service.getHeroVideoUrl());
+        urls.add(service.getHeroPosterUrl());
+        urls.add(service.getFeatureImageUrl());
+        if (service.getFeatureImageUrls() != null) urls.addAll(service.getFeatureImageUrls());
+        if (service.getThumbnailUrls() != null) urls.addAll(service.getThumbnailUrls());
+        if (service.getGalleryMedia() != null) {
+            for (ServiceMedia m : service.getGalleryMedia()) {
+                if (m == null) continue;
+                urls.add(m.getUrl());
+                urls.add(m.getPosterUrl());
+            }
+        }
+        return urls;
     }
 
     // =========================================================================

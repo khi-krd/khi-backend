@@ -10,6 +10,7 @@ import ak.dev.khi_backend.khi_app.exceptions.project.*;
 import ak.dev.khi_backend.khi_app.model.media.MediaItem;
 import ak.dev.khi_backend.khi_app.model.project.*;
 import ak.dev.khi_backend.khi_app.repository.project.*;
+import ak.dev.khi_backend.khi_app.service.S3Service;
 import ak.dev.khi_backend.khi_app.service.media.TiptapHtmlProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class ProjectService {
     private final ProjectLogRepository       projectLogRepository;
     private final PlatformTransactionManager transactionManager;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
+    private final S3Service                  s3Service;
 
     @PersistenceContext
     private EntityManager em;
@@ -154,6 +156,7 @@ public class ProjectService {
                 int logCount = projectLogRepository.deleteByProject(project);
                 log.debug("{} project audit logs deleted for id={}", logCount, projectId);
                 projectRepository.delete(project);
+                s3Service.deleteFiles(mediaUrlsOf(project));
                 log.info("Project deleted | id={} title='{}' | traceId={}", projectId, title, traceId);
                 return null;
             });
@@ -162,6 +165,22 @@ public class ProjectService {
             log.error("Error deleting project | id={} | traceId={}", projectId, traceId, ex);
             throw Errors.projectDeleteFailed(projectId, traceId, ex);
         }
+    }
+
+    /** Collects every media URL stored on a project so the files can be removed from S3. */
+    private List<String> mediaUrlsOf(Project project) {
+        List<String> urls = new ArrayList<>();
+        urls.add(project.getCoverUrl());
+        urls.add(project.getCoverThumbnailUrl());
+        urls.add(project.getFeatureImageUrl());
+        if (project.getMediaGallery() != null) {
+            for (MediaItem item : project.getMediaGallery()) {
+                if (item == null) continue;
+                urls.add(item.getUrl());
+                urls.add(item.getThumbnailUrl());
+            }
+        }
+        return urls;
     }
 
     // ============================================================

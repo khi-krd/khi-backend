@@ -11,6 +11,7 @@ import ak.dev.khi_backend.khi_app.repository.news.NewsAuditLogRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsCategoryRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsSubCategoryRepository;
+import ak.dev.khi_backend.khi_app.service.S3Service;
 import ak.dev.khi_backend.khi_app.service.media.TiptapHtmlProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class NewsService {
     private final NewsAuditLogRepository    newsAuditLogRepository;
     private final TransactionTemplate       transactionTemplate;
     private final TiptapHtmlProcessor       tiptapHtmlProcessor;
+    private final S3Service                 s3Service;
 
 
     // ============================================================
@@ -328,6 +330,7 @@ public class NewsService {
             }
             createAuditLog(news, "DELETE", "News deleted");
             newsRepository.delete(news);
+            s3Service.deleteFiles(mediaUrlsOf(news));
         });
     }
 
@@ -344,7 +347,24 @@ public class NewsService {
                             .toList()
             );
             newsRepository.deleteAll(list);
+            list.forEach(n -> s3Service.deleteFiles(mediaUrlsOf(n)));
         });
+    }
+
+    /** Collects every media URL stored on a news entry so the files can be removed from S3. */
+    private List<String> mediaUrlsOf(News news) {
+        List<String> urls = new ArrayList<>();
+        urls.add(news.getCoverUrl());
+        urls.add(news.getCoverThumbnailUrl());
+        urls.add(news.getFeatureImageUrl());
+        if (news.getMediaGallery() != null) {
+            for (MediaItem item : news.getMediaGallery()) {
+                if (item == null) continue;
+                urls.add(item.getUrl());
+                urls.add(item.getThumbnailUrl());
+            }
+        }
+        return urls;
     }
 
     // ============================================================

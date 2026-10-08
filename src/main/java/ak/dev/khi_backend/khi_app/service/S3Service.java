@@ -309,6 +309,14 @@ public class S3Service {
     }
 
     /**
+     * ✅ Delete multiple files at once (null-safe varargs for entity deletes)
+     */
+    public void deleteFiles(String... fileUrls) {
+        if (fileUrls == null) return;
+        deleteFiles(java.util.Arrays.asList(fileUrls));
+    }
+
+    /**
      * ✅ Delete multiple files at once
      */
     public void deleteFiles(java.util.List<String> fileUrls) {
@@ -346,6 +354,14 @@ public class S3Service {
             // If path starts with bucket name, remove it
             if (path.startsWith(bucket + "/")) {
                 path = path.substring(bucket.length() + 1);
+            }
+
+            // Only ever delete objects under our folder prefix — external or
+            // embed URLs (YouTube etc.) must never map to a bucket key.
+            if (baseFolder != null && !baseFolder.isBlank()
+                    && !path.startsWith(baseFolder + "/")) {
+                log.debug("Skipping S3 delete for URL outside our bucket folder: {}", fileUrl);
+                return null;
             }
 
             // If path starts with baseFolder, keep it (it's part of the key)
