@@ -463,7 +463,10 @@ public class NewsService {
         Set<Language> langs = safeLangs(news.getContentLanguages());
 
         if (langs.contains(Language.CKB)) {
-            news.setCkbContent(buildContent(dto.getCkbContent()));
+            // null content = "leave it alone"; present-but-empty still clears.
+            if (dto.getCkbContent() != null) {
+                news.setCkbContent(buildContent(dto.getCkbContent()));
+            }
         } else {
             news.setCkbContent(null);
             news.getTagsCkb().clear();
@@ -471,7 +474,9 @@ public class NewsService {
         }
 
         if (langs.contains(Language.KMR)) {
-            news.setKmrContent(buildContent(dto.getKmrContent()));
+            if (dto.getKmrContent() != null) {
+                news.setKmrContent(buildContent(dto.getKmrContent()));
+            }
         } else {
             news.setKmrContent(null);
             news.getTagsKmr().clear();

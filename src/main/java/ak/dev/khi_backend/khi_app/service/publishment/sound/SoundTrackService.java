@@ -4,6 +4,7 @@ import ak.dev.khi_backend.khi_app.dto.publishment.sound.SoundTrackDtos.*;
 import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.enums.publishment.AttachmentType;
 import ak.dev.khi_backend.khi_app.enums.publishment.TrackState;
+import ak.dev.khi_backend.khi_app.enums.publishment.FileType;
 import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import ak.dev.khi_backend.khi_app.model.publishment.sound.*;
 import ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundReklamVideoRepository;
@@ -567,7 +568,9 @@ public class SoundTrackService {
                     .externalUrl(externalUrl)
                     .embedUrl(embedUrl)
                     .title(fDto != null ? trimOrNull(fDto.getTitle())          : null)
-                    .fileType(fDto != null ? fDto.getFileType()                : null)
+                    .fileType(fDto != null && fDto.getFileType() != null
+                            ? fDto.getFileType()
+                            : FileType.AUDIO)
                     .publishmentYear(fDto != null ? fDto.getPublishmentYear()  : null)
                     .sizeBytes(sizeBytes)
                     .durationSeconds(durationSec)
@@ -716,6 +719,8 @@ public class SoundTrackService {
         if (dto == null) return;
         if (dto.getTitle() != null) file.setTitle(trimOrNull(dto.getTitle()));
         if (dto.getFileType() != null) file.setFileType(dto.getFileType());
+        if (isNew && file.getFileType() == null)
+            file.setFileType(FileType.AUDIO);
         if (dto.getPublishmentYear() != null) file.setPublishmentYear(dto.getPublishmentYear());
         if (!hasUpload && (isNew || dto.getSizeBytes() != 0)) {
             file.setSizeBytes(dto.getSizeBytes());
@@ -1309,6 +1314,8 @@ public class SoundTrackService {
             return s.getKmrContent().getTitle();
         return "سەدا#" + s.getId();
     }
+
+    
 
     private boolean hasFile(MultipartFile f)   { return f != null && !f.isEmpty(); }
 
