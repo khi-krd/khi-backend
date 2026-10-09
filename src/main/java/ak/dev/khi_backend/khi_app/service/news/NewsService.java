@@ -60,13 +60,13 @@ public class NewsService {
         String traceId = traceId();
         log.info("Create news | traceId={}", traceId);
 
-        validate(dto, true);
+        final NewsDto payload = dto != null ? dto : new NewsDto();
 
         News saved = transactionTemplate.execute(status -> {
-            NewsCategory    cat    = getOrCreateCategory(dto.getCategory());
-            NewsSubCategory subCat = getOrCreateSubCategory(dto.getSubCategory(), cat);
+            NewsCategory    cat    = getOrCreateCategory(payload.getCategory());
+            NewsSubCategory subCat = getOrCreateSubCategory(payload.getSubCategory(), cat);
 
-            News news = buildNewsEntity(dto, dto.getCoverUrl().trim(), cat, subCat);
+            News news = buildNewsEntity(dto, trimOrNull(payload.getCoverUrl()), cat, subCat);
             applyContentByLanguages(news, dto);
 
             News persisted = newsRepository.save(news);
@@ -84,11 +84,10 @@ public class NewsService {
     @CacheEvict(value = "news", allEntries = true)
     public List<NewsDto> addNewsBulk(List<NewsDto> list) {
         if (list == null || list.isEmpty()) {
-            throw Errors.newsValidation("error.validation",
-                    Map.of("field", "list", "message", "News list is empty"));
+            return List.of();
         }
         for (NewsDto dto : list) {
-            validate(dto, true);
+            if (dto == null) dto = new NewsDto();
         }
 
         List<News> saved = transactionTemplate.execute(status -> {
@@ -96,7 +95,7 @@ public class NewsService {
             for (NewsDto dto : list) {
                 NewsCategory    cat    = getOrCreateCategory(dto.getCategory());
                 NewsSubCategory subCat = getOrCreateSubCategory(dto.getSubCategory(), cat);
-                News news = buildNewsEntity(dto, dto.getCoverUrl().trim(), cat, subCat);
+                News news = buildNewsEntity(dto, trimOrNull(dto.getCoverUrl()), cat, subCat);
                 applyContentByLanguages(news, dto);
                 entities.add(news);
             }
@@ -268,41 +267,40 @@ public class NewsService {
                     Map.of("field", "id", "message", "News id is required"));
         }
 
-        validate(dto, false);
+        final NewsDto payload = dto != null ? dto : new NewsDto();
 
         News updated = transactionTemplate.execute(status -> {
             News news = newsRepository.findByIdWithGraph(newsId)
                     .orElseThrow(() -> Errors.newsNotFound(newsId));
 
-            if (!isBlank(dto.getCoverUrl())) {
-                news.setCoverUrl(dto.getCoverUrl().trim());
-            } else if (isBlank(news.getCoverUrl())) {
-                throw Errors.newsValidation("news.cover.required",
-                        Map.of("field", "coverUrl"));
+            if (!isBlank(payload.getCoverUrl())) {
+                news.setCoverUrl(payload.getCoverUrl().trim());
             }
-            if (dto.getCoverMediaType() != null) {
-                news.setCoverMediaType(dto.getCoverMediaType());
+            if (payload.getCoverMediaType() != null) {
+                news.setCoverMediaType(payload.getCoverMediaType());
             }
-            if (dto.getCoverThumbnailUrl() != null) {
-                news.setCoverThumbnailUrl(trimOrNull(dto.getCoverThumbnailUrl()));
+            if (payload.getCoverThumbnailUrl() != null) {
+                news.setCoverThumbnailUrl(trimOrNull(payload.getCoverThumbnailUrl()));
             }
-            if (dto.getMediaGallery() != null) {
-                news.setMediaGallery(buildGallery(dto.getMediaGallery()));
+            if (payload.getMediaGallery() != null) {
+                news.setMediaGallery(buildGallery(payload.getMediaGallery()));
             }
 
-            if (dto.getDatePublished() != null) {
-                news.setDatePublished(dto.getDatePublished());
+            if (payload.getDatePublished() != null) {
+                news.setDatePublished(payload.getDatePublished());
             }
 
-            if (dto.getCategory() != null) {
-                news.setCategory(getOrCreateCategory(dto.getCategory()));
+            if (payload.getCategory() != null) {
+                news.setCategory(getOrCreateCategory(payload.getCategory()));
             }
-            if (dto.getSubCategory() != null) {
+            if (payload.getSubCategory() != null) {
                 news.setSubCategory(
-                        getOrCreateSubCategory(dto.getSubCategory(), news.getCategory()));
+                        getOrCreateSubCategory(payload.getSubCategory(), news.getCategory()));
             }
 
-            news.setContentLanguages(new LinkedHashSet<>(safeLangs(dto.getContentLanguages())));
+            if (payload.getContentLanguages() != null) {
+                news.setContentLanguages(new LinkedHashSet<>(payload.getContentLanguages()));
+            }
             applyContentByLanguages(news, dto);
             replaceBilingualSets(news, dto);
 
@@ -408,58 +406,18 @@ public class NewsService {
                 .build();
     }
 
+    /** All fields optional — nothing on a save may bounce. */
     private void validate(NewsDto dto, boolean createRequiresCover) {
-        if (dto == null) {
-            throw Errors.newsValidation("error.validation",
-                    Map.of("field", "body", "message", "Request body is required"));
-        }
-
-        Set<Language> langs = safeLangs(dto.getContentLanguages());
-        if (langs.isEmpty()) {
-            throw Errors.newsValidation("news.languages.required",
-                    Map.of("field", "contentLanguages"));
-        }
-
-        if (createRequiresCover && isBlank(dto.getCoverUrl())) {
-            throw Errors.newsValidation("news.cover.required",
-                    Map.of("field", "coverUrl"));
-        }
-
-        if (dto.getCategory() == null
-                || isBlank(dto.getCategory().getCkbName())
-                || isBlank(dto.getCategory().getKmrName())) {
-            throw Errors.newsValidation("news.category.required",
-                    Map.of("field", "category"));
-        }
-        if (dto.getSubCategory() == null
-                || isBlank(dto.getSubCategory().getCkbName())
-                || isBlank(dto.getSubCategory().getKmrName())) {
-            throw Errors.newsValidation("news.subcategory.required",
-                    Map.of("field", "subCategory"));
-        }
-
-        if (langs.contains(Language.CKB)) {
-            if (dto.getCkbContent() == null || isBlank(dto.getCkbContent().getTitle())) {
-                throw Errors.newsValidation("news.ckb.title.required",
-                        Map.of("field", "ckbContent.title"));
-            }
-        }
-        if (langs.contains(Language.KMR)) {
-            if (dto.getKmrContent() == null || isBlank(dto.getKmrContent().getTitle())) {
-                throw Errors.newsValidation("news.kmr.title.required",
-                        Map.of("field", "kmrContent.title"));
-            }
-        }
     }
 
     private NewsCategory getOrCreateCategory(NewsDto.CategoryDto categoryDto) {
         String ckb = trimOrNull(categoryDto != null ? categoryDto.getCkbName() : null);
         String kmr = trimOrNull(categoryDto != null ? categoryDto.getKmrName() : null);
 
-        if (isBlank(ckb) || isBlank(kmr)) {
-            throw new BadRequestException("news.category.required",
-                    Map.of("field", "category"));
-        }
+        // category_id is NOT NULL — an omitted/blank category falls back to a
+        // shared "General" bucket rather than failing the save.
+        if (isBlank(ckb)) ckb = "گشتی";
+        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : ckb;
 
         NewsCategory existing = newsCategoryRepository.findByNameCkb(ckb).orElse(null);
         if (existing != null) {
@@ -476,13 +434,14 @@ public class NewsService {
 
     private NewsSubCategory getOrCreateSubCategory(NewsDto.SubCategoryDto subDto,
                                                    NewsCategory category) {
+        if (category == null) {
+            return null;
+        }
         String ckb = trimOrNull(subDto != null ? subDto.getCkbName() : null);
         String kmr = trimOrNull(subDto != null ? subDto.getKmrName() : null);
 
-        if (isBlank(ckb) || isBlank(kmr)) {
-            throw new BadRequestException("news.subcategory.required",
-                    Map.of("field", "subCategory"));
-        }
+        if (isBlank(ckb)) ckb = "گشتی";
+        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : ckb;
 
         NewsSubCategory existing =
                 newsSubCategoryRepository.findByCategoryAndNameCkb(category, ckb).orElse(null);

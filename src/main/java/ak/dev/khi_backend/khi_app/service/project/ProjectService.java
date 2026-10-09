@@ -69,13 +69,13 @@ public class ProjectService {
         log.info("Create project | langs={} | traceId={}",
                 dto != null ? dto.getContentLanguages() : null, traceId);
 
-        validate(dto, true);
+        final ProjectCreateRequest payload = dto != null ? dto : new ProjectCreateRequest();
 
         try {
             Project saved = tx().execute(status -> {
-                Project project = buildProject(dto);
-                attachAllTags(project, dto);
-                attachAllKeywords(project, dto);
+                Project project = buildProject(payload);
+                attachAllTags(project, payload);
+                attachAllKeywords(project, payload);
                 Project p = projectRepository.save(project);
                 auditLog(p, "CREATE", "Project created: " + safeTitle(p));
                 return p;
@@ -106,12 +106,12 @@ public class ProjectService {
         String traceId = traceId();
         log.info("Update project | id={} | traceId={}", projectId, traceId);
 
-        validate(dto, true);
+        final ProjectCreateRequest payload = dto != null ? dto : new ProjectCreateRequest();
 
         try {
             Project saved = tx().execute(status -> {
                 Project project = findOrThrow(projectId);
-                applyUpdate(project, dto, dto.getCoverUrl());
+                applyUpdate(project, payload, payload.getCoverUrl());
                 Project persisted = projectRepository.save(project);
                 auditLog(persisted, "UPDATE", "Project updated: " + safeTitle(persisted));
                 return persisted;
@@ -388,24 +388,8 @@ public class ProjectService {
         }
     }
 
+    /** All fields optional — saves never bounce on missing content. */
     private void validate(ProjectCreateRequest dto, boolean requireCoverUrl) {
-        if (dto == null) throw ProjectValidationException.requestRequired();
-
-        boolean hasCkb = dto.getContentLanguages() != null && dto.getContentLanguages().contains(Language.CKB);
-        boolean hasKmr = dto.getContentLanguages() != null && dto.getContentLanguages().contains(Language.KMR);
-
-        if (hasCkb && isBlank(dto.getProjectTypeCkb()))
-            throw ProjectValidationException.ckbTypeRequired();
-        if (hasKmr && isBlank(dto.getProjectTypeKmr()))
-            throw ProjectValidationException.kmrTypeRequired();
-        if (dto.getContentLanguages() == null || dto.getContentLanguages().isEmpty())
-            throw ProjectValidationException.languagesRequired();
-        if (requireCoverUrl && isBlank(dto.getCoverUrl()))
-            throw ProjectValidationException.coverRequired();
-        if (hasCkb && (dto.getCkbContent() == null || isBlank(dto.getCkbContent().getTitle())))
-            throw ProjectValidationException.ckbTitleRequired();
-        if (hasKmr && (dto.getKmrContent() == null || isBlank(dto.getKmrContent().getTitle())))
-            throw ProjectValidationException.kmrTitleRequired();
     }
 
     private void attachAllTags(Project p, ProjectCreateRequest dto) {

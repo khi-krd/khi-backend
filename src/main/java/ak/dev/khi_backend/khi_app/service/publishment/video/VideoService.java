@@ -93,11 +93,7 @@ public class VideoService {
      */
     @Transactional
     public VideoDTO.TopicView createTopic(String nameCkb, String nameKmr) {
-        if (isBlank(nameCkb) && isBlank(nameKmr)) {
-            // هەڵە: دەبێت لانیکەم ناوێکی کوردی بنووسرێت بۆ بابەت
-            throw new BadRequestException("video.topic.names.required",
-                    Map.of("message", "بابەت پێویستی بە لانیکەم ناوێکی کوردییە (ناوەندی یان باکوور)"));
-        }
+        // All fields optional — an unnamed topic is accepted as-is.
         PublishmentTopic topic = PublishmentTopic.builder()
                 .entityType(TOPIC_ENTITY_TYPE)
                 .nameCkb(trimOrNull(nameCkb))
@@ -170,7 +166,10 @@ public class VideoService {
             MultipartFile hoverImage,
             List<MultipartFile> videoFiles
     ) {
-        requireDto(dto);
+        dto = requireDto(dto);
+        if (dto.getVideoType() == null) {
+            dto.setVideoType(VideoType.FILM);
+        }
 
         // Optional covers
         String ckbUrl = resolveCoverUrl(dto.getCkbCoverUrl(), ckbCoverImage);
@@ -344,7 +343,7 @@ public class VideoService {
             MultipartFile hoverImage,
             List<MultipartFile> videoFiles
     ) {
-        requireDto(dto);
+        dto = requireDto(dto);
 
         Video video = findOrThrow(id);
         VideoType targetType = dto.getVideoType() != null
@@ -451,9 +450,8 @@ public class VideoService {
 
         if (newTopic != null) {
             if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
-                // هەڵە: دەبێت لانیکەم ناوێکی کوردی بنووسرێت
-                throw new BadRequestException("video.topic.names.required",
-                        Map.of("message", "بابەتی نوێ پێویستی بە لانیکەم ناوێکی کوردییە"));
+                // No usable name — link no topic instead of rejecting the save.
+                return null;
             }
             PublishmentTopic created = topicRepository.save(
                     PublishmentTopic.builder()
@@ -472,10 +470,8 @@ public class VideoService {
         PublishmentTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> Errors.notFound("topic.not_found", Map.of("id", topicId)));
         if (!Objects.equals(TOPIC_ENTITY_TYPE, topic.getEntityType())) {
-            // هەڵە: بابەتەکە بۆ VIDEO نییە
-            throw new BadRequestException("topic.type.mismatch",
-                    Map.of("message", "بابەت id=" + topicId + " بۆ '" + topic.getEntityType() +
-                            "'ە، چاوەڕوان دەکرێت 'VIDEO' بێت"));
+            // Wrong-typed topic — ignore the link instead of rejecting the save.
+            return null;
         }
         return topic;
     }
@@ -544,9 +540,8 @@ public class VideoService {
                     && isBlank(clipDto.getUrl())
                     && isBlank(clipDto.getExternalUrl())
                     && isBlank(clipDto.getEmbedUrl())) {
-                throw new BadRequestException("video.clip.source.required",
-                        Map.of("field", "videoClipItems[" + i + "]",
-                               "message", "هەر کلیپێک پێویستی بە لینکی ڕاستەقینە یان دەرەکی یان ئێمبێد هەیە"));
+                // A clip with no source carries no media — skip it, keep the save.
+                continue;
             }
 
             VideoClipItem item = VideoClipItem.builder()
@@ -675,15 +670,9 @@ public class VideoService {
         if (dto.getId() == null) return null;
 
         VideoClipItem existing = existingById.get(dto.getId());
-        if (existing == null) {
-            throw new BadRequestException("video.clip.id.invalid", Map.of(
-                    "field", "videoClipItems[" + index + "].id",
-                    "id", dto.getId()));
-        }
-        if (!requestedIds.add(dto.getId())) {
-            throw new BadRequestException("video.clip.id.duplicate", Map.of(
-                    "field", "videoClipItems[" + index + "].id",
-                    "id", dto.getId()));
+        if (existing == null || !requestedIds.add(dto.getId())) {
+            // Unknown or duplicate clip id — treat as a new clip instead of rejecting.
+            return null;
         }
         return existing;
     }
@@ -1066,15 +1055,9 @@ public class VideoService {
      * @throws BadRequestException - "زانیاری ڤیدیۆ پێویستە"
      * @throws BadRequestException - "جۆری ڤیدیۆ پێویستە"
      */
-    private void requireDto(VideoDTO dto) {
-        if (dto == null) {
-            // هەڵە: DTO بەتاڵە
-            throw new BadRequestException("video.dto.required", Map.of("field", "dto"));
-        }
-        if (dto.getVideoType() == null) {
-            // هەڵە: جۆری ڤیدیۆ پێویستە
-            throw new BadRequestException("video.type.required", Map.of("field", "videoType"));
-        }
+    /** All fields optional — a missing DTO becomes an empty one. */
+    private VideoDTO requireDto(VideoDTO dto) {
+        return dto == null ? new VideoDTO() : dto;
     }
 
     private String getTitle(Video video) {

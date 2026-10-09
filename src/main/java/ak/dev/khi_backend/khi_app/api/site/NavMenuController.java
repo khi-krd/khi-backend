@@ -38,7 +38,7 @@ public class NavMenuController {
     /** Sets (or clears) the section's background photo; optionally flips {@code active}. */
     @PutMapping("/{id}")
     public ApiResponse<NavMenuItemResponse> update(@PathVariable Long id,
-                                                   @Valid @RequestBody NavMenuItemRequest request) {
+                                                   @Valid @RequestBody(required = false) NavMenuItemRequest request) {
         return ApiResponse.success(service.update(id, request), "Nav menu item updated");
     }
 }

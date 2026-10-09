@@ -40,7 +40,7 @@ public class NewsController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setNewsFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -52,14 +52,14 @@ public class NewsController {
     // ============================================================
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponse<NewsDto>> createNews(@RequestBody NewsDto dto) {
+    public ResponseEntity<ApiResponse<NewsDto>> createNews(@RequestBody(required = false) NewsDto dto) {
         NewsDto created = newsService.addNews(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(created, "News created successfully"));
     }
 
     @PostMapping(value = "/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponse<List<NewsDto>>> createNewsBulk(@RequestBody List<NewsDto> list) {
+    public ResponseEntity<ApiResponse<List<NewsDto>>> createNewsBulk(@RequestBody(required = false) List<NewsDto> list) {
         List<NewsDto> created = newsService.addNewsBulk(list);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(created, "News created successfully (bulk)"));
@@ -161,7 +161,7 @@ public class NewsController {
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<NewsDto>> updateNews(
             @PathVariable Long id,
-            @RequestBody NewsDto dto
+            @RequestBody(required = false) NewsDto dto
     ) {
         NewsDto updated = newsService.updateNews(id, dto);
         return ResponseEntity.ok(ApiResponse.success(updated, "News updated successfully"));
@@ -186,7 +186,7 @@ public class NewsController {
     }
 
     @DeleteMapping(value = "/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> deleteNewsBulk(@RequestBody List<Long> newsIds) {
+    public ResponseEntity<Void> deleteNewsBulk(@RequestBody(required = false) List<Long> newsIds) {
         log.info("DELETE /api/v1/news/bulk | count={}", newsIds != null ? newsIds.size() : 0);
         newsService.deleteNewsBulk(newsIds);
         return ResponseEntity.noContent().build();

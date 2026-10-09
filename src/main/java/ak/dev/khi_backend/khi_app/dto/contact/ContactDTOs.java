@@ -1,7 +1,5 @@
 package ak.dev.khi_backend.khi_app.dto.contact;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 /**
@@ -38,11 +36,8 @@ public class ContactDTOs {
 
         // ─── Contact Details ─────────────────────────────────────────────────
 
-        @NotBlank
         private String phone;
         private String secondaryPhone;
-        @NotBlank
-        @Email
         private String email;
         private String mapEmbedUrl;
         private Double latitude;

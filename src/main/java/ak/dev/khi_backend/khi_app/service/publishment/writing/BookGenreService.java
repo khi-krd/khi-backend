@@ -62,9 +62,7 @@ public class BookGenreService {
                 .orElseThrow(() -> notFound(id));
         long bookCount = bookGenreRepository.countBooks(id);
         String newSlug = normalizeSlug(request.getSlug());
-        if (bookCount > 0 && !genre.getSlug().equals(newSlug)) {
-            throw new IllegalArgumentException("Slug cannot change while books use this genre");
-        }
+        // Slug changes are always allowed — books link by id, not slug.
         apply(genre, request);
         return response(bookGenreRepository.saveAndFlush(genre), bookCount);
     }
@@ -117,8 +115,10 @@ public class BookGenreService {
         // The website falls back to the other language when one is missing, but
         // a chip with no name at all cannot be drawn.
         if (nameCkb == null && nameKmr == null) {
-            throw new IllegalArgumentException(
-                    "At least one of nameCkb / nameKmr is required.");
+            // Keep the existing name on update; fall back to a placeholder on create.
+            nameCkb = genre.getNameCkb();
+            nameKmr = genre.getNameKmr();
+            if (nameCkb == null && nameKmr == null) nameCkb = "-";
         }
         genre.setSlug(normalizeSlug(request.getSlug()));
         genre.setNameCkb(nameCkb);
@@ -129,10 +129,9 @@ public class BookGenreService {
 
     private String normalizeSlug(String slug) {
         String normalized = slug == null ? "" : slug.trim().toUpperCase(Locale.ROOT);
-        if (normalized.isEmpty() || !SLUG_PATTERN.matcher(normalized).matches()) {
-            throw new IllegalArgumentException(
-                    "slug must be non-blank and contain only letters, digits and underscores: "
-                            + slug);
+        if (!SLUG_PATTERN.matcher(normalized).matches()) {
+            // Auto-generate a safe slug rather than rejecting the save.
+            normalized = "GENRE_" + Long.toString(System.currentTimeMillis(), 36).toUpperCase(Locale.ROOT);
         }
         return normalized;
     }

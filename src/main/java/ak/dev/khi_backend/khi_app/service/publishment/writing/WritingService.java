@@ -53,6 +53,7 @@ public class WritingService {
                                MultipartFile hoverCoverImage,
                                MultipartFile ckbBookFile,
                                MultipartFile kmrBookFile) {
+        if (request == null) request = new CreateRequest();
 
         log.info("دروستکردنی نووسراو: {}", getCombinedTitle(request));
 
@@ -120,6 +121,7 @@ public class WritingService {
                                   MultipartFile hoverCoverImage,
                                   MultipartFile ckbBookFile,
                                   MultipartFile kmrBookFile) {
+        if (request == null) request = new UpdateRequest();
 
         log.info("نوێکردنەوەی نووسراو id={}", id);
 
@@ -276,6 +278,7 @@ public class WritingService {
 
     @Transactional
     public Response linkBookToSeries(LinkToSeriesRequest request) {
+        if (request == null) request = new LinkToSeriesRequest();
         Writing book   = findOrThrow(request.getBookId(),       "writing.not_found");
         Writing parent = findOrThrow(request.getParentBookId(), "parent_book.not_found");
 
@@ -398,35 +401,11 @@ public class WritingService {
     // پشتڕاستکردنەوە
     // =========================================================================
 
+    // All fields are optional — saves must never bounce on missing content.
     private void validate(CreateRequest request, boolean isCreate) {
-        if (request.getContentLanguages() == null || request.getContentLanguages().isEmpty()) {
-            throw new BadRequestException("writing.languages.required", Map.of("field", "contentLanguages"));
-        }
-        boolean hasGenres =
-                (request.getGenreIds()   != null && !request.getGenreIds().isEmpty())
-             || (request.getBookGenres() != null && !request.getBookGenres().isEmpty());
-        if (!hasGenres) {
-            throw new BadRequestException("writing.genres.required", Map.of("field", "genreIds"));
-        }
-        for (Language lang : request.getContentLanguages()) {
-            LanguageContentDto content = lang == Language.CKB ? request.getCkbContent() : request.getKmrContent();
-            if (content == null) {
-                throw new BadRequestException("writing.content.missing",
-                        Map.of("language", lang, "message", "ناوەڕۆک بۆ " + lang + " دیاری نەکراوە"));
-            }
-            if (isCreate && isBlank(content.getTitle())) {
-                throw new BadRequestException("writing.title.required",
-                        Map.of("language", lang, "message", "ناونیشان بۆ " + lang + " پێویستە"));
-            }
-        }
     }
 
     private void validate(UpdateRequest request) {
-        if (request.getContentLanguages() == null) return;
-        for (Language lang : request.getContentLanguages()) {
-            LanguageContentDto content = lang == Language.CKB ? request.getCkbContent() : request.getKmrContent();
-            if (content == null) throw new BadRequestException("writing.content.missing", Map.of("language", lang));
-        }
     }
 
     // =========================================================================
@@ -434,10 +413,13 @@ public class WritingService {
     // =========================================================================
 
     private void applyContent(Writing writing, CreateRequest request, String ckbFileUrl, String kmrFileUrl) {
-        if (request.getContentLanguages().contains(Language.CKB)) {
+        var langs = request.getContentLanguages();
+        if ((langs == null && request.getCkbContent() != null)
+                || (langs != null && langs.contains(Language.CKB))) {
             writing.setCkbContent(buildContent(request.getCkbContent(), ckbFileUrl));
         }
-        if (request.getContentLanguages().contains(Language.KMR)) {
+        if ((langs == null && request.getKmrContent() != null)
+                || (langs != null && langs.contains(Language.KMR))) {
             writing.setKmrContent(buildContent(request.getKmrContent(), kmrFileUrl));
         }
     }

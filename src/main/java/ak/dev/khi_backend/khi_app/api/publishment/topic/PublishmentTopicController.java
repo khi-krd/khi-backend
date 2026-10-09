@@ -75,7 +75,7 @@ public class PublishmentTopicController {
     @PostMapping("/{entityType}")
     public ResponseEntity<PublishmentTopic> create(
             @PathVariable String entityType,
-            @RequestBody TopicRequest request
+            @RequestBody(required = false) TopicRequest request
     ) {
         PublishmentTopic created = topicService.create(
                 entityType,
@@ -94,7 +94,7 @@ public class PublishmentTopicController {
     @PutMapping("/{id}")
     public ResponseEntity<PublishmentTopic> update(
             @PathVariable Long id,
-            @RequestBody TopicRequest request
+            @RequestBody(required = false) TopicRequest request
     ) {
         PublishmentTopic updated = topicService.update(id, request.nameCkb(), request.nameKmr());
         return ResponseEntity.ok(updated);

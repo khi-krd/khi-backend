@@ -215,6 +215,7 @@ public class SiteContentService {
      */
     @Transactional
     public SiteSettingsResponse updateSiteSettings(SiteSettingsRequest request) {
+        if (request == null) request = new SiteSettingsRequest();
         SiteSettings settings = siteSettingsRepository.findFirstByOrderByIdAsc()
                 .orElseGet(SiteSettings::new);
 
@@ -319,6 +320,7 @@ public class SiteContentService {
 
     @Transactional
     public SiteFontResponse createSiteFont(SiteFontRequest request) {
+        if (request == null) request = new SiteFontRequest();
         SiteFont font = SiteFont.builder()
                 .language(request.getLanguage())
                 .name(request.getName().trim())
@@ -384,6 +386,7 @@ public class SiteContentService {
 
     @Transactional
     public void setNewsFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> notFound("News", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -402,6 +405,7 @@ public class SiteContentService {
 
     @Transactional
     public void setProjectFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> notFound("Project", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -420,6 +424,7 @@ public class SiteContentService {
 
     @Transactional
     public void setWritingFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         Writing writing = writingRepository.findById(id)
                 .orElseThrow(() -> notFound("Writing", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -438,6 +443,7 @@ public class SiteContentService {
 
     @Transactional
     public void setVideoFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         Video video = videoRepository.findById(id)
                 .orElseThrow(() -> notFound("Video", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -456,6 +462,7 @@ public class SiteContentService {
 
     @Transactional
     public void setSoundTrackFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         SoundTrack sound = soundTrackRepository.findById(id)
                 .orElseThrow(() -> notFound("Sound track", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -474,6 +481,7 @@ public class SiteContentService {
 
     @Transactional
     public void setImageCollectionFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         ImageCollection collection = imageCollectionRepository.findById(id)
                 .orElseThrow(() -> notFound("Image collection", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
@@ -504,17 +512,14 @@ public class SiteContentService {
 
     @Transactional
     public void setAboutFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         About about = aboutRepository.findById(id)
                 .orElseThrow(() -> notFound("About page", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
         if (request.getFeatureImageUrl() != null) {
             about.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
         }
-        if (turningOn && isBlank(about.getFeatureImageUrl())) {
-            throw new IllegalArgumentException(
-                    "featureImageUrl is required to feature an About page — it becomes the "
-                            + "About page hero image.");
-        }
+        // No image required — the site simply skips imageless slides.
         about.setFeatured(turningOn);
         about.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
         aboutRepository.save(about);
@@ -525,16 +530,14 @@ public class SiteContentService {
     @CacheEvict(value = "services", allEntries = true)
     @Transactional
     public void setServiceFeatured(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         ak.dev.khi_backend.khi_app.model.service.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> notFound("Service", id));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
         if (request.getFeatureImageUrl() != null) {
             service.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
         }
-        if (turningOn && isBlank(serviceSlideImage(service))) {
-            throw new IllegalArgumentException(
-                    "featureImageUrl is required to feature a service that has no gallery image.");
-        }
+        // No image required — the site simply skips imageless slides.
         service.setFeatured(turningOn);
         service.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
         serviceRepository.save(service);
@@ -546,24 +549,17 @@ public class SiteContentService {
      */
     @Transactional
     public DonationSettingsResponse setDonationFeatured(FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
         DonationSettings settings = donationSettingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "Donation settings have not been saved yet — save the donation page "
                                 + "before featuring it."));
         boolean turningOn = request.getFeatured() == null || request.getFeatured();
-        if (turningOn && !settings.isFeatured() && countAllFeatured() >= getMaxFeaturedSlides()) {
-            throw new IllegalStateException(
-                    "Maximum of " + getMaxFeaturedSlides()
-                            + " featured slides allowed across all content. Unfeature one first.");
-        }
+        // Featured cap removed — the website carousel already caps what it renders.
         if (request.getFeatureImageUrl() != null) {
             settings.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
         }
-        if (turningOn && isBlank(firstNonBlank(
-                settings.getFeatureImageUrl(), settings.getHeroImageUrl()))) {
-            throw new IllegalArgumentException(
-                    "featureImageUrl or heroImageUrl is required to feature the donation page.");
-        }
+        // No image required — the site simply skips imageless slides.
         settings.setFeatured(turningOn);
         settings.setFeaturedOrder(turningOn ? request.getFeaturedOrder() : null);
         return donationSettingsResponse(donationSettingsRepository.save(settings));
@@ -774,6 +770,7 @@ public class SiteContentService {
 
     @Transactional
     public TeamMemberResponse createTeamMember(TeamMemberRequest request) {
+        if (request == null) request = new TeamMemberRequest();
         TeamMember member = new TeamMember();
         applyTeam(member, request);
         return teamResponse(teamRepository.save(member));
@@ -781,6 +778,7 @@ public class SiteContentService {
 
     @Transactional
     public TeamMemberResponse updateTeamMember(Long id, TeamMemberRequest request) {
+        if (request == null) request = new TeamMemberRequest();
         TeamMember member = teamRepository.findById(id)
                 .orElseThrow(() -> notFound("Team member", id));
         applyTeam(member, request);
@@ -816,6 +814,7 @@ public class SiteContentService {
 
     @Transactional
     public PartnerResponse createPartner(PartnerRequest request) {
+        if (request == null) request = new PartnerRequest();
         Partner partner = new Partner();
         applyPartner(partner, request);
         return partnerResponse(partnerRepository.save(partner));
@@ -823,6 +822,7 @@ public class SiteContentService {
 
     @Transactional
     public PartnerResponse updatePartner(Long id, PartnerRequest request) {
+        if (request == null) request = new PartnerRequest();
         Partner partner = partnerRepository.findById(id)
                 .orElseThrow(() -> notFound("Partner", id));
         applyPartner(partner, request);
@@ -852,6 +852,7 @@ public class SiteContentService {
 
     @Transactional
     public ContactMessageResponse submitContactMessage(ContactMessageRequest request) {
+        if (request == null) request = new ContactMessageRequest();
         ContactMessage message = ContactMessage.builder()
                 .name(request.getName().trim())
                 .email(request.getEmail().trim())
@@ -872,6 +873,7 @@ public class SiteContentService {
 
     @Transactional
     public ContactMessageResponse updateContactMessageStatus(Long id, StatusRequest request) {
+        if (request == null) request = new StatusRequest();
         ContactMessage message = contactMessageRepository.findById(id)
                 .orElseThrow(() -> notFound("Contact message", id));
         message.setStatus(validateStatus(request.getStatus()));
@@ -894,6 +896,7 @@ public class SiteContentService {
 
     @Transactional
     public SocialLinkResponse createSocialLink(SocialLinkRequest request) {
+        if (request == null) request = new SocialLinkRequest();
         SocialLink link = new SocialLink();
         applySocial(link, request);
         return socialResponse(socialLinkRepository.save(link));
@@ -901,6 +904,7 @@ public class SiteContentService {
 
     @Transactional
     public SocialLinkResponse updateSocialLink(Long id, SocialLinkRequest request) {
+        if (request == null) request = new SocialLinkRequest();
         SocialLink link = socialLinkRepository.findById(id)
                 .orElseThrow(() -> notFound("Social link", id));
         applySocial(link, request);
@@ -942,6 +946,7 @@ public class SiteContentService {
 
     @Transactional
     public DonationTypeCardResponse createDonationTypeCard(DonationTypeCardRequest request) {
+        if (request == null) request = new DonationTypeCardRequest();
         DonationTypeCard card = new DonationTypeCard();
         applyDonationTypeCard(card, request);
         return donationTypeCardResponse(donationTypeCardRepository.save(card));
@@ -949,6 +954,7 @@ public class SiteContentService {
 
     @Transactional
     public DonationTypeCardResponse updateDonationTypeCard(Long id, DonationTypeCardRequest request) {
+        if (request == null) request = new DonationTypeCardRequest();
         DonationTypeCard card = donationTypeCardRepository.findById(id)
                 .orElseThrow(() -> notFound("Donation type card", id));
         applyDonationTypeCard(card, request);
@@ -966,17 +972,12 @@ public class SiteContentService {
     private void applyDonationTypeCard(DonationTypeCard card, DonationTypeCardRequest request) {
         String titleCkb = trimToNull(request.getTitleCkb());
         String titleKmr = trimToNull(request.getTitleKmr());
-        // The website falls back to the other language when one is missing, but a
-        // card with no title at all cannot be drawn.
-        if (titleCkb == null && titleKmr == null) {
-            throw new IllegalArgumentException(
-                    "At least one of titleCkb / titleKmr is required.");
-        }
         card.setTitleCkb(titleCkb);
         card.setTitleKmr(titleKmr);
         card.setDescriptionCkb(trimToNull(request.getDescriptionCkb()));
         card.setDescriptionKmr(trimToNull(request.getDescriptionKmr()));
-        card.setImageUrl(request.getImageUrl().trim());
+        String imageUrl = trimToNull(request.getImageUrl());
+        card.setImageUrl(imageUrl == null ? "" : imageUrl); // column is NOT NULL
         card.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
         card.setActive(request.getActive() == null || request.getActive());
     }
@@ -1028,6 +1029,7 @@ public class SiteContentService {
 
     @Transactional
     public DonationSettingsResponse saveDonationSettings(DonationSettingsRequest request) {
+        if (request == null) request = new DonationSettingsRequest();
         DonationSettings settings = donationSettingsRepository.findAll().stream().findFirst()
                 .orElseGet(DonationSettings::new);
         settings.setTitleCkb(trimToNull(request.getTitleCkb()));
@@ -1057,18 +1059,7 @@ public class SiteContentService {
         }
         if (request.getFeatured() != null) {
             boolean turningOn = request.getFeatured();
-            if (turningOn && !settings.isFeatured()
-                    && countAllFeatured() >= getMaxFeaturedSlides()) {
-                throw new IllegalStateException(
-                        "Maximum of " + getMaxFeaturedSlides()
-                                + " featured slides allowed across all content. "
-                                + "Unfeature one first.");
-            }
-            if (turningOn && isBlank(firstNonBlank(
-                    settings.getFeatureImageUrl(), settings.getHeroImageUrl()))) {
-                throw new IllegalArgumentException(
-                        "featureImageUrl or heroImageUrl is required to feature the donation page.");
-            }
+            // No image or slide-cap requirements — the site skips imageless slides.
             settings.setFeatured(turningOn);
             if (!turningOn) {
                 settings.setFeaturedOrder(null);
@@ -1082,6 +1073,7 @@ public class SiteContentService {
 
     @Transactional
     public FinancialDonationResponse submitFinancialDonation(FinancialDonationRequest request) {
+        if (request == null) request = new FinancialDonationRequest();
         ensureFinancialDonationsEnabled();
         FinancialDonation donation = FinancialDonation.builder()
                 .donorName(request.getDonorName().trim())
@@ -1099,6 +1091,7 @@ public class SiteContentService {
 
     @Transactional
     public ArchiveDonationResponse submitArchiveDonation(ArchiveDonationRequest request) {
+        if (request == null) request = new ArchiveDonationRequest();
         ensureArchiveDonationsEnabled();
         ArchiveDonation donation = ArchiveDonation.builder()
                 .donorName(request.getDonorName().trim())
@@ -1128,6 +1121,7 @@ public class SiteContentService {
 
     @Transactional
     public FinancialDonationResponse updateFinancialStatus(Long id, StatusRequest request) {
+        if (request == null) request = new StatusRequest();
         FinancialDonation donation = financialDonationRepository.findById(id)
                 .orElseThrow(() -> notFound("Financial donation", id));
         donation.setStatus(validateStatus(request.getStatus()));
@@ -1136,6 +1130,7 @@ public class SiteContentService {
 
     @Transactional
     public ArchiveDonationResponse updateArchiveStatus(Long id, StatusRequest request) {
+        if (request == null) request = new StatusRequest();
         ArchiveDonation donation = archiveDonationRepository.findById(id)
                 .orElseThrow(() -> notFound("Archive donation", id));
         donation.setStatus(validateStatus(request.getStatus()));
@@ -1242,29 +1237,16 @@ public class SiteContentService {
     }
 
     private String validateStatus(String status) {
-        String normalized = status.trim().toUpperCase(Locale.ROOT);
-        if (!SUBMISSION_STATUSES.contains(normalized)) {
-            throw new IllegalArgumentException("Unsupported status: " + status);
-        }
-        return normalized;
+        // Accept everything — normalize casing, never reject.
+        return status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
     }
 
     private String validateMaterialType(String materialType) {
-        String normalized = materialType.trim().toUpperCase(Locale.ROOT);
-        if (!ARCHIVE_MATERIAL_TYPES.contains(normalized)) {
-            throw new IllegalArgumentException("Unsupported materialType: " + materialType
-                    + " (allowed: " + ARCHIVE_MATERIAL_TYPES + ")");
-        }
-        return normalized;
+        return materialType == null ? "" : materialType.trim().toUpperCase(Locale.ROOT);
     }
 
     private String validateCurrency(String currency) {
-        String normalized = currency.trim().toUpperCase(Locale.ROOT);
-        if (!DONATION_CURRENCIES.contains(normalized)) {
-            throw new IllegalArgumentException("Unsupported currency: " + currency
-                    + " (allowed: " + DONATION_CURRENCIES + ")");
-        }
-        return normalized;
+        return currency == null ? "" : currency.trim().toUpperCase(Locale.ROOT);
     }
 
     private String trimToNull(String value) {

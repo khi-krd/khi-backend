@@ -53,7 +53,7 @@ public class AboutController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setAboutFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -86,7 +86,7 @@ public class AboutController {
 
     @PostMapping
     public ResponseEntity<AboutDTOs.AboutResponse> create(
-            @RequestBody AboutDTOs.AboutRequest request) {
+            @RequestBody(required = false) AboutDTOs.AboutRequest request) {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(aboutService.create(request));
@@ -95,7 +95,7 @@ public class AboutController {
     @PutMapping("/{id}")
     public ResponseEntity<AboutDTOs.AboutResponse> update(
             @PathVariable Long id,
-            @RequestBody AboutDTOs.AboutRequest request) {
+            @RequestBody(required = false) AboutDTOs.AboutRequest request) {
 
         return ResponseEntity.ok(aboutService.update(id, request));
     }

@@ -45,13 +45,13 @@ public class PublicSiteController {
     @PostMapping("/about/team")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TeamMemberResponse> createTeamMember(
-            @Valid @RequestBody TeamMemberRequest request) {
+            @Valid @RequestBody(required = false) TeamMemberRequest request) {
         return ApiResponse.success(siteContentService.createTeamMember(request), "Team member created");
     }
 
     @PutMapping("/about/team/{id}")
     public ApiResponse<TeamMemberResponse> updateTeamMember(
-            @PathVariable Long id, @Valid @RequestBody TeamMemberRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) TeamMemberRequest request) {
         return ApiResponse.success(siteContentService.updateTeamMember(id, request), "Team member updated");
     }
 
@@ -68,13 +68,13 @@ public class PublicSiteController {
 
     @PostMapping("/about/partners")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<PartnerResponse> createPartner(@Valid @RequestBody PartnerRequest request) {
+    public ApiResponse<PartnerResponse> createPartner(@Valid @RequestBody(required = false) PartnerRequest request) {
         return ApiResponse.success(siteContentService.createPartner(request), "Partner created");
     }
 
     @PutMapping("/about/partners/{id}")
     public ApiResponse<PartnerResponse> updatePartner(
-            @PathVariable Long id, @Valid @RequestBody PartnerRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) PartnerRequest request) {
         return ApiResponse.success(siteContentService.updatePartner(id, request), "Partner updated");
     }
 
@@ -88,7 +88,7 @@ public class PublicSiteController {
 
     @PostMapping("/contact/messages")
     public ResponseEntity<ApiResponse<ContactMessageResponse>> submitContactMessage(
-            @Valid @RequestBody ContactMessageRequest request) {
+            @Valid @RequestBody(required = false) ContactMessageRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 ApiResponse.success(siteContentService.submitContactMessage(request),
                         "Contact message received"));
@@ -104,7 +104,7 @@ public class PublicSiteController {
 
     @PatchMapping("/contact/messages/{id}/status")
     public ApiResponse<ContactMessageResponse> updateContactMessageStatus(
-            @PathVariable Long id, @Valid @RequestBody StatusRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) StatusRequest request) {
         return ApiResponse.success(siteContentService.updateContactMessageStatus(id, request),
                 "Contact message status updated");
     }
@@ -138,7 +138,7 @@ public class PublicSiteController {
     @PutMapping("/site-settings")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ApiResponse<SiteSettingsResponse> updateSiteSettings(
-            @Valid @RequestBody SiteSettingsRequest request) {
+            @Valid @RequestBody(required = false) SiteSettingsRequest request) {
         return ApiResponse.success(siteContentService.updateSiteSettings(request),
                 "Site settings updated");
     }
@@ -164,7 +164,7 @@ public class PublicSiteController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ApiResponse<SiteFontResponse> createSiteFont(
-            @Valid @RequestBody SiteFontRequest request) {
+            @Valid @RequestBody(required = false) SiteFontRequest request) {
         return ApiResponse.success(siteContentService.createSiteFont(request), "Site font created");
     }
 
@@ -188,13 +188,13 @@ public class PublicSiteController {
     @PostMapping("/settings/social")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SocialLinkResponse> createSocialLink(
-            @Valid @RequestBody SocialLinkRequest request) {
+            @Valid @RequestBody(required = false) SocialLinkRequest request) {
         return ApiResponse.success(siteContentService.createSocialLink(request), "Social link created");
     }
 
     @PutMapping("/settings/social/{id}")
     public ApiResponse<SocialLinkResponse> updateSocialLink(
-            @PathVariable Long id, @Valid @RequestBody SocialLinkRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) SocialLinkRequest request) {
         return ApiResponse.success(siteContentService.updateSocialLink(id, request), "Social link updated");
     }
 
@@ -231,14 +231,14 @@ public class PublicSiteController {
     @PostMapping("/donations/type-cards")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<DonationTypeCardResponse> createDonationTypeCard(
-            @Valid @RequestBody DonationTypeCardRequest request) {
+            @Valid @RequestBody(required = false) DonationTypeCardRequest request) {
         return ApiResponse.success(siteContentService.createDonationTypeCard(request),
                 "Donation type card created");
     }
 
     @PutMapping("/donations/type-cards/{id}")
     public ApiResponse<DonationTypeCardResponse> updateDonationTypeCard(
-            @PathVariable Long id, @Valid @RequestBody DonationTypeCardRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) DonationTypeCardRequest request) {
         return ApiResponse.success(siteContentService.updateDonationTypeCard(id, request),
                 "Donation type card updated");
     }
@@ -251,7 +251,7 @@ public class PublicSiteController {
 
     @PutMapping("/donations/settings")
     public ApiResponse<DonationSettingsResponse> saveDonationSettings(
-            @Valid @RequestBody DonationSettingsRequest request) {
+            @Valid @RequestBody(required = false) DonationSettingsRequest request) {
         return ApiResponse.success(siteContentService.saveDonationSettings(request),
                 "Donation settings saved");
     }
@@ -266,21 +266,21 @@ public class PublicSiteController {
     @PatchMapping("/donations/settings/featured")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ApiResponse<DonationSettingsResponse> setDonationFeatured(
-            @RequestBody FeaturedRequest request) {
+            @RequestBody(required = false) FeaturedRequest request) {
         return ApiResponse.success(siteContentService.setDonationFeatured(request),
                 "Donation featured state updated");
     }
 
     @PostMapping("/donations/financial")
     public ResponseEntity<ApiResponse<FinancialDonationResponse>> submitFinancialDonation(
-            @Valid @RequestBody FinancialDonationRequest request) {
+            @Valid @RequestBody(required = false) FinancialDonationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 siteContentService.submitFinancialDonation(request), "Financial donation received"));
     }
 
     @PostMapping("/donations/archive")
     public ResponseEntity<ApiResponse<ArchiveDonationResponse>> submitArchiveDonation(
-            @Valid @RequestBody ArchiveDonationRequest request) {
+            @Valid @RequestBody(required = false) ArchiveDonationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 siteContentService.submitArchiveDonation(request), "Archive donation offer received"));
     }
@@ -303,14 +303,14 @@ public class PublicSiteController {
 
     @PatchMapping("/donations/financial/{id}/status")
     public ApiResponse<FinancialDonationResponse> updateFinancialDonationStatus(
-            @PathVariable Long id, @Valid @RequestBody StatusRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) StatusRequest request) {
         return ApiResponse.success(siteContentService.updateFinancialStatus(id, request),
                 "Financial donation status updated");
     }
 
     @PatchMapping("/donations/archive/{id}/status")
     public ApiResponse<ArchiveDonationResponse> updateArchiveDonationStatus(
-            @PathVariable Long id, @Valid @RequestBody StatusRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) StatusRequest request) {
         return ApiResponse.success(siteContentService.updateArchiveStatus(id, request),
                 "Archive donation status updated");
     }

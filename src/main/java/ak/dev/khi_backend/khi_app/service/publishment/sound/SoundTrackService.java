@@ -560,10 +560,7 @@ public class SoundTrackService {
             }
 
             if (isBlank(fileUrl) && isBlank(externalUrl) && isBlank(embedUrl))
-                throw Errors.soundValidation("soundTrack.file.source.required", Map.of(
-                        "index", i,
-                        "message",
-                        "هەر فایلێک پێویستی بە لانیکەم fileUrl، externalUrl، یان embedUrl هەیە"));
+                continue; // file row with no source — skip it, keep the save
 
             SoundTrackFile file = SoundTrackFile.builder()
                     .fileUrl(fileUrl)
@@ -625,12 +622,10 @@ public class SoundTrackService {
             SoundTrackFile existing = resolveExistingFile(
                     existingById, requestedIds, dto, i);
             validateBrochureIds(existing, dto, i);
+            // A file entry with no source is skipped rather than rejecting the save.
             if (!hasFile(upload) && !hasSoundSource(dto)
                     && (existing == null || !hasSoundSource(existing))) {
-                throw Errors.soundValidation("soundTrack.file.source.required", Map.of(
-                        "field", "files[" + i + "]",
-                        "message",
-                        "هەر فایلێک پێویستی بە لانیکەم fileUrl، externalUrl، یان embedUrl هەیە"));
+                continue;
             }
         }
     }
@@ -674,6 +669,16 @@ public class SoundTrackService {
             if (isNew) {
                 file = new SoundTrackFile();
                 file.setSoundTrack(owner);
+            }
+
+            // Entry with neither an upload nor a URL source keeps whatever it had
+            // (or, when new, is dropped entirely) instead of blocking the save.
+            if (!hasFile(upload) && !hasSoundSource(dto)
+                    && (isNew || !hasSoundSource(file))) {
+                if (isNew) {
+                    requestedIds.remove(null);
+                    continue;
+                }
             }
 
             if (hasFile(upload)) {
@@ -1078,9 +1083,7 @@ public class SoundTrackService {
         if (topicId != null) return findSoundTopicOrThrow(topicId);
         if (newTopic != null) {
             if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr()))
-                throw Errors.soundValidation("error.validation", Map.of(
-                        "message",
-                        "بابەتی نوێ پێویستی بە لانیکەم ناوێکی کوردییە (ناوەندی یان باکوور)"));
+                return null; // unnamed topic — link nothing instead of rejecting
             PublishmentTopic created = topicRepository.save(
                     PublishmentTopic.builder()
                             .entityType(TOPIC_ENTITY_TYPE)
@@ -1097,9 +1100,7 @@ public class SoundTrackService {
         PublishmentTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> Errors.notFound("topic.not_found", Map.of("id", topicId)));
         if (!TOPIC_ENTITY_TYPE.equals(topic.getEntityType()))
-            throw Errors.soundValidation("topic.type.mismatch", Map.of(
-                    "message", "بابەت id=" + topicId + " بۆ '"
-                            + topic.getEntityType() + "'ە، چاوەڕوان دەکرێت 'SOUND' بێت"));
+            return null; // wrong-typed topic — ignore the link instead of rejecting
         return topic;
     }
 
@@ -1167,18 +1168,11 @@ public class SoundTrackService {
     // VALIDATION
     // =========================================================================
 
+    /** All fields optional — missing values fall back to safe defaults. */
     private void validateCreate(CreateRequest dto) {
-        if (dto == null)
-            throw Errors.soundValidation("error.validation", Map.of("field", "data"));
-        if (isBlank(dto.getSoundType()))
-            throw Errors.soundValidation("error.validation",
-                    Map.of("field", "soundType", "message", "جۆری دەنگ پێویستە"));
-        if (dto.getTrackState() == null)
-            throw Errors.soundValidation("error.validation",
-                    Map.of("field", "trackState", "message", "دۆخی تراک پێویستە"));
-        if (safeLangs(dto.getContentLanguages()).isEmpty())
-            throw Errors.soundValidation("soundTrack.languages.required",
-                    Map.of("field", "contentLanguages"));
+        if (dto == null) return;
+        if (isBlank(dto.getSoundType()))   dto.setSoundType("OTHER");
+        if (dto.getTrackState() == null)   dto.setTrackState(TrackState.SINGLE);
     }
 
     // =========================================================================

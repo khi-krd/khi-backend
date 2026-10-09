@@ -1,13 +1,6 @@
 package ak.dev.khi_backend.khi_app.dto.site;
 
 import ak.dev.khi_backend.khi_app.enums.Language;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -29,11 +22,11 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class FeaturedRequest {
-        @NotBlank private String type;
-        @NotBlank private String slug;
-        @NotBlank private String title;
-        @NotBlank private String description;
-        @NotBlank private String imageUrl;
+        private String type;
+        private String slug;
+        private String title;
+        private String description;
+        private String imageUrl;
         private String imageAlt;
         private String locale;
         private Integer displayOrder;
@@ -85,8 +78,6 @@ public final class SiteContentDtos {
      */
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SiteSettingsRequest {
-        @Min(1)
-        @Max(20)
         private Integer maxFeaturedSlides;
 
         /** Header and footer logo. Transparent PNG — it sits on cream and on near-black. */
@@ -135,9 +126,9 @@ public final class SiteContentDtos {
      */
     @Data
     public static class SiteFontRequest {
-        @NotNull private Language language;
-        @NotBlank @Size(max = 200) private String name;
-        @NotBlank @Size(max = 1200) private String url;
+        private Language language;
+        private String name;
+        private String url;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -172,9 +163,9 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class TeamMemberRequest {
-        @NotBlank private String nameCkb;
+        private String nameCkb;
         private String nameKmr;
-        @NotBlank private String roleCkb;
+        private String roleCkb;
         private String roleKmr;
         private String bioCkb;
         private String bioKmr;
@@ -201,7 +192,7 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class PartnerRequest {
-        @NotBlank private String nameCkb;
+        private String nameCkb;
         private String nameKmr;
         private String descriptionCkb;
         private String descriptionKmr;
@@ -226,12 +217,12 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ContactMessageRequest {
-        @NotBlank @Size(max = 200) private String name;
-        @NotBlank @Email @Size(max = 254) private String email;
-        @Size(max = 60) private String phone;
-        @NotBlank @Size(max = 300) private String subject;
-        @NotBlank @Size(max = 10000) private String message;
-        @Size(max = 10) private String locale;
+        private String name;
+        private String email;
+        private String phone;
+        private String subject;
+        private String message;
+        private String locale;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -249,8 +240,8 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SocialLinkRequest {
-        @NotBlank @Size(max = 60) private String platform;
-        @NotBlank @Size(max = 2000) private String url;
+        private String platform;
+        private String url;
         private String labelCkb;
         private String labelKmr;
         private Integer displayOrder;
@@ -333,11 +324,11 @@ public final class SiteContentDtos {
      */
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class DonationTypeCardRequest {
-        @Size(max = 200) private String titleCkb;
-        @Size(max = 200) private String titleKmr;
-        @Size(max = 1000) private String descriptionCkb;
-        @Size(max = 1000) private String descriptionKmr;
-        @NotBlank @Size(max = 2000) private String imageUrl;
+        private String titleCkb;
+        private String titleKmr;
+        private String descriptionCkb;
+        private String descriptionKmr;
+        private String imageUrl;
         private Integer displayOrder;
         private Boolean active;
     }
@@ -356,15 +347,15 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class FinancialDonationRequest {
-        @NotBlank private String donorName;
-        /** Optional — the site submits an empty string today. {@code @Email} allows null/blank. */
-        @Email private String email;
+        private String donorName;
+        /** Optional — the site submits an empty string today. {@code } allows null/blank. */
+        private String email;
         private String phone;
-        @NotNull @DecimalMin("0.01") private BigDecimal amount;
-        @NotBlank private String currency;
-        @NotBlank private String paymentMethod;
+        private BigDecimal amount;
+        private String currency;
+        private String paymentMethod;
         private String transactionReference;
-        @Size(max = 5000) private String message;
+        private String message;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -384,15 +375,15 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class ArchiveDonationRequest {
-        @NotBlank private String donorName;
-        /** Optional — the site submits an empty string today. {@code @Email} allows null/blank. */
-        @Email private String email;
+        private String donorName;
+        /** Optional — the site submits an empty string today. {@code } allows null/blank. */
+        private String email;
         private String phone;
-        @NotBlank private String materialType;
+        private String materialType;
         /** Optional display/credit name ("Register name" on the form). */
-        @Size(max = 500) private String title;
+        private String title;
         /** Optional free-text note / brief history. */
-        @Size(max = 10000) private String description;
+        private String description;
         private String estimatedDate;
         private String attachmentUrl;
     }
@@ -414,7 +405,7 @@ public final class SiteContentDtos {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class StatusRequest {
-        @NotBlank private String status;
+        private String status;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

@@ -3,7 +3,6 @@ package ak.dev.khi_backend.khi_app.dto.publishment.image;
 import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.enums.publishment.ImageCollectionType;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -125,7 +124,6 @@ public final class ImageCollectionDTO {
         private String slugCkb;
         private String slugKmr;
 
-        @NotNull(message = "collectionType is required")
         private ImageCollectionType collectionType;
 
         // ── Cover URLs (fallback when no multipart file is uploaded) ──────────
@@ -140,7 +138,6 @@ public final class ImageCollectionDTO {
         // ── Core fields ───────────────────────────────────────────────────────
         private LocalDate publishmentDate;
 
-        @NotNull(message = "At least one content language is required")
         private Set<Language> contentLanguages;
 
         private LanguageContentDto ckbContent;

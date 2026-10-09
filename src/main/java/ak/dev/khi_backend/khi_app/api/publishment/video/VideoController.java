@@ -74,7 +74,7 @@ public class VideoController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setVideoFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -86,7 +86,7 @@ public class VideoController {
      */
     @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Void>> reorder(
-            @RequestBody ReorderRequest request) {
+            @RequestBody(required = false) ReorderRequest request) {
         videoService.reorder(request != null ? request.getOrderedIds() : null);
         return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
     }
@@ -189,7 +189,7 @@ public class VideoController {
     )
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoDTO> addVideo(
-            @Parameter(description = "JSON-serialised VideoDTO") @RequestPart("data") String dtoJson,
+            @Parameter(description = "JSON-serialised VideoDTO") @RequestPart(value = "data", required = false) String dtoJson,
 
             @Parameter(description = "Cover image — CKB dialect") @RequestPart(value = "ckbCoverImage", required = false) MultipartFile ckbCoverImage,
             @Parameter(description = "Cover image — KMR dialect") @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
@@ -198,7 +198,7 @@ public class VideoController {
             @Parameter(description = "Video file(s). FILM: every file is stored in videoSources[]; first is main. VIDEO_CLIP: index i = clip i.")
             @RequestPart(value = "videoFiles", required = false) List<MultipartFile> videoFiles
     ) throws Exception {
-        VideoDTO dto = objectMapper.readValue(dtoJson, VideoDTO.class);
+        VideoDTO dto = isBlank(dtoJson) ? null : objectMapper.readValue(dtoJson, VideoDTO.class);
         VideoDTO created = videoService.addVideo(dto, ckbCoverImage, kmrCoverImage, hoverImage, videoFiles);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -294,7 +294,7 @@ public class VideoController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<VideoDTO> updateVideo(
             @PathVariable Long id,
-            @Parameter(description = "JSON-serialised VideoDTO") @RequestPart("data") String dtoJson,
+            @Parameter(description = "JSON-serialised VideoDTO") @RequestPart(value = "data", required = false) String dtoJson,
 
             @Parameter(description = "Replacement cover image — CKB dialect") @RequestPart(value = "ckbCoverImage", required = false) MultipartFile ckbCoverImage,
             @Parameter(description = "Replacement cover image — KMR dialect") @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
@@ -303,7 +303,7 @@ public class VideoController {
             @Parameter(description = "Replacement video file(s). FILM: rebuilds videoSources[] (first is main). VIDEO_CLIP: index i = clip i. Omit to keep existing sources.")
             @RequestPart(value = "videoFiles", required = false) List<MultipartFile> videoFiles
     ) throws Exception {
-        VideoDTO dto = objectMapper.readValue(dtoJson, VideoDTO.class);
+        VideoDTO dto = isBlank(dtoJson) ? null : objectMapper.readValue(dtoJson, VideoDTO.class);
         VideoDTO updated = videoService.updateVideo(id, dto, ckbCoverImage, kmrCoverImage, hoverImage, videoFiles);
         return ResponseEntity.ok(updated);
     }
@@ -313,5 +313,9 @@ public class VideoController {
     public ResponseEntity<Void> deleteVideo(@PathVariable Long id) {
         videoService.deleteVideo(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

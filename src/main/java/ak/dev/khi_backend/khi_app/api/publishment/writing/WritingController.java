@@ -46,7 +46,7 @@ public class WritingController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setWritingFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -61,7 +61,7 @@ public class WritingController {
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Response>> create(
-            @RequestPart(value = "data") String dataJson,
+            @RequestPart(value = "data", required = false) String dataJson,
             @RequestPart(value = "ckbCoverImage", required = false) MultipartFile ckbCoverImage,
             @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
             @RequestPart(value = "hoverCoverImage", required = false) MultipartFile hoverCoverImage,
@@ -124,7 +124,7 @@ public class WritingController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Response>> update(
             @PathVariable Long id,
-            @RequestPart(value = "data") String dataJson,
+            @RequestPart(value = "data", required = false) String dataJson,
             @RequestPart(value = "ckbCoverImage", required = false) MultipartFile ckbCoverImage,
             @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
             @RequestPart(value = "hoverCoverImage", required = false) MultipartFile hoverCoverImage,
@@ -168,7 +168,7 @@ public class WritingController {
 
     @PostMapping("/series/link")
     public ResponseEntity<ApiResponse<Response>> linkToSeries(
-            @Valid @RequestBody LinkToSeriesRequest request) {
+            @Valid @RequestBody(required = false) LinkToSeriesRequest request) {
         log.info("POST /series/link | book={} parent={}", request.getBookId(), request.getParentBookId());
         return ResponseEntity.ok(ApiResponse.success(
                 writingService.linkBookToSeries(request), "Book linked to series"));
@@ -237,7 +237,7 @@ public class WritingController {
 
     private <T> T parseJson(String json, Class<T> clazz) {
         try {
-            return objectMapper.readValue(json, clazz);
+            return isBlank(json) ? null : objectMapper.readValue(json, clazz);
         } catch (Exception e) {
             log.error("JSON parse error: {}", e.getMessage());
             throw new IllegalArgumentException("Invalid JSON: " + e.getMessage());
@@ -248,5 +248,9 @@ public class WritingController {
         int count = 0;
         for (MultipartFile f : files) if (f != null && !f.isEmpty()) count++;
         return count;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

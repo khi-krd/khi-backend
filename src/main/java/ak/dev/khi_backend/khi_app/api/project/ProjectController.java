@@ -41,7 +41,7 @@ public class ProjectController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setProjectFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -51,7 +51,7 @@ public class ProjectController {
     // ============================================================
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ProjectResponse>> create(
-            @Valid @RequestBody ProjectCreateRequest request
+            @Valid @RequestBody(required = false) ProjectCreateRequest request
     ) {
         log.info("POST /api/v1/projects/create | langs={}", request.getContentLanguages());
 
@@ -68,7 +68,7 @@ public class ProjectController {
     @PutMapping(value = "/update/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ProjectResponse>> update(
             @PathVariable("id") Long id,
-            @Valid @RequestBody ProjectCreateRequest request
+            @Valid @RequestBody(required = false) ProjectCreateRequest request
     ) {
         log.info("PUT /api/v1/projects/update/{} | langs={}", id, request.getContentLanguages());
 

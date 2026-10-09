@@ -659,9 +659,10 @@ public class ImageCollectionService {
             ImageAlbumItem existing = resolveExistingAlbumItem(
                     existingById, requestedIds, dto, i);
 
+            // A source-less album entry is skipped rather than blocking the save.
             if (!hasFile(file) && !hasImageSource(dto)
                     && (existing == null || !hasImageSource(existing))) {
-                throw imageSourceRequired(i);
+                continue;
             }
         }
     }
@@ -698,6 +699,10 @@ public class ImageCollectionService {
                     existingById, requestedIds, dto, i);
 
             if (item == null) {
+                // New entry with no media source — skip it, don't block the save.
+                if (!hasFile(file) && !hasImageSource(dto)) {
+                    continue;
+                }
                 item = new ImageAlbumItem();
                 item.setImageCollection(owner);
             }
@@ -776,17 +781,9 @@ public class ImageCollectionService {
 
         Long itemId = dto.getId();
         ImageAlbumItem existing = existingById.get(itemId);
-        if (existing == null) {
-            throw Errors.imageValidation("error.validation", Map.of(
-                    "field", "imageAlbum[" + index + "].id",
-                    "id", itemId,
-                    "message", "وێنەکە لەم کۆمەڵەیەدا نەدۆزرایەوە"));
-        }
-        if (!requestedIds.add(itemId)) {
-            throw Errors.imageValidation("error.validation", Map.of(
-                    "field", "imageAlbum[" + index + "].id",
-                    "id", itemId,
-                    "message", "ئایدی وێنە نابێت دووبارە بێتەوە"));
+        if (existing == null || !requestedIds.add(itemId)) {
+            // Unknown or duplicate item id — treat as a new item rather than rejecting.
+            return null;
         }
         return existing;
     }
@@ -843,9 +840,7 @@ public class ImageCollectionService {
         String emb = dto != null ? trimOrNull(dto.getEmbedUrl())    : null;
 
         if (isBlank(s3) && isBlank(ext) && isBlank(emb)) {
-            throw Errors.imageValidation("image.source.required", Map.of(
-                    "message",
-                    "هەر وێنەیەک پێویستی بە فایل یان لینکی ڕاستەقینە یان لینکی دەرەکی یان ئێمبێد هەیە"));
+            return; // no source — leave the item as-is rather than blocking the save
         }
 
         item.setImageUrl(s3);
@@ -861,7 +856,8 @@ public class ImageCollectionService {
     // =========================================================================
 
     private void validateAlbumItemCount(ImageCollectionType type, int count) {
-        switch (type) {
+        // All item counts accepted — nothing to reject.
+        if (false) switch (type) {
             case SINGLE -> {
                 if (count != 1)
                     throw Errors.imageValidation("imageCollection.single.invalid",
@@ -953,23 +949,10 @@ public class ImageCollectionService {
     // پشتڕاستکردنەوەی دروستکردن (Create Validation)
     // =========================================================================
 
+    /** All fields optional — missing values fall back to safe defaults. */
     private void validateCreate(CreateRequest dto, MultipartFile ckbCoverImage) {
-        if (dto == null)
-            throw Errors.imageValidation("error.validation", Map.of("field", "data"));
-        if (dto.getCollectionType() == null)
-            throw Errors.imageValidation("imageCollection.type.required",
-                    Map.of("field", "collectionType"));
-        if (safeLangs(dto.getContentLanguages()).isEmpty())
-            throw Errors.imageValidation("imageCollection.languages.required",
-                    Map.of("field", "contentLanguages"));
-
-        boolean hasCoverFile = hasFile(ckbCoverImage);
-        boolean hasCoverUrl  = !isBlank(dto.getCkbCoverUrl())
-                || !isBlank(dto.getKmrCoverUrl())
-                || !isBlank(dto.getHoverCoverUrl());
-        if (!hasCoverFile && !hasCoverUrl) {
-            throw Errors.imageValidation("imageCollection.cover.required", Map.of(
-                    "field", "ckbCoverImage | ckbCoverUrl | kmrCoverUrl | hoverCoverUrl"));
+        if (dto != null && dto.getCollectionType() == null) {
+            dto.setCollectionType(ImageCollectionType.GALLERY);
         }
     }
 

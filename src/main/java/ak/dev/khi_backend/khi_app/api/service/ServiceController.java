@@ -80,7 +80,7 @@ public class ServiceController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setServiceFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -170,7 +170,7 @@ public class ServiceController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ServiceResponse>> create(
-            @RequestBody ServiceRequest request) {
+            @RequestBody(required = false) ServiceRequest request) {
 
         ServiceResponse response = serviceService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -180,7 +180,7 @@ public class ServiceController {
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ServiceResponse>> update(
             @PathVariable Long id,
-            @RequestBody ServiceRequest request) {
+            @RequestBody(required = false) ServiceRequest request) {
 
         return ResponseEntity.ok(
                 ApiResponse.success(serviceService.update(id, request),
@@ -205,7 +205,7 @@ public class ServiceController {
     }
 
     @DeleteMapping("/bulk")
-    public ResponseEntity<ApiResponse<Void>> deleteBulk(@RequestBody List<Long> ids) {
+    public ResponseEntity<ApiResponse<Void>> deleteBulk(@RequestBody(required = false) List<Long> ids) {
         serviceService.deleteBulk(ids);
         return ResponseEntity.ok(
                 ApiResponse.success(null, "Services deleted successfully"));

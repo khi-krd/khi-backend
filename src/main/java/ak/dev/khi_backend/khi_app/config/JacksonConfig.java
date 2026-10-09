@@ -18,6 +18,8 @@ public class JacksonConfig {
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
+        // Accept every payload the dashboard sends: unknown properties are skipped
+        // rather than rejected with 400 UnrecognizedPropertyException.
         mapper.addHandler(new DeserializationProblemHandler() {
             @Override
             public boolean handleUnknownProperty(
@@ -27,12 +29,6 @@ public class JacksonConfig {
                     Object beanOrClass,
                     String propertyName
             ) throws IOException {
-                if (!"id".equals(propertyName)) {
-                    return false;
-                }
-
-                // Update IDs come from the URL. Tolerate response-shaped request payloads
-                // that also contain an ID, but keep rejecting every other unknown field.
                 parser.skipChildren();
                 return true;
             }

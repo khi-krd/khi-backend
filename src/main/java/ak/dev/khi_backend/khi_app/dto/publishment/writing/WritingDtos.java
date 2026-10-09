@@ -4,7 +4,6 @@ import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.enums.publishment.WritingFileFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -24,27 +23,20 @@ public final class WritingDtos {
     @Builder
     public static class LanguageContentDto {
 
-        @Size(max = 300)
         private String title;
 
-        @Size(max = 10000)
         private String description;
 
-        @Size(max = 200)
         private String writer;
 
-        @Size(max = 1000)
         private String fileUrl;
 
         private WritingFileFormat fileFormat;
 
-        @Min(0)
         private Long fileSizeBytes;
 
-        @Min(1)
         private Integer pageCount;
 
-        @Size(max = 150)
         private String genre;
     }
 
@@ -68,10 +60,8 @@ public final class WritingDtos {
     @NoArgsConstructor @AllArgsConstructor
     @Builder
     public static class TopicPayload {
-        @Size(max = 300)
         private String nameCkb;
 
-        @Size(max = 300)
         private String nameKmr;
     }
 
@@ -110,9 +100,9 @@ public final class WritingDtos {
     @NoArgsConstructor @AllArgsConstructor
     @Builder
     public static class BookGenreRequest {
-        @NotBlank @Size(max = 60) private String slug;
-        @Size(max = 200) private String nameCkb;
-        @Size(max = 200) private String nameKmr;
+        private String slug;
+        private String nameCkb;
+        private String nameKmr;
         private Integer displayOrder;
         private Boolean active;
     }
@@ -167,19 +157,14 @@ public final class WritingDtos {
     @Builder
     public static class CreateRequest {
 
-        @NotNull
-        @NotEmpty(message = "At least one content language is required")
         private Set<Language> contentLanguages;
 
         // ─── Cover Images (3 slots) ───────────────────────────────────────────
 
-        @Size(max = 2000)
         private String ckbCoverUrl;
 
-        @Size(max = 2000)
         private String kmrCoverUrl;
 
-        @Size(max = 2000)
         private String hoverCoverUrl;
 
         // ─── Language Content ─────────────────────────────────────────────────
@@ -217,13 +202,10 @@ public final class WritingDtos {
 
         // ─── Series ───────────────────────────────────────────────────────────
 
-        @Size(max = 100)
         private String seriesId;
 
-        @Size(max = 300)
         private String seriesName;
 
-        @Min(0)
         private Double seriesOrder;
 
         private Long parentBookId;
@@ -282,10 +264,8 @@ public final class WritingDtos {
 
         // ─── Series ───────────────────────────────────────────────────────────
 
-        @Size(max = 300)
         private String seriesName;
 
-        @Min(0)
         private Double seriesOrder;
 
         private Long parentBookId;
@@ -398,17 +378,12 @@ public final class WritingDtos {
     @Builder
     public static class LinkToSeriesRequest {
 
-        @NotNull(message = "Book ID is required")
         private Long bookId;
 
-        @NotNull(message = "Parent book ID is required")
         private Long parentBookId;
 
-        @NotNull(message = "Series order is required")
-        @Min(1)
         private Double seriesOrder;
 
-        @Size(max = 300)
         private String seriesName;
     }
 

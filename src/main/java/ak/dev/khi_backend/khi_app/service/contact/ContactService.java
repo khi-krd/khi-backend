@@ -65,12 +65,14 @@ public class ContactService {
 
     @Transactional
     public ContactResponse create(ContactRequest request) {
+        if (request == null) request = new ContactRequest();
 
-        validateSlugs(request, null);
+        String slugCkb = resolveCkbSlug(request.getSlugCkb(), null, null);
+        String slugKmr = resolveKmrSlug(request.getSlugKmr(), slugCkb, null, null);
 
         Contact contact = Contact.builder()
-                .slugCkb(request.getSlugCkb().trim())
-                .slugKmr(blankToNull(request.getSlugKmr()))
+                .slugCkb(slugCkb)
+                .slugKmr(slugKmr)
                 .ckbContent(buildContent(request.getCkbContent()))
                 .kmrContent(buildContent(request.getKmrContent()))
                 .phone(blankToNull(request.getPhone()))
@@ -98,12 +100,11 @@ public class ContactService {
 
     @Transactional
     public ContactResponse update(Long id, ContactRequest request) {
+        if (request == null) request = new ContactRequest();
 
         Contact contact = findOrThrow(id);
-        validateSlugs(request, id);
-
-        contact.setSlugCkb(request.getSlugCkb().trim());
-        contact.setSlugKmr(blankToNull(request.getSlugKmr()));
+        contact.setSlugCkb(resolveCkbSlug(request.getSlugCkb(), contact.getSlugCkb(), id));
+        contact.setSlugKmr(resolveKmrSlug(request.getSlugKmr(), contact.getSlugCkb(), contact.getSlugKmr(), id));
         contact.setCkbContent(buildContent(request.getCkbContent()));
         contact.setKmrContent(buildContent(request.getKmrContent()));
         contact.setPhone(blankToNull(request.getPhone()));
@@ -144,32 +145,48 @@ public class ContactService {
                 .orElseThrow(() -> new EntityNotFoundException("Contact not found: " + id));
     }
 
-    private void validateSlugs(ContactRequest request, Long excludeId) {
-
-        if (request.getSlugCkb() == null || request.getSlugCkb().isBlank()) {
-            throw new IllegalArgumentException("CKB slug is required");
+    /**
+     * All fields optional. A missing/duplicate slug falls back to a generated
+     * unique one; on update a blank slug keeps the existing value.
+     */
+    private String resolveCkbSlug(String requested, String existing, Long selfId) {
+        String slug = (requested == null || requested.isBlank())
+                ? existing
+                : requested.trim();
+        if (slug == null || slug.isBlank()) {
+            slug = "contact";
         }
+        return uniqueSlug(slug, selfId, true);
+    }
 
-        String ckb = request.getSlugCkb().trim();
-        String kmr = blankToNull(request.getSlugKmr());
-
-        contactRepository.findBySlugCkb(ckb).ifPresent(existing -> {
-            if (!existing.getId().equals(excludeId)) {
-                throw new IllegalArgumentException("CKB slug already exists: " + ckb);
-            }
-        });
-
-        if (kmr != null) {
-            contactRepository.findBySlugKmr(kmr).ifPresent(existing -> {
-                if (!existing.getId().equals(excludeId)) {
-                    throw new IllegalArgumentException("KMR slug already exists: " + kmr);
-                }
-            });
-            if (ckb.equals(kmr)) {
-                throw new IllegalArgumentException(
-                        "CKB slug and KMR slug must be different: " + ckb);
-            }
+    private String resolveKmrSlug(String requested, String ckbSlug, String existing, Long selfId) {
+        String slug = (requested == null || requested.isBlank())
+                ? existing
+                : requested.trim();
+        if (slug == null || slug.isBlank()) {
+            return null;
         }
+        if (slug.equals(ckbSlug)) {
+            slug = slug + "-kmr";
+        }
+        return uniqueSlug(slug, selfId, false);
+    }
+
+    private String uniqueSlug(String slug, Long selfId, boolean ckb) {
+        String candidate = slug;
+        int n = 2;
+        while (slugTaken(candidate, selfId, ckb)) {
+            candidate = slug + "-" + n++;
+        }
+        return candidate;
+    }
+
+    private boolean slugTaken(String slug, Long selfId, boolean ckb) {
+        var found = ckb
+                ? contactRepository.findBySlugCkb(slug)
+                : contactRepository.findBySlugKmr(slug);
+        return found.isPresent()
+                && (selfId == null || !found.get().getId().equals(selfId));
     }
 
     private ContactContent buildContent(ContactContentRequest req) {

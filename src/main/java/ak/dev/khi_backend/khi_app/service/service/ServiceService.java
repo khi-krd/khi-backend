@@ -224,17 +224,18 @@ public class ServiceService {
     @CacheEvict(value = "services", allEntries = true)
     @Transactional
     public ServiceResponse create(ServiceRequest request) {
+        if (request == null) request = new ServiceRequest();
         String traceId = traceId();
         log.info("Creating service | type={} | traceId={}", request.getServiceType(), traceId);
 
-        validateContents(request.getContents());
+        List<ServiceContentRequest> contents = sanitizeContents(request.getContents());
 
-        String navAnchorId = normalizeNavAnchorId(request.getNavAnchorId());
-        validateNavAnchorUnique(navAnchorId, null);
+        String navAnchorId = uniqueNavAnchorId(normalizeNavAnchorId(request.getNavAnchorId()), null);
 
         ak.dev.khi_backend.khi_app.model.service.Service service =
                 ak.dev.khi_backend.khi_app.model.service.Service.builder()
-                        .serviceType(trimRequired(request.getServiceType(), "serviceType"))
+                        .serviceType(trimOrNull(request.getServiceType()) != null
+                                ? trimOrNull(request.getServiceType()) : "GENERAL")
                         .location(trimOrNull(request.getLocation()))
                         .active(true)
                         .publishedAt(parseDateTime(request.getPublishedAt()))
@@ -249,10 +250,8 @@ public class ServiceService {
                         .partnerIds(cleanIds(request.getPartnerIds()))
                         .build();
 
-        if (request.getContents() != null) {
-            for (ServiceContentRequest cr : request.getContents()) {
-                service.addContent(buildContent(cr));
-            }
+        for (ServiceContentRequest cr : contents) {
+            service.addContent(buildContent(cr));
         }
 
         ak.dev.khi_backend.khi_app.model.service.Service saved =
@@ -271,6 +270,7 @@ public class ServiceService {
     @CacheEvict(value = "services", allEntries = true)
     @Transactional
     public ServiceResponse update(Long id, ServiceRequest request) {
+        if (request == null) request = new ServiceRequest();
         String traceId = traceId();
         log.info("Updating service | id={} | traceId={}", id, traceId);
 
@@ -279,12 +279,13 @@ public class ServiceService {
                         .orElseThrow(() -> new NotFoundException(
                                 "service.not_found", Map.of("id", id)));
 
-        validateContents(request.getContents());
+        List<ServiceContentRequest> contents = sanitizeContents(request.getContents());
 
-        String navAnchorId = normalizeNavAnchorId(request.getNavAnchorId());
-        validateNavAnchorUnique(navAnchorId, id);
+        String navAnchorId = uniqueNavAnchorId(normalizeNavAnchorId(request.getNavAnchorId()), id);
 
-        service.setServiceType(trimRequired(request.getServiceType(), "serviceType"));
+        if (trimOrNull(request.getServiceType()) != null) {
+            service.setServiceType(trimOrNull(request.getServiceType()));
+        }
         service.setLocation(trimOrNull(request.getLocation()));
         service.setPublishedAt(parseDateTime(request.getPublishedAt()));
         service.setSortOrder(request.getSortOrder());
@@ -306,10 +307,8 @@ public class ServiceService {
         service.getContents().clear();
         serviceRepository.saveAndFlush(service);
 
-        if (request.getContents() != null) {
-            for (ServiceContentRequest cr : request.getContents()) {
-                service.addContent(buildContent(cr));
-            }
+        for (ServiceContentRequest cr : contents) {
+            service.addContent(buildContent(cr));
         }
 
         ak.dev.khi_backend.khi_app.model.service.Service saved =
@@ -450,34 +449,25 @@ public class ServiceService {
     // PRIVATE — Validation
     // =========================================================================
 
-    private void validateContents(List<ServiceContentRequest> contents) {
-        if (contents == null || contents.isEmpty()) return;
-
-        long distinctCodes = contents.stream()
-                .map(c -> c.getLanguageCode() == null ? "" : c.getLanguageCode().toUpperCase())
-                .distinct().count();
-
-        if (distinctCodes < contents.size()) {
-            throw new BadRequestException("service.content.duplicate_language",
-                    Map.of("message", "Duplicate language codes in contents list"));
-        }
-
+    /**
+     * All fields optional: entries with a blank or unsupported language code are
+     * dropped, later duplicates win (service_id+language_code is UNIQUE), and a
+     * blank title is stored as an empty string.
+     */
+    private List<ServiceContentRequest> sanitizeContents(List<ServiceContentRequest> contents) {
+        if (contents == null) return List.of();
+        Map<String, ServiceContentRequest> byCode = new LinkedHashMap<>();
         for (ServiceContentRequest cr : contents) {
-            if (cr.getLanguageCode() == null || cr.getLanguageCode().isBlank()) {
-                throw new BadRequestException("service.content.language.required",
-                        Map.of("field", "languageCode"));
+            if (cr == null || cr.getLanguageCode() == null || cr.getLanguageCode().isBlank()) {
+                continue;
             }
-            String code = cr.getLanguageCode().toUpperCase();
+            String code = cr.getLanguageCode().toUpperCase().trim();
             if (!ALLOWED_LANG_CODES.contains(code)) {
-                throw new BadRequestException("service.content.language.unsupported",
-                        Map.of("languageCode", cr.getLanguageCode(),
-                                "allowed", ALLOWED_LANG_CODES));
+                continue;
             }
-            if (cr.getTitle() == null || cr.getTitle().isBlank()) {
-                throw new BadRequestException("service.content.title.required",
-                        Map.of("languageCode", cr.getLanguageCode()));
-            }
+            byCode.put(code, cr); // later duplicate wins
         }
+        return new ArrayList<>(byCode.values());
     }
 
     // =========================================================================
@@ -487,7 +477,7 @@ public class ServiceService {
     private ServiceContent buildContent(ServiceContentRequest req) {
         return ServiceContent.builder()
                 .languageCode(req.getLanguageCode().toUpperCase().trim())
-                .title(req.getTitle().trim())
+                .title(req.getTitle() == null ? "" : req.getTitle().trim())
                 .description(tiptapHtmlProcessor.process(req.getDescription()))
                 .featureDescription(cleanFeatureDescription(req.getFeatureDescription()))
                 .build();
@@ -520,18 +510,9 @@ public class ServiceService {
                 // Accept ISO 8601 (e.g. "2026-06-30T21:01:42.260Z")
                 return java.time.OffsetDateTime.parse(raw).toLocalDateTime();
             } catch (Exception e2) {
-                throw new BadRequestException("service.publishedAt.invalid",
-                        Map.of("expected", "yyyy-MM-dd HH:mm:ss or ISO-8601", "got", raw));
+                return null; // unparseable date — store nothing rather than 400
             }
         }
-    }
-
-    private String trimRequired(String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new BadRequestException("service.field.required",
-                    Map.of("field", field));
-        }
-        return value.trim();
     }
 
     private String trimOrNull(String value) {
@@ -569,8 +550,7 @@ public class ServiceService {
             if (type.isEmpty()) {
                 type = looksLikeVideo(url) ? "VIDEO" : "IMAGE";   // auto-detect
             } else if (!ALLOWED_MEDIA_TYPES.contains(type)) {
-                throw new BadRequestException("service.media.type.unsupported",
-                        Map.of("type", item.getType(), "allowed", ALLOWED_MEDIA_TYPES));
+                type = looksLikeVideo(url) ? "VIDEO" : "IMAGE"; // unknown type → guess
             }
 
             out.add(ServiceMedia.builder()
@@ -598,35 +578,23 @@ public class ServiceService {
         String value = trimOrNull(raw);
         if (value == null) return null;
         String upper = value.toUpperCase();
-        if (!ALLOWED_LAYOUT_TYPES.contains(upper)) {
-            throw new BadRequestException("service.layoutType.unsupported",
-                    Map.of("layoutType", raw, "allowed", ALLOWED_LAYOUT_TYPES));
-        }
-        return upper;
+        return ALLOWED_LAYOUT_TYPES.contains(upper) ? upper : null;
     }
 
     /** Trim + validate slug shape, or null when not provided. */
     private String normalizeNavAnchorId(String raw) {
         String value = trimOrNull(raw);
         if (value == null) return null;
-        if (!NAV_ANCHOR_PATTERN.matcher(value).matches()) {
-            throw new BadRequestException("service.navAnchorId.invalid",
-                    Map.of("navAnchorId", raw,
-                            "expected", "slug-like, e.g. recording-studio"));
-        }
-        return value;
+        return NAV_ANCHOR_PATTERN.matcher(value).matches() ? value : null;
     }
 
-    /** Enforce global uniqueness of navAnchorId (case-insensitive). */
-    private void validateNavAnchorUnique(String navAnchorId, Long selfId) {
-        if (navAnchorId == null) return;
+    /** Global uniqueness of navAnchorId — a taken anchor is dropped to null. */
+    private String uniqueNavAnchorId(String navAnchorId, Long selfId) {
+        if (navAnchorId == null) return null;
         boolean taken = (selfId == null)
                 ? serviceRepository.existsByNavAnchorIdIgnoreCase(navAnchorId)
                 : serviceRepository.existsByNavAnchorIdIgnoreCaseAndIdNot(navAnchorId, selfId);
-        if (taken) {
-            throw new BadRequestException("service.navAnchorId.duplicate",
-                    Map.of("navAnchorId", navAnchorId));
-        }
+        return taken ? null : navAnchorId;
     }
 
     // =========================================================================

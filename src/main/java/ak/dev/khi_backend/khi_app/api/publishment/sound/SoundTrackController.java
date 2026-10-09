@@ -84,7 +84,7 @@ public class SoundTrackController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<Void> setFeatured(
             @PathVariable Long id,
-            @RequestBody SiteContentDtos.FeaturedRequest request) {
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
         siteContentService.setSoundTrackFeatured(id, request);
         return ResponseEntity.noContent().build();
     }
@@ -96,7 +96,7 @@ public class SoundTrackController {
      */
     @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Void>> reorder(
-            @RequestBody ReorderRequest request) {
+            @RequestBody(required = false) ReorderRequest request) {
         soundTrackService.reorder(request != null ? request.getOrderedIds() : null);
         return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
     }
@@ -113,7 +113,7 @@ public class SoundTrackController {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public ResponseEntity<ApiResponse<Response>> create(
-            @RequestPart("data")
+            @RequestPart(value = "data", required = false)
             String dataJson,
 
             @RequestPart(value = "ckbCoverImage",    required = false)
@@ -135,7 +135,7 @@ public class SoundTrackController {
             List<MultipartFile> attachmentFiles
     ) throws Exception {
 
-        CreateRequest dto = objectMapper.readValue(dataJson, CreateRequest.class);
+        CreateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, CreateRequest.class);
 
         log.info("POST /api/v1/sound-tracks | soundType={} state={} langs={} " +
                         "ckbCover={} kmrCover={} hoverCover={} " +
@@ -171,7 +171,7 @@ public class SoundTrackController {
     public ResponseEntity<ApiResponse<Response>> update(
             @PathVariable Long id,
 
-            @RequestPart("data")
+            @RequestPart(value = "data", required = false)
             String dataJson,
 
             @RequestPart(value = "ckbCoverImage",    required = false)
@@ -193,7 +193,7 @@ public class SoundTrackController {
             List<MultipartFile> attachmentFiles
     ) throws Exception {
 
-        UpdateRequest dto = objectMapper.readValue(dataJson, UpdateRequest.class);
+        UpdateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, UpdateRequest.class);
 
         log.info("PUT /api/v1/sound-tracks/{} | soundType={} state={} clearTopic={} " +
                         "ckbCover={} kmrCover={} hoverCover={} " +
@@ -453,5 +453,9 @@ public class SoundTrackController {
     private int countFiles(List<MultipartFile> files) {
         if (files == null) return 0;
         return (int) files.stream().filter(f -> f != null && !f.isEmpty()).count();
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

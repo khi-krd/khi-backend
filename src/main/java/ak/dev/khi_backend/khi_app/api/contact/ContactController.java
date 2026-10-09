@@ -79,7 +79,7 @@ public class ContactController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ContactResponse>> create(
-            @Valid @RequestBody ContactRequest request) {
+            @Valid @RequestBody(required = false) ContactRequest request) {
 
         log.info("POST /api/v1/contact | slugCkb={}", request.getSlugCkb());
         ContactResponse response = contactService.create(request);
@@ -94,7 +94,7 @@ public class ContactController {
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ContactResponse>> update(
             @PathVariable Long id,
-            @Valid @RequestBody ContactRequest request) {
+            @Valid @RequestBody(required = false) ContactRequest request) {
 
         log.info("PUT /api/v1/contact/{}", id);
         return ResponseEntity.ok(ApiResponse.success(

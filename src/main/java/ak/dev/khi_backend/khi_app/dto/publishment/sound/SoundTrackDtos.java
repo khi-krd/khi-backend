@@ -8,7 +8,6 @@ import ak.dev.khi_backend.khi_app.enums.publishment.TrackState;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -30,12 +29,9 @@ public final class SoundTrackDtos {
     public static class LanguageContentDto implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        @Size(max = 200)
         private String title;
 
-        @Size(max = 4000)
         private String description;
-
 
     }
 
@@ -89,13 +85,11 @@ public final class SoundTrackDtos {
         /** Existing brochure ID used to preserve its source during update. */
         private Long id;
 
-        // FIX: Removed @NotBlank — imageUrl may be null when the binary is
+        // FIX: Removed — imageUrl may be null when the binary is
         // supplied via the brochureFiles multipart part instead of a URL.
         // The service already skips entries where imageUrl is blank after upload.
-        @Size(max = 1200)
         private String imageUrl;
 
-        @Size(max = 300)
         private String caption;
     }
 
@@ -127,16 +121,14 @@ public final class SoundTrackDtos {
         /** Existing attachment ID used to preserve its source during update. */
         private Long id;
 
-        // FIX: Removed @NotBlank — fileUrl may be null when binary is
+        // FIX: Removed — fileUrl may be null when binary is
         // supplied via the attachmentFiles multipart part.
         // The service skips attachments where the resolved fileUrl is blank.
-        @Size(max = 1200)
         private String fileUrl;
 
-        @Size(max = 300)
         private String title;
 
-        // FIX: Removed @NotNull — the service now defaults to AttachmentType.OTHER
+        // FIX: Removed — the service now defaults to AttachmentType.OTHER
         // when this field is absent, so a missing value no longer triggers a
         // ConstraintViolationException → 500.
         private AttachmentType attachmentType;
@@ -144,7 +136,6 @@ public final class SoundTrackDtos {
         /** File size in bytes. 0 when unknown. */
         private long sizeBytes;
 
-        @Size(max = 100)
         private String mimeType;
     }
 
@@ -176,17 +167,14 @@ public final class SoundTrackDtos {
         private Long id;
 
         // ── Locations ─────────────────────────────────────────────────────────
-        @Size(max = 1200)
         private String fileUrl;
 
         private String externalUrl;
         private String embedUrl;
 
         // ── Identity ──────────────────────────────────────────────────────────
-        @Size(max = 300)
         private String title;
 
-        @NotNull(message = "fileType is required")
         private FileType fileType;
 
         private Integer publishmentYear;
@@ -195,22 +183,17 @@ public final class SoundTrackDtos {
         private long sizeBytes;
         private long durationSeconds;
 
-        @Size(max = 50)
         private String bitRate;
 
-        @Size(max = 50)
         private String sampleRate;
 
         private AudioChannel audioChannel;
 
         // ── Content / style ───────────────────────────────────────────────────
-        @Size(max = 150)
         private String form;
 
-        @Size(max = 100)
         private String genre;
 
-        @Size(max = 500)
         private String recordingVenue;
 
         private Integer sortOrder;
@@ -266,23 +249,17 @@ public final class SoundTrackDtos {
     public static class CreateRequest {
 
         // ── Core ──────────────────────────────────────────────────────────────
-        @NotBlank(message = "soundType is required")
-        @Size(max = 100)
         private String soundType;
 
-        @NotNull(message = "trackState is required")
         private TrackState trackState;
 
         private Boolean albumOfMemories;
 
         // ── Cover URLs (fallback when no multipart image is supplied) ─────────
-        @Size(max = 1200)
         private String ckbCoverUrl;
 
-        @Size(max = 1200)
         private String kmrCoverUrl;
 
-        @Size(max = 1200)
         private String hoverCoverUrl;
 
         // ── Topic ─────────────────────────────────────────────────────────────
@@ -290,8 +267,6 @@ public final class SoundTrackDtos {
         private InlineTopicRequest newTopic;
 
         // ── Languages ─────────────────────────────────────────────────────────
-        @NotNull
-        @NotEmpty(message = "At least one content language is required")
         private Set<Language> contentLanguages;
 
         private LanguageContentDto ckbContent;
@@ -305,7 +280,6 @@ public final class SoundTrackDtos {
         /**
          * Single reader / performer for the track.
          */
-        @Size(max = 255)
         private String reader;
 
         /**
@@ -314,7 +288,6 @@ public final class SoundTrackDtos {
         private Set<String> directors;
 
         // ── Terms / Dialect ───────────────────────────────────────────────────
-        @Size(max = 200)
         private String terms;
 
         // ── Institute ─────────────────────────────────────────────────────────
@@ -329,7 +302,6 @@ public final class SoundTrackDtos {
         private List<FileCreateRequest> files;
 
         // ── Multi-Album Fields ────────────────────────────────────────────────
-        @Size(max = 300)
         private String albumName;
 
         private Integer publishmentYear;
@@ -353,20 +325,16 @@ public final class SoundTrackDtos {
     public static class UpdateRequest {
 
         // ── Core ──────────────────────────────────────────────────────────────
-        @Size(max = 100)
         private String soundType;
 
         private TrackState trackState;
         private Boolean albumOfMemories;
 
         // ── Cover URLs (multipart image wins when both are supplied) ──────────
-        @Size(max = 1200)
         private String ckbCoverUrl;
 
-        @Size(max = 1200)
         private String kmrCoverUrl;
 
-        @Size(max = 1200)
         private String hoverCoverUrl;
 
         // ── Topic ─────────────────────────────────────────────────────────────
@@ -388,13 +356,11 @@ public final class SoundTrackDtos {
          * Single reader / performer. Pass null to leave unchanged.
          * Pass empty string "" to clear the reader.
          */
-        @Size(max = 255)
         private String reader;
 
         private Set<String> directors;
 
         // ── Terms / Dialect ───────────────────────────────────────────────────
-        @Size(max = 200)
         private String terms;
 
         // ── Institute ─────────────────────────────────────────────────────────
@@ -409,7 +375,6 @@ public final class SoundTrackDtos {
         private List<FileCreateRequest> files;
 
         // ── Multi-Album Fields ────────────────────────────────────────────────
-        @Size(max = 300)
         private String albumName;
 
         private Integer publishmentYear;

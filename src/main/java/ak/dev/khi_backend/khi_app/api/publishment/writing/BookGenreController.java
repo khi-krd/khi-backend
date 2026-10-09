@@ -36,13 +36,13 @@ public class BookGenreController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BookGenreResponse> createGenre(
-            @Valid @RequestBody BookGenreRequest request) {
+            @Valid @RequestBody(required = false) BookGenreRequest request) {
         return ApiResponse.success(bookGenreService.createGenre(request), "Book genre created");
     }
 
     @PutMapping("/{id}")
     public ApiResponse<BookGenreResponse> updateGenre(
-            @PathVariable Long id, @Valid @RequestBody BookGenreRequest request) {
+            @PathVariable Long id, @Valid @RequestBody(required = false) BookGenreRequest request) {
         return ApiResponse.success(bookGenreService.updateGenre(id, request), "Book genre updated");
     }
 

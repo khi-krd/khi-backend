@@ -68,13 +68,11 @@ public class AboutService {
 
     @Transactional
     public AboutResponse create(AboutRequest request) {
-
-        validateSlugs(request, null);
-        validateContent(request);
+        if (request == null) request = new AboutRequest();
 
         About about = new About();
-        about.setSlugCkb(request.getSlugCkb().trim());
-        about.setSlugKmr(blankToNull(request.getSlugKmr()));
+        about.setSlugCkb(resolveCkbSlug(request.getSlugCkb(), null, null));
+        about.setSlugKmr(resolveKmrSlug(request.getSlugKmr(), about.getSlugCkb(), null, null));
 
         about.setCkbContent(buildAboutContent(request.getCkbContent()));
         about.setKmrContent(buildAboutContent(request.getKmrContent()));
@@ -92,16 +90,14 @@ public class AboutService {
 
     @Transactional
     public AboutResponse update(Long id, AboutRequest request) {
+        if (request == null) request = new AboutRequest();
 
         About about = aboutRepository.findById(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException("About not found: " + id));
 
-        validateSlugs(request, id);
-        validateContent(request);
-
-        about.setSlugCkb(request.getSlugCkb().trim());
-        about.setSlugKmr(blankToNull(request.getSlugKmr()));
+        about.setSlugCkb(resolveCkbSlug(request.getSlugCkb(), about.getSlugCkb(), id));
+        about.setSlugKmr(resolveKmrSlug(request.getSlugKmr(), about.getSlugCkb(), about.getSlugKmr(), id));
         about.setCkbContent(buildAboutContent(request.getCkbContent()));
         about.setKmrContent(buildAboutContent(request.getKmrContent()));
         about.setStats(buildStats(request.getStats()));
@@ -135,43 +131,49 @@ public class AboutService {
     // PRIVATE HELPERS
     // ============================================================
 
-    private void validateSlugs(AboutRequest request, Long excludeId) {
-
-        if (request.getSlugCkb() == null || request.getSlugCkb().isBlank()) {
-            throw new IllegalArgumentException("CKB slug is required");
+    /**
+     * All fields optional. A missing/duplicate slug falls back to a generated
+     * unique one; on update a blank slug keeps the existing value. Only an
+     * explicitly colliding slug gets nudged unique with a suffix.
+     */
+    private String resolveCkbSlug(String requested, String existing, Long selfId) {
+        String slug = (requested == null || requested.isBlank())
+                ? existing
+                : requested.trim();
+        if (slug == null || slug.isBlank()) {
+            slug = "page";
         }
-
-        String ckb = request.getSlugCkb().trim();
-        String kmr = blankToNull(request.getSlugKmr());
-
-        aboutRepository.findBySlugCkb(ckb).ifPresent(existing -> {
-            if (!existing.getId().equals(excludeId)) {
-                throw new IllegalArgumentException("CKB slug already exists: " + ckb);
-            }
-        });
-
-        if (kmr != null) {
-            aboutRepository.findBySlugKmr(kmr).ifPresent(existing -> {
-                if (!existing.getId().equals(excludeId)) {
-                    throw new IllegalArgumentException("KMR slug already exists: " + kmr);
-                }
-            });
-
-            if (ckb.equals(kmr)) {
-                throw new IllegalArgumentException(
-                        "CKB slug and KMR slug must be different: " + ckb);
-            }
-        }
+        return uniqueSlug(slug, selfId, true);
     }
 
-    private void validateContent(AboutRequest request) {
-        boolean hasCkb = request.getCkbContent() != null
-                && notBlank(request.getCkbContent().getTitle());
-        boolean hasKmr = request.getKmrContent() != null
-                && notBlank(request.getKmrContent().getTitle());
-        if (!hasCkb && !hasKmr) {
-            throw new IllegalArgumentException("At least one localized About title is required");
+    private String resolveKmrSlug(String requested, String ckbSlug, String existing, Long selfId) {
+        String slug = (requested == null || requested.isBlank())
+                ? existing
+                : requested.trim();
+        if (slug == null || slug.isBlank()) {
+            return null;
         }
+        if (slug.equals(ckbSlug)) {
+            slug = slug + "-kmr";
+        }
+        return uniqueSlug(slug, selfId, false);
+    }
+
+    private String uniqueSlug(String slug, Long selfId, boolean ckb) {
+        String candidate = slug;
+        int n = 2;
+        while (slugTaken(candidate, selfId, ckb)) {
+            candidate = slug + "-" + n++;
+        }
+        return candidate;
+    }
+
+    private boolean slugTaken(String slug, Long selfId, boolean ckb) {
+        var found = ckb
+                ? aboutRepository.findBySlugCkb(slug)
+                : aboutRepository.findBySlugKmr(slug);
+        return found.isPresent()
+                && (selfId == null || !found.get().getId().equals(selfId));
     }
 
     private AboutContent buildAboutContent(AboutContentRequest req) {
