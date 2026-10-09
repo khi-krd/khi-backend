@@ -97,6 +97,12 @@ public class SecurityConfig {
                                 "/api/v1/donations/settings/featured"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
 
+                        // ── Static text blocks: public reads, admin-only writes ──
+                        .requestMatchers(HttpMethod.GET, "/api/v1/text-blocks")
+                        .permitAll()
+                        .requestMatchers("/api/v1/text-blocks/**")
+                        .hasAnyRole("ADMIN", "SUPER_ADMIN")
+
                         // ── Shared media pipeline: admin dashboard only ───────────
                         // Keep this before the public GET rules so any future media
                         // read endpoint is not accidentally exposed.
