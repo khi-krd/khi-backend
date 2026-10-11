@@ -323,8 +323,8 @@ public class SiteContentService {
         if (request == null) request = new SiteFontRequest();
         SiteFont font = SiteFont.builder()
                 .language(request.getLanguage())
-                .name(request.getName().trim())
-                .url(request.getUrl().trim())
+                .name(orEmpty(request.getName()).trim())
+                .url(orEmpty(request.getUrl()).trim())
                 .build();
         return toSiteFontResponse(siteFontRepository.save(font));
     }
@@ -794,9 +794,9 @@ public class SiteContentService {
     }
 
     private void applyTeam(TeamMember member, TeamMemberRequest request) {
-        member.setNameCkb(request.getNameCkb().trim());
+        member.setNameCkb(orEmpty(request.getNameCkb()).trim());
         member.setNameKmr(trimToNull(request.getNameKmr()));
-        member.setRoleCkb(request.getRoleCkb().trim());
+        member.setRoleCkb(orEmpty(request.getRoleCkb()).trim());
         member.setRoleKmr(trimToNull(request.getRoleKmr()));
         member.setBioCkb(trimToNull(request.getBioCkb()));
         member.setBioKmr(trimToNull(request.getBioKmr()));
@@ -838,7 +838,7 @@ public class SiteContentService {
     }
 
     private void applyPartner(Partner partner, PartnerRequest request) {
-        partner.setNameCkb(request.getNameCkb().trim());
+        partner.setNameCkb(orEmpty(request.getNameCkb()).trim());
         partner.setNameKmr(trimToNull(request.getNameKmr()));
         partner.setDescriptionCkb(trimToNull(request.getDescriptionCkb()));
         partner.setDescriptionKmr(trimToNull(request.getDescriptionKmr()));
@@ -854,10 +854,10 @@ public class SiteContentService {
     public ContactMessageResponse submitContactMessage(ContactMessageRequest request) {
         if (request == null) request = new ContactMessageRequest();
         ContactMessage message = ContactMessage.builder()
-                .name(request.getName().trim())
-                .email(request.getEmail().trim())
+                .name(orEmpty(request.getName()).trim())
+                .email(orEmpty(request.getEmail()).trim())
                 .phone(trimToNull(request.getPhone()))
-                .subject(request.getSubject().trim())
+                .subject(orEmpty(request.getSubject()).trim())
                 .message(request.getMessage())
                 .locale(trimToNull(request.getLocale()))
                 .status("NEW")
@@ -918,8 +918,8 @@ public class SiteContentService {
     }
 
     private void applySocial(SocialLink link, SocialLinkRequest request) {
-        link.setPlatform(request.getPlatform().trim().toUpperCase(Locale.ROOT));
-        link.setUrl(request.getUrl().trim());
+        link.setPlatform(orEmpty(request.getPlatform()).trim().toUpperCase(Locale.ROOT));
+        link.setUrl(orEmpty(request.getUrl()).trim());
         link.setLabelCkb(trimToNull(request.getLabelCkb()));
         link.setLabelKmr(trimToNull(request.getLabelKmr()));
         link.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
@@ -1076,12 +1076,12 @@ public class SiteContentService {
         if (request == null) request = new FinancialDonationRequest();
         ensureFinancialDonationsEnabled();
         FinancialDonation donation = FinancialDonation.builder()
-                .donorName(request.getDonorName().trim())
+                .donorName(orEmpty(request.getDonorName()).trim())
                 .email(orEmpty(request.getEmail()))
                 .phone(trimToNull(request.getPhone()))
                 .amount(request.getAmount())
                 .currency(validateCurrency(request.getCurrency()))
-                .paymentMethod(request.getPaymentMethod().trim())
+                .paymentMethod(orEmpty(request.getPaymentMethod()).trim())
                 .transactionReference(trimToNull(request.getTransactionReference()))
                 .message(trimToNull(request.getMessage()))
                 .status("PENDING")
@@ -1094,7 +1094,7 @@ public class SiteContentService {
         if (request == null) request = new ArchiveDonationRequest();
         ensureArchiveDonationsEnabled();
         ArchiveDonation donation = ArchiveDonation.builder()
-                .donorName(request.getDonorName().trim())
+                .donorName(orEmpty(request.getDonorName()).trim())
                 .email(orEmpty(request.getEmail()))
                 .phone(trimToNull(request.getPhone()))
                 .materialType(validateMaterialType(request.getMaterialType()))
