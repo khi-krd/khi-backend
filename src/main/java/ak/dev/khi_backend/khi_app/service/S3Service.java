@@ -46,6 +46,15 @@ public class S3Service {
     @Value("${aws.s3.public-url:}")
     private String publicUrlBase;
 
+    /**
+     * When false, every delete request is logged and skipped — uploaded
+     * objects stay in the bucket forever. One file can be referenced by
+     * several rows (shared keys, re-links), so physical deletes have proven
+     * destructive; the bucket's storage cost is preferable to broken media.
+     */
+    @Value("${aws.s3.delete-on-remove:false}")
+    private boolean deleteOnRemove;
+
     // ============================================================
     // FOLDER NAMES
     // ============================================================
@@ -291,6 +300,11 @@ public class S3Service {
     public void deleteByKey(String key) {
         if (key == null || key.isBlank()) {
             log.warn("⚠️ Delete requested with null/blank key");
+            return;
+        }
+
+        if (!deleteOnRemove) {
+            log.info("🗑️ Skipped S3 delete (retention mode): bucket={}, key={}", bucket, key);
             return;
         }
 
