@@ -1137,6 +1137,20 @@ public class SiteContentService {
         return archiveResponse(archiveDonationRepository.save(donation));
     }
 
+    @Transactional
+    public void deleteFinancialDonation(Long id) {
+        FinancialDonation donation = financialDonationRepository.findById(id)
+                .orElseThrow(() -> notFound("Financial donation", id));
+        financialDonationRepository.delete(donation);
+    }
+
+    @Transactional
+    public void deleteArchiveDonation(Long id) {
+        ArchiveDonation donation = archiveDonationRepository.findById(id)
+                .orElseThrow(() -> notFound("Archive donation", id));
+        archiveDonationRepository.delete(donation);
+    }
+
     private void ensureFinancialDonationsEnabled() {
         donationSettingsRepository.findAll().stream().findFirst()
                 .filter(settings -> !settings.isFinancialDonationsEnabled())

@@ -315,6 +315,18 @@ public class PublicSiteController {
                 "Archive donation status updated");
     }
 
+    @DeleteMapping("/donations/financial/{id}")
+    public ResponseEntity<Void> deleteFinancialDonation(@PathVariable Long id) {
+        siteContentService.deleteFinancialDonation(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/donations/archive/{id}")
+    public ResponseEntity<Void> deleteArchiveDonation(@PathVariable Long id) {
+        siteContentService.deleteArchiveDonation(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/sitemap")
     public ApiResponse<SitemapResponse> getSitemap(
             @RequestParam(defaultValue = "ckb") String locale) {
