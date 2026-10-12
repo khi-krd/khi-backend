@@ -300,7 +300,11 @@ public class WritingService {
             throw new NotFoundException("series.not_found", Map.of("seriesId", seriesId));
         }
 
-        String seriesName = books.get(0).getEffectiveSeriesName();
+        String seriesName = books.stream()
+                .map(Writing::getSeriesName)
+                .filter(n -> n != null && !n.isBlank())
+                .findFirst()
+                .orElseGet(() -> books.get(0).getEffectiveSeriesName());
         List<SeriesBookSummary> summaries = books.stream()
                 .map(b -> SeriesBookSummary.builder()
                         .id(b.getId())
