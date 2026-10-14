@@ -196,7 +196,7 @@ public class ContactService {
                 .subtitle(req.getSubtitle())
                 .address(req.getAddress())
                 .workingHours(req.getWorkingHours())
-                .description(tiptapHtmlProcessor.process(req.getDescription()))
+                .description(tiptapHtmlProcessor.process(req.getDescription(), "contact"))
                 .build();
     }
 

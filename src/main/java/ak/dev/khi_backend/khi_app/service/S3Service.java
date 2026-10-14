@@ -78,6 +78,40 @@ public class S3Service {
     }
 
     /**
+     * Upload file into an explicit folder under the base folder.
+     * Pass a nested folder such as "services/images" — produced by
+     * {@link #entityFolder(String, String)} — to scope objects per entity.
+     */
+    public String upload(byte[] fileBytes, String originalFilename, String contentType, String folder) {
+        if (fileBytes == null || fileBytes.length == 0) {
+            throw new BadRequestException("media.invalid", "File is empty or null");
+        }
+
+        String resolvedFolder = normalizeFolder(folder, contentType);
+        String key = generateKey(resolvedFolder, originalFilename);
+
+        log.info("⬆️ Uploading to S3: bucket={}, folder={}, key={}, contentType={}",
+                bucket, resolvedFolder, key, contentType);
+
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(request, RequestBody.fromBytes(fileBytes));
+
+            String publicUrl = getPublicUrl(key);
+            log.info("✅ File uploaded successfully: {}", publicUrl);
+            return publicUrl;
+        } catch (S3Exception e) {
+            log.error("❌ S3 upload failed: {}", e.getMessage(), e);
+            throw new BadRequestException("s3.upload.failed", "Failed to upload file to S3: " + e.getMessage());
+        }
+    }
+
+    /**
      * Upload file with explicit media type (use this when you know the ProjectMediaType)
      */
     public String upload(byte[] fileBytes, String originalFilename, String contentType, ProjectMediaType mediaType) {
@@ -442,6 +476,17 @@ public class S3Service {
     // ============================================================
     // FOLDER DETECTION
     // ============================================================
+
+    /**
+     * Folder for an entity-scoped upload: "<entity>/<media-type>".
+     * Every dashboard/entity upload passes its entity name (services, about,
+     * news, …); the media-type subfolder (images, videos, sounds, documents)
+     * keeps an entity's images apart from its documents.
+     */
+    public String entityFolder(String entity, String contentType) {
+        String clean = entity == null ? "" : entity.trim().replaceAll("^/+", "").replaceAll("/+$", "");
+        return clean.isBlank() ? detectFolder(contentType) : clean + "/" + detectFolder(contentType);
+    }
 
     private String detectFolder(String contentType) {
         if (contentType == null) return FOLDER_FILES;

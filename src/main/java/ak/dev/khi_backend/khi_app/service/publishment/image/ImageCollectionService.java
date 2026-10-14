@@ -539,7 +539,8 @@ public class ImageCollectionService {
     private boolean hasFile(MultipartFile f) { return f != null && !f.isEmpty(); }
 
     private String uploadFile(MultipartFile f) throws IOException {
-        return s3Service.upload(f.getBytes(), f.getOriginalFilename(), f.getContentType());
+        return s3Service.upload(f.getBytes(), f.getOriginalFilename(), f.getContentType(),
+                s3Service.entityFolder("galleries", f.getContentType()));
     }
 
     // =========================================================================
@@ -618,8 +619,8 @@ public class ImageCollectionService {
             if (dto != null) {
                 item.setCaptionCkb(trimOrNull(dto.getCaptionCkb()));
                 item.setCaptionKmr(trimOrNull(dto.getCaptionKmr()));
-                item.setDescriptionCkb(tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionCkb())));
-                item.setDescriptionKmr(tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionKmr())));
+                item.setDescriptionCkb(tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionCkb()), "galleries"));
+                item.setDescriptionKmr(tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionKmr()), "galleries"));
             }
 
             applyImageSource(item, file, dto);
@@ -713,10 +714,10 @@ public class ImageCollectionService {
             item.setCaptionCkb(dto != null ? trimOrNull(dto.getCaptionCkb()) : null);
             item.setCaptionKmr(dto != null ? trimOrNull(dto.getCaptionKmr()) : null);
             item.setDescriptionCkb(dto != null
-                    ? tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionCkb()))
+                    ? tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionCkb()), "galleries")
                     : null);
             item.setDescriptionKmr(dto != null
-                    ? tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionKmr()))
+                    ? tiptapHtmlProcessor.process(trimOrNull(dto.getDescriptionKmr()), "galleries")
                     : null);
 
             applyImageSourceForUpdate(item, file, dto);
@@ -828,7 +829,8 @@ public class ImageCollectionService {
             extractAndSetImageMetadata(item, file, fileBytes);
 
             // Upload using same bytes (avoid reading stream twice)
-            item.setImageUrl(s3Service.upload(fileBytes, file.getOriginalFilename(), file.getContentType()));
+            item.setImageUrl(s3Service.upload(fileBytes, file.getOriginalFilename(), file.getContentType(),
+                    s3Service.entityFolder("galleries", file.getContentType())));
             item.setExternalUrl(null);
             item.setEmbedUrl(null);
             return;
@@ -899,7 +901,7 @@ public class ImageCollectionService {
                 && isBlank(dto.getLocation()) && isBlank(dto.getCollectedBy())) return null;
         return ImageContent.builder()
                 .title(trimOrNull(dto.getTitle()))
-                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())))
+                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "galleries"))
                 .location(trimOrNull(dto.getLocation()))
                 .collectedBy(trimOrNull(dto.getCollectedBy()))
                 .build();
@@ -934,7 +936,7 @@ public class ImageCollectionService {
         if (dto.getTitle() != null) existing.setTitle(trimOrNull(dto.getTitle()));
         if (dto.getDescription() != null) {
             existing.setDescription(
-                    tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())));
+                    tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "galleries"));
         }
         if (dto.getLocation() != null) {
             existing.setLocation(trimOrNull(dto.getLocation()));

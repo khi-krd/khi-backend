@@ -320,7 +320,7 @@ public class ProjectService {
             project.setCkbContent(dto.getCkbContent() != null
                     ? ProjectContentBlock.builder()
                     .title(dto.getCkbContent().getTitle())
-                    .description(tiptapHtmlProcessor.process(dto.getCkbContent().getDescription()))
+                    .description(tiptapHtmlProcessor.process(dto.getCkbContent().getDescription(), "projects"))
                     .location(dto.getCkbContent().getLocation())
                     .build() : null);
         } else {
@@ -331,7 +331,7 @@ public class ProjectService {
             project.setKmrContent(dto.getKmrContent() != null
                     ? ProjectContentBlock.builder()
                     .title(dto.getKmrContent().getTitle())
-                    .description(tiptapHtmlProcessor.process(dto.getKmrContent().getDescription()))
+                    .description(tiptapHtmlProcessor.process(dto.getKmrContent().getDescription(), "projects"))
                     .location(dto.getKmrContent().getLocation())
                     .build() : null);
         } else {
@@ -355,7 +355,7 @@ public class ProjectService {
                 && dto.getCkbContent() != null) {
             project.setCkbContent(ProjectContentBlock.builder()
                     .title(dto.getCkbContent().getTitle())
-                    .description(tiptapHtmlProcessor.process(dto.getCkbContent().getDescription()))
+                    .description(tiptapHtmlProcessor.process(dto.getCkbContent().getDescription(), "projects"))
                     .location(dto.getCkbContent().getLocation())
                     .build());
         }
@@ -364,7 +364,7 @@ public class ProjectService {
                 && dto.getKmrContent() != null) {
             project.setKmrContent(ProjectContentBlock.builder()
                     .title(dto.getKmrContent().getTitle())
-                    .description(tiptapHtmlProcessor.process(dto.getKmrContent().getDescription()))
+                    .description(tiptapHtmlProcessor.process(dto.getKmrContent().getDescription(), "projects"))
                     .location(dto.getKmrContent().getLocation())
                     .build());
         }

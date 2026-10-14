@@ -441,7 +441,7 @@ public class WritingService {
         if (dto == null) return null;
         return WritingContent.builder()
                 .title(trimOrNull(dto.getTitle()))
-                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())))
+                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "writings"))
                 .writer(trimOrNull(dto.getWriter()))
                 .fileUrl(fileUrl != null ? fileUrl : trimOrNull(dto.getFileUrl()))
                 .fileFormat(dto.getFileFormat())
@@ -454,7 +454,7 @@ public class WritingService {
     private WritingContent mergeContent(WritingContent existing, LanguageContentDto dto, String fileUrl) {
         if (existing == null) return buildContent(dto, fileUrl);
         if (dto.getTitle()         != null) existing.setTitle(trimOrNull(dto.getTitle()));
-        if (dto.getDescription()   != null) existing.setDescription(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())));
+        if (dto.getDescription()   != null) existing.setDescription(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "writings"));
         if (dto.getWriter()        != null) existing.setWriter(trimOrNull(dto.getWriter()));
         // No new multipart file and no fileUrl in the DTO means retain the
         // persisted book source during metadata-only updates.
@@ -562,7 +562,8 @@ public class WritingService {
     private String uploadFile(MultipartFile file, String description) {
         if (file == null || file.isEmpty()) return null;
         try {
-            String url = s3Service.upload(file.getBytes(), file.getOriginalFilename(), file.getContentType());
+            String url = s3Service.upload(file.getBytes(), file.getOriginalFilename(), file.getContentType(),
+                    s3Service.entityFolder("writings", file.getContentType()));
             log.info("{} نێردرا → {}", description, url);
             return url;
         } catch (IOException e) {

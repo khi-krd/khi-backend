@@ -1004,7 +1004,8 @@ public class VideoService {
      */
     private String uploadToS3(MultipartFile file) {
         try {
-            return s3Service.upload(file.getBytes(), file.getOriginalFilename(), file.getContentType());
+            return s3Service.upload(file.getBytes(), file.getOriginalFilename(), file.getContentType(),
+                    s3Service.entityFolder("videos", file.getContentType()));
         } catch (IOException e) {
             // هەڵە: کێشە لە ناردنی فایل
             throw new BadRequestException("media.upload.failed",
@@ -1084,17 +1085,17 @@ public class VideoService {
         if (video == null) return;
         if (video.getCkbContent() != null) {
             video.getCkbContent().setDescription(
-                    tiptapHtmlProcessor.process(video.getCkbContent().getDescription()));
+                    tiptapHtmlProcessor.process(video.getCkbContent().getDescription(), "videos"));
         }
         if (video.getKmrContent() != null) {
             video.getKmrContent().setDescription(
-                    tiptapHtmlProcessor.process(video.getKmrContent().getDescription()));
+                    tiptapHtmlProcessor.process(video.getKmrContent().getDescription(), "videos"));
         }
         if (video.getVideoClipItems() != null) {
             for (VideoClipItem item : video.getVideoClipItems()) {
                 if (item == null) continue;
-                item.setDescriptionCkb(tiptapHtmlProcessor.process(item.getDescriptionCkb()));
-                item.setDescriptionKmr(tiptapHtmlProcessor.process(item.getDescriptionKmr()));
+                item.setDescriptionCkb(tiptapHtmlProcessor.process(item.getDescriptionCkb(), "videos"));
+                item.setDescriptionKmr(tiptapHtmlProcessor.process(item.getDescriptionKmr(), "videos"));
             }
         }
     }

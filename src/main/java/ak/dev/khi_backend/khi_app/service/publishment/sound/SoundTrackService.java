@@ -1128,7 +1128,7 @@ public class SoundTrackService {
                ) return null;
         return SoundTrackContent.builder()
                 .title(trimOrNull(dto.getTitle()))
-                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())))
+                .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "sounds"))
                 .build();
     }
 
@@ -1164,7 +1164,7 @@ public class SoundTrackService {
         if (dto.getTitle() != null) existing.setTitle(trimOrNull(dto.getTitle()));
         if (dto.getDescription() != null) {
             existing.setDescription(
-                    tiptapHtmlProcessor.process(trimOrNull(dto.getDescription())));
+                    tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "sounds"));
         }
         return existing;
     }
@@ -1350,7 +1350,8 @@ public class SoundTrackService {
     }
 
     private String uploadFile(MultipartFile f) throws IOException {
-        return s3Service.upload(f.getBytes(), f.getOriginalFilename(), f.getContentType());
+        return s3Service.upload(f.getBytes(), f.getOriginalFilename(), f.getContentType(),
+                s3Service.entityFolder("sounds", f.getContentType()));
     }
 
     private String resolveCoverUrl(String dtoUrl, MultipartFile file) throws IOException {

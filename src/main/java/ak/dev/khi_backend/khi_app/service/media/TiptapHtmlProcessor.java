@@ -1,6 +1,5 @@
 package ak.dev.khi_backend.khi_app.service.media;
 
-import ak.dev.khi_backend.khi_app.enums.project.ProjectMediaType;
 import ak.dev.khi_backend.khi_app.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,18 +71,27 @@ public class TiptapHtmlProcessor {
     /**
      * Process a Tiptap HTML blob. Returns the same string with every inline
      * base64 data URI on a {@code src} or {@code href} attribute replaced
-     * by the S3 public URL of the uploaded asset.
+     * by the S3 public URL of the uploaded asset. Inline assets land in the
+     * "content" entity folder since no owning entity is known here.
      */
     public String process(String html) {
+        return process(html, "content");
+    }
+
+    /**
+     * Same as {@link #process(String)} but uploads extracted assets into the
+     * owning entity's folder ("<entity>/<media-type>/").
+     */
+    public String process(String html, String entity) {
         if (html == null || html.isBlank()) return html;
         if (!html.contains("data:")) return html;
 
-        String afterSrc  = rewrite(html,     DATA_URI_SRC,  "src");
-        String afterHref = rewrite(afterSrc, DATA_URI_HREF, "href");
+        String afterSrc  = rewrite(html,     DATA_URI_SRC,  "src", entity);
+        String afterHref = rewrite(afterSrc, DATA_URI_HREF, "href", entity);
         return afterHref;
     }
 
-    private String rewrite(String html, Pattern pattern, String attr) {
+    private String rewrite(String html, Pattern pattern, String attr, String entity) {
         Matcher m = pattern.matcher(html);
         StringBuilder out = new StringBuilder(html.length());
         int last = 0;
@@ -101,8 +109,8 @@ public class TiptapHtmlProcessor {
             try {
                 byte[] bytes = Base64.getDecoder().decode(payload);
                 String filename  = "tiptap-" + System.nanoTime() + "." + extensionFor(mime);
-                ProjectMediaType type = mediaTypeFor(mime);
-                String url = s3Service.upload(bytes, filename, mime, type);
+                String url = s3Service.upload(bytes, filename, mime,
+                        s3Service.entityFolder(entity, mime));
                 replacement = attr + "=" + quote + url + quote;
                 uploaded++;
             } catch (IllegalArgumentException e) {
@@ -127,14 +135,6 @@ public class TiptapHtmlProcessor {
                     attr, uploaded, failed);
         }
         return out.toString();
-    }
-
-    private static ProjectMediaType mediaTypeFor(String mime) {
-        if (mime == null) return ProjectMediaType.DOCUMENT;
-        if (mime.startsWith("image/")) return ProjectMediaType.IMAGE;
-        if (mime.startsWith("video/")) return ProjectMediaType.VIDEO;
-        if (mime.startsWith("audio/")) return ProjectMediaType.AUDIO;
-        return ProjectMediaType.DOCUMENT;
     }
 
     private static String extensionFor(String mime) {

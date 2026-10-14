@@ -28,11 +28,14 @@ public class MediaService {
      * Upload a single file to S3 and return a public URL.
      *
      * @param file the file uploaded as multipart/form-data
-     * @param type optional folder hint — media types ("image", "audio",
-     *             "video", "document", "gallery") or entity names
-     *             ("branding", "about", "book", "news", "project",
-     *             "partner", "person", ...). When null or unknown, the
-     *             folder is inferred from the content type.
+     * @param type optional folder hint — an entity name ("about", "news",
+     *             "services", "projects", "videos", "sounds", "writings",
+     *             "galleries", "contact", "donations", "brandings", "nav",
+     *             "site", "featured", "users", …) stores the object under
+     *             "<entity>/<media-type>/"; a legacy media-type hint
+     *             ("image", "audio", "video", "document") keeps the flat
+     *             media-type folder. When null or unknown, the folder is
+     *             inferred from the content type.
      */
     public UploadResponse upload(MultipartFile file, String type) throws IOException {
         if (file == null || file.isEmpty()) {
@@ -43,7 +46,7 @@ public class MediaService {
                 file.getOriginalFilename(), type,
                 file.getContentType(), file.getSize());
 
-        String folder = resolveFolder(type);
+        String folder = resolveFolder(type, file.getContentType());
 
         String fileUrl = s3Service.upload(file::getInputStream, file.getSize(),
                 file.getOriginalFilename(), file.getContentType(), folder);
@@ -81,24 +84,42 @@ public class MediaService {
         }
     }
 
-    private String resolveFolder(String hint) {
+    private String resolveFolder(String hint, String contentType) {
         if (hint == null || hint.isBlank()) return null;
-        return switch (hint.toLowerCase().trim()) {
+        String key = hint.toLowerCase().trim();
+
+        String entity = switch (key) {
+            case "about", "partner", "partners", "person", "persons",
+                 "founder", "team"                                   -> "about";
+            case "news"                                              -> "news";
+            case "project", "projects"                               -> "projects";
+            case "writing", "writings", "book", "books"              -> "writings";
+            case "videos", "film", "films", "shortfilm",
+                 "shortfilms"                                        -> "videos";
+            case "sounds", "sound", "album", "albums"                -> "sounds";
+            case "collection", "collections", "galleries"            -> "galleries";
+            case "service", "services"                               -> "services";
+            case "contact"                                           -> "contact";
+            case "donation", "donations"                             -> "donations";
+            case "branding", "brandings"                             -> "brandings";
+            case "nav", "nav-menu", "menu"                           -> "nav";
+            case "site", "site-font", "site-fonts", "font", "fonts"  -> "site";
+            case "featured"                                          -> "featured";
+            case "user", "users", "profile"                          -> "users";
+            case "content", "texts"                                  -> "content";
+            default                                                  -> null;
+        };
+        if (entity != null) {
+            return s3Service.entityFolder(entity, contentType);
+        }
+
+        // Legacy media-type hints keep the flat folders they always used.
+        return switch (key) {
             case "image", "images", "gallery"        -> "images";
-            case "video", "videos"                   -> "videos";
-            case "audio", "sound", "sounds"          -> "sounds";
+            case "video"                             -> "videos";
+            case "audio"                             -> "sounds";
             case "document", "documents", "pdf",
                  "file", "files"                    -> "documents";
-            case "book", "books"                     -> "books";
-            case "branding", "brandings"             -> "brandings";
-            case "about"                             -> "about";
-            case "news"                              -> "news";
-            case "project", "projects"               -> "projects";
-            case "partner", "partners"               -> "partners";
-            case "person", "persons"                 -> "persons";
-            case "writing", "writings"               -> "writings";
-            case "service", "services"               -> "services";
-            case "album", "albums"                   -> "albums";
             default                                  -> null;
         };
     }

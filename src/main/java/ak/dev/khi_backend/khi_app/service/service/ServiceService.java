@@ -478,7 +478,7 @@ public class ServiceService {
         return ServiceContent.builder()
                 .languageCode(req.getLanguageCode().toUpperCase().trim())
                 .title(req.getTitle() == null ? "" : req.getTitle().trim())
-                .description(tiptapHtmlProcessor.process(req.getDescription()))
+                .description(tiptapHtmlProcessor.process(req.getDescription(), "services"))
                 .featureDescription(cleanFeatureDescription(req.getFeatureDescription()))
                 .build();
     }

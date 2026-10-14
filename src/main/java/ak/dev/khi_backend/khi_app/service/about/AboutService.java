@@ -182,7 +182,7 @@ public class AboutService {
                 .title(req.getTitle())
                 .subtitle(req.getSubtitle())
                 .metaDescription(req.getMetaDescription())
-                .body(tiptapHtmlProcessor.process(req.getBody()))
+                .body(tiptapHtmlProcessor.process(req.getBody(), "about"))
                 .build();
     }
 

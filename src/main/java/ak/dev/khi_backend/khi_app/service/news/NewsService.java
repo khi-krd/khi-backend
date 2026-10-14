@@ -489,7 +489,7 @@ public class NewsService {
         if (isBlank(dto.getTitle()) && isBlank(dto.getDescription())) return null;
         return NewsContent.builder()
                 .title(trimOrNull(dto.getTitle()))
-                .description(tiptapHtmlProcessor.process(dto.getDescription()))
+                .description(tiptapHtmlProcessor.process(dto.getDescription(), "news"))
                 .build();
     }
 

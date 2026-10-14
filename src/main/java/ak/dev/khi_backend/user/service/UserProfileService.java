@@ -27,7 +27,7 @@ import java.util.List;
  * Handles all self-service profile operations:
  *   GET me · update profile · change password · upload/remove image · delete account.
  *
- * Profile images are now stored in S3 under the folder "user_profile_images/".
+ * Profile images are now stored in S3 under the entity folder "users/images/".
  * The full public S3 URL is persisted in users_tbl.profile_image, so the
  * frontend can use it directly — no Spring static-resource handler needed.
  *
@@ -44,9 +44,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Log4j2
 public class UserProfileService {
-
-    // ── S3 folder for all user profile pictures ───────────────────────────────
-    private static final String S3_PROFILE_FOLDER = "user_profile_images";
 
     private static final long         MAX_FILE_SIZE   = 5 * 1024 * 1024L; // 5 MB
     private static final List<String> ALLOWED_TYPES   =
@@ -186,38 +183,12 @@ public class UserProfileService {
     // ── S3 helpers ────────────────────────────────────────────────────────────
 
     /**
-     * Uploads raw image bytes to S3 under "user_profile_images/" and returns
-     * the public URL.  We re-use S3Service.upload() which already handles key
-     * generation, content-type routing, and error wrapping.
-     *
-     * Because S3Service.detectFolder() maps "image/*" → "images/", we override
-     * by supplying a custom key prefix via the public upload(bytes, name, ct)
-     * overload after temporarily remapping through the folder name we want.
-     *
-     * Simplest approach: call the bytes-based upload and then rename the key
-     * — but S3Service doesn't expose that.  Instead we construct the key here
-     * and call s3Client directly via the two-arg upload that accepts a null
-     * ProjectMediaType, then rename the stored URL.
-     *
-     * Actually the cleanest path with the current S3Service API: we upload
-     * normally (goes to khi-web-folders/images/<uuid>-name) and that is fine
-     * for the bucket, BUT we want user_profile_images/ as the *logical* folder.
-     * The simplest approach is to just upload and rename nothing — the S3 key
-     * already prevents collisions via UUID. We therefore call the public
-     * upload() method but use a filename that embeds the sub-folder hint.
-     *
-     * ── Actual approach ───────────────────────────────────────────────────────
-     * We rely on the fact that S3Service.upload(bytes, filename, contentType)
-     * calls generateKey(folder, filename) → baseFolder/images/<uuid>-filename.
-     * That is perfectly acceptable for profile pictures.  The stored URL is
-     * a full public HTTPS URL, so the browser loads it directly.
+     * Uploads raw image bytes to S3 under the entity folder
+     * "users/images/" and returns the public URL.
      */
     private String uploadToProfileFolder(byte[] bytes, String originalFilename, String contentType) {
-        // Prefix the filename with the logical folder so the S3 key reads:
-        //   khi-web-folders/images/<uuid>-user_profile_images_<original>
-        // This keeps profile images visually grouped in the S3 console.
-        String prefixedName = S3_PROFILE_FOLDER + "_" + sanitize(originalFilename);
-        return s3Service.upload(bytes, prefixedName, contentType);
+        return s3Service.upload(bytes, originalFilename, contentType,
+                s3Service.entityFolder("users", contentType));
     }
 
     /**
@@ -233,11 +204,6 @@ public class UserProfileService {
             // Legacy local path — nothing to do; file may no longer exist
             log.debug("Skipping delete for non-S3 profile image path: {}", imageUrl);
         }
-    }
-
-    private String sanitize(String name) {
-        if (name == null) return "profile.jpg";
-        return name.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     // ── DTO mapper ────────────────────────────────────────────────────────────
