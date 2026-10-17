@@ -58,6 +58,11 @@ public class ServiceService {
     /** Video file extensions auto-detected as VIDEO slots. */
     private static final Set<String>    VIDEO_EXTENSIONS =
             Set.of(".mp4", ".webm", ".mov", ".m4v", ".ogv", ".ogg");
+    /** Pasted <iframe …src="…"> embed markup — only the src is stored. */
+    private static final java.util.regex.Pattern IFRAME_SRC_PATTERN =
+            java.util.regex.Pattern.compile(
+                    "<iframe[^>]+src=[\"']([^\"']+)[\"']",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /** Matches the ServiceContent.feature_description column length. */
@@ -346,6 +351,38 @@ public class ServiceService {
     }
 
     // =========================================================================
+    // GALLERY MEDIA — narrow patch (poster/thumbnail fixes without a full PUT)
+    // =========================================================================
+
+    /**
+     * Replace only the ordered {@code gallery_media} list. Lets the dashboard
+     * fix a video poster / alt / order on an existing service without
+     * resubmitting (and risking) the whole record.
+     */
+    @CacheEvict(value = "services", allEntries = true)
+    @Transactional
+    public ServiceResponse updateGalleryMedia(Long id, List<MediaItem> items) {
+        String traceId = traceId();
+        log.info("Patching gallery media | id={} | traceId={}", id, traceId);
+
+        ak.dev.khi_backend.khi_app.model.service.Service service =
+                serviceRepository.findByIdWithAll(id)
+                        .orElseThrow(() -> new NotFoundException(
+                                "service.not_found", Map.of("id", id)));
+
+        service.getGalleryMedia().clear();
+        service.getGalleryMedia().addAll(cleanGalleryMedia(items));
+
+        ak.dev.khi_backend.khi_app.model.service.Service saved =
+                serviceRepository.save(service);
+
+        auditLog(saved, "PATCH_GALLERY",
+                "Gallery media patched (" + saved.getGalleryMedia().size() + " items)", traceId);
+
+        return toResponse(saved);
+    }
+
+    // =========================================================================
     // DELETE
     // =========================================================================
 
@@ -543,6 +580,9 @@ public class ServiceService {
         for (MediaItem item : items) {
             if (item == null) continue;
             String url = trimOrNull(item.getUrl());
+            // The dashboard accepts pasted <iframe …> embed markup — keep only
+            // the src so the stored URL is always a plain address.
+            url = extractIframeSrc(url);
             if (url == null) continue;                 // skip empty-URL slots
             if (!seenUrls.add(url)) continue;          // skip duplicate URLs
 
@@ -570,7 +610,23 @@ public class ServiceService {
         for (String ext : VIDEO_EXTENSIONS) {
             if (u.endsWith(ext)) return true;
         }
-        return false;
+        // Provider embeds carry no file extension but are still video slots.
+        return u.contains("youtube.com/embed")
+                || u.contains("youtube-nocookie.com/embed")
+                || u.contains("youtu.be/")
+                || u.contains("youtube.com/watch")
+                || u.contains("player.vimeo.com")
+                || u.contains("vimeo.com/")
+                || u.contains("dailymotion.com/embed");
+    }
+
+    /** Pull the src out of pasted <iframe …src="…"> markup; pass plain URLs through. */
+    private String extractIframeSrc(String url) {
+        if (url == null) return null;
+        if (!url.contains("<")) return url;
+        java.util.regex.Matcher m = IFRAME_SRC_PATTERN.matcher(url);
+        String src = m.find() ? trimOrNull(m.group(1)) : null;
+        return src == null ? url : src;
     }
 
     /** Uppercase + validate layoutType against the allowed enum, or null. */

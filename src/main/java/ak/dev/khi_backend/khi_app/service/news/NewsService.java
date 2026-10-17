@@ -612,11 +612,18 @@ public class NewsService {
         ArrayList<MediaItem> result = new ArrayList<>();
         int idx = 0;
         for (MediaItem item : gallery) {
-            if (item == null || isBlank(item.getUrl())) continue;
+            if (item == null) continue;
+            // An item is kept when it carries at least one source: a hosted file
+            // URL, an embed URL, or an external page link.
+            if (isBlank(item.getUrl())
+                    && isBlank(item.getEmbedUrl())
+                    && isBlank(item.getExternalUrl())) continue;
             result.add(MediaItem.builder()
-                    .url(item.getUrl().trim())
+                    .url(trimOrNull(item.getUrl()))
                     .kind(item.getKind() != null ? item.getKind() : MediaKind.IMAGE)
                     .thumbnailUrl(trimOrNull(item.getThumbnailUrl()))
+                    .embedUrl(trimOrNull(item.getEmbedUrl()))
+                    .externalUrl(trimOrNull(item.getExternalUrl()))
                     .captionCkb(trimOrNull(item.getCaptionCkb()))
                     .captionKmr(trimOrNull(item.getCaptionKmr()))
                     .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : idx)

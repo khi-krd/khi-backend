@@ -577,11 +577,18 @@ public class ProjectService {
         ArrayList<MediaItem> result = new ArrayList<>();
         int idx = 0;
         for (MediaItem item : gallery) {
-            if (item == null || isBlank(item.getUrl())) continue;
+            if (item == null) continue;
+            // Keep an item when at least one source is present: hosted file URL,
+            // embed URL, or external page link.
+            if (isBlank(item.getUrl())
+                    && isBlank(item.getEmbedUrl())
+                    && isBlank(item.getExternalUrl())) continue;
             result.add(MediaItem.builder()
-                    .url(item.getUrl().trim())
+                    .url(blankToNull(item.getUrl()))
                     .kind(item.getKind() != null ? item.getKind() : MediaKind.IMAGE)
                     .thumbnailUrl(blankToNull(item.getThumbnailUrl()))
+                    .embedUrl(blankToNull(item.getEmbedUrl()))
+                    .externalUrl(blankToNull(item.getExternalUrl()))
                     .captionCkb(blankToNull(item.getCaptionCkb()))
                     .captionKmr(blankToNull(item.getCaptionKmr()))
                     .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : idx)

@@ -197,6 +197,23 @@ public class ServiceController {
                         value ? "Service activated" : "Service deactivated"));
     }
 
+    /**
+     * Replace only the ordered gallery media list — lets the dashboard fix a
+     * video poster/thumbnail on an existing service without a full PUT.
+     * Body: the complete media array [{type,url,posterUrl,alt}, …].
+     */
+    @Operation(summary = "Patch the gallery media list only (ADMIN, SUPER_ADMIN)")
+    @PatchMapping(value = "/{id}/gallery-media", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<ServiceResponse>> updateGalleryMedia(
+            @PathVariable Long id,
+            @RequestBody(required = false) List<MediaItem> items) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(serviceService.updateGalleryMedia(id, items),
+                        "Gallery media updated"));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         serviceService.delete(id);

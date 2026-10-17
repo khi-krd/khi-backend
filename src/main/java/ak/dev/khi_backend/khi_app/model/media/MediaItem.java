@@ -21,9 +21,13 @@ import java.io.Serializable;
  * inline in their Tiptap description HTML instead.
  *
  * Field meanings:
- *   url           — S3 / CDN URL of the asset (required).
+ *   url           — S3 / CDN URL of the asset (required unless embedUrl/externalUrl set).
  *   kind          — IMAGE | VIDEO | AUDIO; drives the player on the frontend.
  *   thumbnailUrl  — optional poster (VIDEO) or cover art (AUDIO); ignored for IMAGE.
+ *   embedUrl      — iframe/embed URL (SoundCloud player, YouTube embed, …);
+ *                   rendered as an <iframe> instead of a native player.
+ *   externalUrl   — external page link (SoundCloud track page, YouTube watch, …);
+ *                   rendered as a link-out when nothing playable is available.
  *   captionCkb    — Sorani caption shown under the asset.
  *   captionKmr    — Kurmanji caption shown under the asset.
  *   sortOrder     — display order inside the gallery (ascending).
@@ -39,6 +43,10 @@ public class MediaItem implements Serializable {
     private MediaKind kind;
 
     private String thumbnailUrl;
+
+    private String embedUrl;
+
+    private String externalUrl;
 
     private String captionCkb;
 
