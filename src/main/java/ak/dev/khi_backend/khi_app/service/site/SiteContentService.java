@@ -801,6 +801,9 @@ public class SiteContentService {
         member.setBioCkb(trimToNull(request.getBioCkb()));
         member.setBioKmr(trimToNull(request.getBioKmr()));
         member.setOffice(trimToNull(request.getOffice()));
+        member.setMemberType(
+                "MANAGER".equalsIgnoreCase(trimToNull(request.getMemberType()))
+                        ? "MANAGER" : "MEMBER");
         member.setImageUrl(trimToNull(request.getImageUrl()));
         member.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
         member.setActive(request.getActive() == null || request.getActive());
@@ -1174,7 +1177,9 @@ public class SiteContentService {
                 .id(member.getId()).nameCkb(member.getNameCkb()).nameKmr(member.getNameKmr())
                 .roleCkb(member.getRoleCkb()).roleKmr(member.getRoleKmr())
                 .bioCkb(member.getBioCkb()).bioKmr(member.getBioKmr())
-                .office(member.getOffice()).imageUrl(member.getImageUrl())
+                .office(member.getOffice())
+                .memberType(member.getMemberType() == null ? "MEMBER" : member.getMemberType())
+                .imageUrl(member.getImageUrl())
                 .displayOrder(member.getDisplayOrder()).active(member.isActive()).build();
     }
 

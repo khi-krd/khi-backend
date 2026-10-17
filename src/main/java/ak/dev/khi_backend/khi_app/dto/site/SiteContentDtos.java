@@ -170,6 +170,7 @@ public final class SiteContentDtos {
         private String bioCkb;
         private String bioKmr;
         private String office;
+        private String memberType;
         private String imageUrl;
         private Integer displayOrder;
         private Boolean active;
@@ -185,6 +186,7 @@ public final class SiteContentDtos {
         private String bioCkb;
         private String bioKmr;
         private String office;
+        private String memberType;
         private String imageUrl;
         private Integer displayOrder;
         private Boolean active;
