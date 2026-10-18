@@ -52,6 +52,7 @@ public class ProjectService {
     private final PlatformTransactionManager transactionManager;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
     private final S3Service                  s3Service;
+    private final ProjectTypeRepository      projectTypeRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -310,6 +311,7 @@ public class ProjectService {
         project.setProjectTypeCkb(dto.getProjectTypeCkb());
         project.setProjectTypeKmr(dto.getProjectTypeKmr());
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
+        ensureTypeExists(dto.getProjectTypeCkb(), dto.getProjectTypeKmr());
 
         project.getContentLanguages().clear();
         if (dto.getContentLanguages() != null) {
@@ -382,6 +384,7 @@ public class ProjectService {
         project.setProjectTypeKmr(dto.getProjectTypeKmr());
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
         project.setProjectDate(dto.getProjectDate());
+        ensureTypeExists(dto.getProjectTypeCkb(), dto.getProjectTypeKmr());
         project.getContentLanguages().clear();
         if (dto.getContentLanguages() != null) {
             project.getContentLanguages().addAll(dto.getContentLanguages());
@@ -566,6 +569,25 @@ public class ProjectService {
     private boolean isBlank(String s)  { return s == null || s.trim().isEmpty(); }
     private String safe(Object o)      { return o == null ? "" : String.valueOf(o); }
     private String normKey(String raw) { return safe(raw).trim().toLowerCase(); }
+    /**
+     * Keep the managed project-type vocabulary in step with what editors
+     * actually type — a name used on a project becomes a picker suggestion.
+     * Never allowed to fail a project save.
+     */
+    private void ensureTypeExists(String ckb, String kmr) {
+        try {
+            String name = ckb == null ? "" : ckb.trim();
+            if (name.isEmpty()) return;
+            if (projectTypeRepository.findByNameCkb(name).isPresent()) return;
+            projectTypeRepository.save(ProjectType.builder()
+                    .nameCkb(name)
+                    .nameKmr(kmr != null && !kmr.isBlank() ? kmr.trim() : name)
+                    .build());
+        } catch (RuntimeException ignored) {
+            // vocabulary bookkeeping must never break the write it shadows
+        }
+    }
+
     private String blankToNull(String s) {
         if (s == null) return null;
         String t = s.trim();

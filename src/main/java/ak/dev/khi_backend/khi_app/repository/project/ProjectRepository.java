@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -82,4 +83,14 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     Page<Project> findByFeaturedTrue(Pageable pageable);
 
     long countByFeaturedTrue();
+
+    // ── Project-type vocabulary: usage counts + rename propagation ───────
+    long countByProjectTypeCkb(String projectTypeCkb);
+
+    @Modifying
+    @Query("update Project p set p.projectTypeCkb = :ckb, p.projectTypeKmr = :kmr "
+            + "where p.projectTypeCkb = :oldCkb")
+    int renameType(@Param("oldCkb") String oldCkb,
+                   @Param("ckb") String ckb,
+                   @Param("kmr") String kmr);
 }

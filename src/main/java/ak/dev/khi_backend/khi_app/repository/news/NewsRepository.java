@@ -1,10 +1,13 @@
 package ak.dev.khi_backend.khi_app.repository.news;
 
 import ak.dev.khi_backend.khi_app.model.news.News;
+import ak.dev.khi_backend.khi_app.model.news.NewsCategory;
+import ak.dev.khi_backend.khi_app.model.news.NewsSubCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -199,6 +202,17 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     long countByFeaturedTrue();
 
+    // ── Taxonomy management: usage counts + safe reassign on delete ──────
+    long countByCategory_Id(Long categoryId);
 
+    long countBySubCategory_Id(Long subCategoryId);
+
+    @Modifying
+    @Query("update News n set n.category = :to where n.category.id = :fromId")
+    int reassignCategory(@Param("fromId") Long fromId, @Param("to") NewsCategory to);
+
+    @Modifying
+    @Query("update News n set n.subCategory = :to where n.subCategory.id = :fromId")
+    int reassignSubCategory(@Param("fromId") Long fromId, @Param("to") NewsSubCategory to);
 
 }
