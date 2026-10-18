@@ -8,6 +8,7 @@ import ak.dev.khi_backend.khi_app.model.project.ProjectType;
 import ak.dev.khi_backend.khi_app.repository.project.ProjectRepository;
 import ak.dev.khi_backend.khi_app.repository.project.ProjectTypeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class ProjectTypeService {
                 .toList();
     }
 
+    @CacheEvict(value = "projects", allEntries = true)
     @Transactional
     public ProjectTypeResponse create(ProjectTypeRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
@@ -47,6 +49,7 @@ public class ProjectTypeService {
                 .build()));
     }
 
+    @CacheEvict(value = "projects", allEntries = true)
     @Transactional
     public ProjectTypeResponse update(Long id, ProjectTypeRequest request) {
         ProjectType type = projectTypeRepository.findById(id)
@@ -67,6 +70,7 @@ public class ProjectTypeService {
         return toResponse(projectTypeRepository.save(type));
     }
 
+    @CacheEvict(value = "projects", allEntries = true)
     @Transactional
     public void delete(Long id) {
         ProjectType type = projectTypeRepository.findById(id)

@@ -12,6 +12,7 @@ import ak.dev.khi_backend.khi_app.repository.news.NewsCategoryRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsRepository;
 import ak.dev.khi_backend.khi_app.repository.news.NewsSubCategoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,7 @@ public class NewsTaxonomyService {
     // ───────────────────────────────────────────── categories ──
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public CategoryResponse createCategory(CategoryRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
         String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
@@ -66,6 +68,7 @@ public class NewsTaxonomyService {
     }
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         NewsCategory category = findCategory(id);
         String ckb = requireName(request == null ? null : request.getNameCkb());
@@ -81,6 +84,7 @@ public class NewsTaxonomyService {
     }
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public void deleteCategory(Long id) {
         NewsCategory category = findCategory(id);
         if (newsRepository.countByCategory_Id(id) > 0) {
@@ -98,6 +102,7 @@ public class NewsTaxonomyService {
     // ───────────────────────────────────────────── sub-categories ──
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public SubCategoryResponse createSubCategory(SubCategoryRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
         String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
@@ -113,6 +118,7 @@ public class NewsTaxonomyService {
     }
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public SubCategoryResponse updateSubCategory(Long id, SubCategoryRequest request) {
         NewsSubCategory sub = findSubCategory(id);
         String ckb = requireName(request == null ? null : request.getNameCkb());
@@ -132,6 +138,7 @@ public class NewsTaxonomyService {
     }
 
     @Transactional
+    @CacheEvict(value = "news", allEntries = true)
     public void deleteSubCategory(Long id) {
         NewsSubCategory sub = findSubCategory(id);
         if (newsRepository.countBySubCategory_Id(id) > 0) {
