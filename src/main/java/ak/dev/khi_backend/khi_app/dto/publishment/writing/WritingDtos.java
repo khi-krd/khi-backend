@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.dto.publishment.writing;
 
 import ak.dev.khi_backend.khi_app.enums.Language;
+import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.enums.publishment.WritingFileFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -61,7 +62,7 @@ public final class WritingDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class TopicPayload {
+    public static class TopicPayload implements Serializable  {
         private String nameCkb;
 
         private String nameKmr;
@@ -70,7 +71,7 @@ public final class WritingDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class TopicInfo {
+    public static class TopicInfo implements Serializable  {
         private Long   id;
         private String nameCkb;
         private String nameKmr;

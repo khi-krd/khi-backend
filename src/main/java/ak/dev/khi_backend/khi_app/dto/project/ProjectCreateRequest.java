@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.dto.project;
 
 import ak.dev.khi_backend.khi_app.enums.Language;
+import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.enums.MediaKind;
 import ak.dev.khi_backend.khi_app.enums.project.ProjectStatus;
 import ak.dev.khi_backend.khi_app.model.media.MediaItem;
@@ -72,7 +73,7 @@ public class ProjectCreateRequest {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ProjectTypeEntry {
+    public static class ProjectTypeEntry implements Serializable  {
         private String nameCkb;
         private String nameKmr;
     }

@@ -56,7 +56,7 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class InlineTopicRequest {
+    public static class InlineTopicRequest implements Serializable  {
         private String nameCkb;
         private String nameKmr;
     }
@@ -65,7 +65,7 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class TopicView {
+    public static class TopicView implements Serializable  {
         private Long id;
         private String nameCkb;
         private String nameKmr;

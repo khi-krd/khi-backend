@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.dto.publishment.video;
 
 import ak.dev.khi_backend.khi_app.enums.Language;
+import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.Column;
@@ -127,7 +128,7 @@ public class VideoDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class InlineTopicRequest {
+    public static class InlineTopicRequest implements Serializable  {
         private String nameCkb;
         private String nameKmr;
     }
@@ -139,7 +140,7 @@ public class VideoDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class TopicView {
+    public static class TopicView implements Serializable  {
         private Long id;
         private String nameCkb;
         private String nameKmr;

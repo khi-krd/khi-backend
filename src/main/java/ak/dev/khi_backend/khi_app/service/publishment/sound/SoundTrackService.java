@@ -1445,7 +1445,11 @@ public class SoundTrackService {
     /** All fields optional — missing values fall back to safe defaults. */
     private void validateCreate(CreateRequest dto) {
         if (dto == null) return;
-        if (isBlank(dto.getSoundType()))   dto.setSoundType("OTHER");
+        // Only default the legacy singular when the whole type set is empty —
+        // otherwise "OTHER" would leak into a populated multi-select.
+        if (isBlank(dto.getSoundType())
+                && (dto.getSoundTypes() == null || dto.getSoundTypes().isEmpty()))
+            dto.setSoundType("OTHER");
         if (dto.getTrackState() == null)   dto.setTrackState(TrackState.SINGLE);
     }
 

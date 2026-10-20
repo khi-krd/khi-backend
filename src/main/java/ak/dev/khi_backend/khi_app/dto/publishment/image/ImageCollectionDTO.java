@@ -52,7 +52,7 @@ public final class ImageCollectionDTO {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class InlineTopicRequest {
+    public static class InlineTopicRequest implements Serializable  {
         private String nameCkb;
         private String nameKmr;
     }
