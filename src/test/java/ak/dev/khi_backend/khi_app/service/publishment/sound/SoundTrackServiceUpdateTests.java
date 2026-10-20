@@ -60,7 +60,7 @@ class SoundTrackServiceUpdateTests {
                 .build();
 
         Response response = soundTrackService.update(
-                8L, request, null, null, null, null, null, null);
+                8L, request, null, null, null, null, null, null, null);
 
         assertThat(response.getFiles()).singleElement().satisfies(file -> {
             assertThat(file.getId()).isEqualTo(3L);
@@ -90,7 +90,7 @@ class SoundTrackServiceUpdateTests {
 
         assertThatThrownBy(() -> soundTrackService.update(
                 8L, request, null, null, null,
-                List.of(upload), null, null))
+                List.of(upload), null, null, null))
                 .isInstanceOf(SoundTrackValidationException.class)
                 .hasMessageContaining("soundTrack.file.source.required");
 
@@ -119,7 +119,7 @@ class SoundTrackServiceUpdateTests {
 
         Response response = soundTrackService.update(
                 8L, request, null, null, null,
-                List.of(upload), null, null);
+                List.of(upload), null, null, null);
 
         assertThat(response.getFiles()).singleElement().satisfies(file -> {
             assertThat(file.getFileUrl())
