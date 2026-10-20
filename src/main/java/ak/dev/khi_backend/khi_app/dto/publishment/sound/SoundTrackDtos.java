@@ -117,7 +117,6 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    @JsonIgnoreProperties(value = "brochureOrder")
     public static class AlbumBrochureRequest {
 
         /** Existing brochure ID used to preserve its source during update. */
