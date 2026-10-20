@@ -40,7 +40,6 @@ import java.util.List;
 @Table(
         name = "writings",
         indexes = {
-                @Index(name = "idx_writing_topic_id",   columnList = "topic_id"),
                 @Index(name = "idx_writing_institute",  columnList = "published_by_institute"),
                 @Index(name = "idx_writing_created_at", columnList = "created_at"),
                 @Index(name = "idx_writing_updated_at", columnList = "updated_at"),
@@ -96,11 +95,17 @@ public class Writing {
     @OrderBy("displayOrder ASC, id ASC")
     private Set<BookGenre> genres = new LinkedHashSet<>();
 
-    // ─── Topic ────────────────────────────────────────────────────────────────
+    // ─── Topics ───────────────────────────────────────────────────────────────
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
-    private PublishmentTopic topic;
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "writing_topics",
+            joinColumns = @JoinColumn(name = "writing_id"),
+            inverseJoinColumns = @JoinColumn(name = "topic_id")
+    )
+    @BatchSize(size = 50)
+    private Set<PublishmentTopic> topics = new LinkedHashSet<>();
 
     // ─── Series / Edition Support ─────────────────────────────────────────────
 

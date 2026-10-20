@@ -38,6 +38,9 @@ public class ProjectResponse implements Serializable {
     private String projectTypeCkb;
     private String projectTypeKmr;
 
+    /** Every selected project type — always non-null. */
+    private List<ProjectTypeEntry> projectTypes;
+
     private ProjectStatus status;
 
     private LocalDate projectDate;
@@ -67,5 +70,16 @@ public class ProjectResponse implements Serializable {
         /** Tiptap HTML output. */
         private String description;
         private String location;
+    }
+
+    /** One selected project type on a response. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectTypeEntry implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String nameCkb;
+        private String nameKmr;
     }
 }

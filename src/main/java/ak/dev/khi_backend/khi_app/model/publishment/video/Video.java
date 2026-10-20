@@ -51,7 +51,6 @@ import java.util.Set;
                 @Index(name = "idx_video_type",        columnList = "video_type"),
                 @Index(name = "idx_video_album",       columnList = "is_album_of_memories"),
                 @Index(name = "idx_video_pub_date",    columnList = "publishment_date"),
-                @Index(name = "idx_video_topic",       columnList = "topic_id"),
                 @Index(name = "idx_video_title_ckb",   columnList = "title_ckb"),
                 @Index(name = "idx_video_title_kmr",   columnList = "title_kmr")
         }
@@ -106,9 +105,15 @@ public class Video {
      * Points to PublishmentTopic where entityType = "VIDEO".
      * Nullable — a video may have no topic assigned yet.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
-    private PublishmentTopic topic;
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "video_topics",
+            joinColumns = @JoinColumn(name = "video_id"),
+            inverseJoinColumns = @JoinColumn(name = "topic_id")
+    )
+    @BatchSize(size = 50)
+    private Set<PublishmentTopic> topics = new LinkedHashSet<>();
 
     // ─── CKB (Sorani) Content ─────────────────────────────────────────────────
 

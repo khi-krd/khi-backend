@@ -66,6 +66,7 @@ public class SoundTrackTypeService {
         type.setNameKmr(kmr);
         if (!oldCkb.equalsIgnoreCase(ckb)) {
             soundTrackRepository.renameSoundType(oldCkb, ckb);
+            soundTrackRepository.renameSoundTypeInCollection(oldCkb, ckb);
         }
         return toResponse(soundTrackTypeRepository.save(type));
     }
@@ -99,7 +100,7 @@ public class SoundTrackTypeService {
                 .id(type.getId())
                 .nameCkb(type.getNameCkb())
                 .nameKmr(type.getNameKmr())
-                .trackCount(soundTrackRepository.countBySoundType(type.getNameCkb()))
+                .trackCount(soundTrackRepository.countTracksUsingType(type.getNameCkb()))
                 .build();
     }
 

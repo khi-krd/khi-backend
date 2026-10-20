@@ -62,6 +62,10 @@
             if (!topicRepository.existsById(id)) {
                 throw new RuntimeException("Topic not found: " + id);
             }
+            topicRepository.unlinkFromSoundTracks(id);
+            topicRepository.unlinkFromVideos(id);
+            topicRepository.unlinkFromWritings(id);
+            topicRepository.unlinkFromCollections(id);
             topicRepository.deleteById(id);
         }
 

@@ -174,10 +174,12 @@ public final class WritingDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        // ─── Topic ────────────────────────────────────────────────────────────
+        // ─── Topics ───────────────────────────────────────────────────────────
 
         private Long topicId;
         private TopicPayload newTopic;
+        private Set<Long> topicIds;
+        private List<TopicPayload> newTopics;
 
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 
@@ -235,11 +237,13 @@ public final class WritingDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        // ─── Topic ────────────────────────────────────────────────────────────
+        // ─── Topics ───────────────────────────────────────────────────────────
 
         private Long topicId;
         private TopicPayload newTopic;
         private Boolean clearTopic;
+        private Set<Long> topicIds;
+        private List<TopicPayload> newTopics;
 
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 
@@ -299,9 +303,13 @@ public final class WritingDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        // ─── Topic ────────────────────────────────────────────────────────────
+        // ─── Topics ───────────────────────────────────────────────────────────
 
+        /** Primary (first) linked topic — kept for backward compatibility. */
         private TopicInfo topic;
+
+        /** Every linked topic, in selection order. */
+        private List<TopicInfo> topics;
 
         // ─── Book Genres (multiple) ───────────────────────────────────────────
 

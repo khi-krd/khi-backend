@@ -60,7 +60,7 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
      *
      * Use this instead of plain findById() everywhere a Response DTO is returned.
      */
-    @EntityGraph(attributePaths = {"seriesBooks", "parentBook", "topic"})
+    @EntityGraph(attributePaths = {"seriesBooks", "parentBook", "topics"})
     @Query("SELECT w FROM Writing w WHERE w.id = :id")
     Optional<Writing> findByIdWithDetails(@Param("id") Long id);
 
@@ -73,7 +73,7 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
      * display. Separated countQuery hits only the writings table (no JOIN).
      */
     @Query(
-            value      = "SELECT w FROM Writing w LEFT JOIN FETCH w.topic",
+            value      = "SELECT w FROM Writing w",
             countQuery = "SELECT COUNT(w) FROM Writing w"
     )
     Page<Writing> findAllWithTopic(Pageable pageable);
@@ -325,11 +325,11 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
 
     // NEW — used by SiteContentService.getFeatured(). Same join as above, scoped to featured
     // records and ordered by featuredOrder instead of recency.
-    @Query("select w from Writing w left join fetch w.topic where w.featured = true order by w.featuredOrder asc, w.id desc")
+    @Query("select distinct w from Writing w left join fetch w.topics where w.featured = true order by w.featuredOrder asc, w.id desc")
     List<Writing> findFeaturedWithTopic();
 
     @Query(
-            value = "select w from Writing w left join fetch w.topic where w.featured = true",
+            value = "select w from Writing w where w.featured = true",
             countQuery = "select count(w) from Writing w where w.featured = true"
     )
     Page<Writing> findFeaturedWithTopic(Pageable pageable);

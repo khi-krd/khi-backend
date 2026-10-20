@@ -69,16 +69,24 @@ public class SoundTrackService {
             String kmrCoverUrl   = resolveCoverUrl(dto.getKmrCoverUrl(), kmrCoverImage);
             String hoverCoverUrl = resolveCoverUrl(dto.getHoverCoverUrl(), hoverCoverImage);
 
-            PublishmentTopic topic = resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic());
+            Set<String> soundTypes = mergedTypeSet(dto.getSoundTypes(), dto.getSoundType());
+            if (soundTypes.isEmpty())
+                throw Errors.soundValidation("soundTrack.soundType.required",
+                        Map.of("field", "soundType"));
+            String primaryType = soundTypes.iterator().next();
+
+            Set<PublishmentTopic> topics = resolveOrCreateTopics(
+                    dto.getTopicIds(), dto.getNewTopics(), dto.getTopicId(), dto.getNewTopic());
 
             SoundTrack entity = SoundTrack.builder()
                     .ckbCoverUrl(ckbCoverUrl)
                     .kmrCoverUrl(kmrCoverUrl)
                     .hoverCoverUrl(hoverCoverUrl)
-                    .soundType(dto.getSoundType().trim())
+                    .soundType(primaryType)
+                    .soundTypes(new LinkedHashSet<>(soundTypes))
                     .trackState(dto.getTrackState())
                     .albumOfMemories(dto.getAlbumOfMemories() != null && dto.getAlbumOfMemories())
-                    .topic(topic)
+                    .topics(topics)
                     .contentLanguages(new LinkedHashSet<>(safeLangs(dto.getContentLanguages())))
                     .reader(trimOrNull(dto.getReader()))
                     .directors(new LinkedHashSet<>(cleanStrings(dto.getDirectors())))
@@ -107,12 +115,12 @@ public class SoundTrackService {
             buildAndAttachAlbumBrochures(entity, dto.getBrochures(), albumBrochureFiles);
 
             SoundTrack saved = soundTrackRepository.save(entity);
-            soundTrackTypeService.ensureExists(saved.getSoundType());
+            saved.getSoundTypes().forEach(soundTrackTypeService::ensureExists);
 
             createLog(saved.getId(), titleOf(saved), "CREATED",
                     "سەدا دروستکرا — جۆر=" + saved.getSoundType()
                             + " دۆخ=" + saved.getTrackState()
-                            + (topic != null ? " بابەتid=" + topic.getId() : ""));
+                            + (topics.isEmpty() ? "" : " بابەت=" + topics.size()));
 
             return toResponse(saved);
 
@@ -158,10 +166,12 @@ public class SoundTrackService {
         if (updatesBrochures) {
             validateAlbumBrochureUpdate(entity, dto.getBrochures());
         }
-        boolean updatesTopic = !dto.isClearTopic()
-                && (dto.getTopicId() != null || dto.getNewTopic() != null);
-        PublishmentTopic resolvedTopic = updatesTopic
-                ? resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic())
+        boolean updatesTopics = !dto.isClearTopic()
+                && (dto.getTopicIds() != null || dto.getNewTopics() != null
+                    || dto.getTopicId() != null || dto.getNewTopic() != null);
+        Set<PublishmentTopic> resolvedTopics = updatesTopics
+                ? resolveOrCreateTopics(dto.getTopicIds(), dto.getNewTopics(),
+                        dto.getTopicId(), dto.getNewTopic())
                 : null;
 
         try {
@@ -177,15 +187,24 @@ public class SoundTrackService {
             }
 
             // ── Core ──────────────────────────────────────────────────────
-            if (!isBlank(dto.getSoundType()))     entity.setSoundType(dto.getSoundType().trim());
+            if (dto.getSoundTypes() != null || !isBlank(dto.getSoundType())) {
+                Set<String> types = mergedTypeSet(dto.getSoundTypes(), dto.getSoundType());
+                if (types.isEmpty())
+                    throw Errors.soundValidation("soundTrack.soundType.required",
+                            Map.of("field", "soundType"));
+                entity.getSoundTypes().clear();
+                entity.getSoundTypes().addAll(types);
+                entity.setSoundType(types.iterator().next());
+            }
             if (dto.getTrackState()      != null)  entity.setTrackState(dto.getTrackState());
             if (dto.getAlbumOfMemories() != null)  entity.setAlbumOfMemories(dto.getAlbumOfMemories());
 
-            // ── Topic ─────────────────────────────────────────────────────
+            // ── Topics ────────────────────────────────────────────────────
             if (dto.isClearTopic()) {
-                entity.setTopic(null);
-            } else if (updatesTopic) {
-                entity.setTopic(resolvedTopic);
+                entity.getTopics().clear();
+            } else if (updatesTopics) {
+                entity.getTopics().clear();
+                entity.getTopics().addAll(resolvedTopics);
             }
 
             // ── Languages ─────────────────────────────────────────────────
@@ -295,7 +314,7 @@ public class SoundTrackService {
             }
 
             SoundTrack saved = soundTrackRepository.save(entity);
-            soundTrackTypeService.ensureExists(saved.getSoundType());
+            saved.getSoundTypes().forEach(soundTrackTypeService::ensureExists);
 
             createLog(saved.getId(), titleOf(saved), "UPDATED",
                     "سەدا نوێکرایەوە — جۆر=" + saved.getSoundType()
@@ -1290,19 +1309,65 @@ public class SoundTrackService {
 
     private PublishmentTopic resolveOrCreateTopic(Long topicId, InlineTopicRequest newTopic) {
         if (topicId != null) return findSoundTopicOrThrow(topicId);
-        if (newTopic != null) {
-            if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr()))
-                return null; // unnamed topic — link nothing instead of rejecting
-            PublishmentTopic created = topicRepository.save(
-                    PublishmentTopic.builder()
-                            .entityType(TOPIC_ENTITY_TYPE)
-                            .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                            .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                            .build());
-            log.info("بابەتی SOUND دروستکرا inline id={}", created.getId());
-            return created;
-        }
+        if (newTopic != null) return createInlineTopic(newTopic);
         return null;
+    }
+
+    /**
+     * Resolves every supplied topic reference — plural fields first, then the
+     * legacy singular fields merged in — into an ordered de-duplicated set.
+     * Unknown ids throw; ids pointing at a wrong-typed topic are ignored.
+     */
+    private Set<PublishmentTopic> resolveOrCreateTopics(
+            Set<Long> topicIds,
+            List<InlineTopicRequest> newTopics,
+            Long legacyTopicId,
+            InlineTopicRequest legacyNewTopic
+    ) {
+        Set<PublishmentTopic> out = new LinkedHashSet<>();
+        if (topicIds != null) {
+            topicIds.stream().filter(Objects::nonNull).distinct()
+                    .forEach(id -> {
+                        PublishmentTopic t = findSoundTopicOrThrow(id);
+                        if (t != null) out.add(t);
+                    });
+        }
+        if (legacyTopicId != null) {
+            PublishmentTopic t = findSoundTopicOrThrow(legacyTopicId);
+            if (t != null) out.add(t);
+        }
+        if (newTopics != null) {
+            newTopics.stream().filter(Objects::nonNull)
+                    .forEach(n -> {
+                        PublishmentTopic t = createInlineTopic(n);
+                        if (t != null) out.add(t);
+                    });
+        }
+        if (legacyNewTopic != null) {
+            PublishmentTopic t = createInlineTopic(legacyNewTopic);
+            if (t != null) out.add(t);
+        }
+        return out;
+    }
+
+    private PublishmentTopic createInlineTopic(InlineTopicRequest newTopic) {
+        if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr()))
+            return null; // unnamed topic — link nothing instead of rejecting
+        PublishmentTopic created = topicRepository.save(
+                PublishmentTopic.builder()
+                        .entityType(TOPIC_ENTITY_TYPE)
+                        .nameCkb(trimOrNull(newTopic.getNameCkb()))
+                        .nameKmr(trimOrNull(newTopic.getNameKmr()))
+                        .build());
+        log.info("بابەتی SOUND دروستکرا inline id={}", created.getId());
+        return created;
+    }
+
+    /** Merges the plural soundTypes set with the legacy singular soundType. */
+    private Set<String> mergedTypeSet(Set<String> soundTypes, String soundType) {
+        Set<String> out = new LinkedHashSet<>(cleanStrings(soundTypes));
+        if (!isBlank(soundType)) out.add(soundType.trim());
+        return out;
     }
 
     private PublishmentTopic findSoundTopicOrThrow(Long topicId) {
@@ -1404,16 +1469,31 @@ public class SoundTrackService {
                 : new ArrayList<>(s.getBrochures()).stream()
                 .map(this::toAlbumBrochureResponse).collect(Collectors.toList());
 
+        List<TopicView> topicViews = s.getTopics() == null ? List.of()
+                : s.getTopics().stream()
+                .map(t -> TopicView.builder()
+                        .id(t.getId())
+                        .nameCkb(t.getNameCkb())
+                        .nameKmr(t.getNameKmr())
+                        .createdAt(t.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        PublishmentTopic firstTopic = topicViews.isEmpty() ? null
+                : s.getTopics().iterator().next();
+
         return Response.builder()
                 .id(s.getId())
                 .ckbCoverUrl(s.getCkbCoverUrl()).kmrCoverUrl(s.getKmrCoverUrl())
                 .hoverCoverUrl(s.getHoverCoverUrl())
                 .featureImageUrl(s.getFeatureImageUrl())
                 .soundType(s.getSoundType()).trackState(s.getTrackState())
+                .soundTypes(s.getSoundTypes() == null
+                        ? new LinkedHashSet<>() : new LinkedHashSet<>(s.getSoundTypes()))
                 .albumOfMemories(s.isAlbumOfMemories())
-                .topicId(s.getTopic()      != null ? s.getTopic().getId()      : null)
-                .topicNameCkb(s.getTopic() != null ? s.getTopic().getNameCkb() : null)
-                .topicNameKmr(s.getTopic() != null ? s.getTopic().getNameKmr() : null)
+                .topicId(firstTopic != null ? firstTopic.getId() : null)
+                .topicNameCkb(firstTopic != null ? firstTopic.getNameCkb() : null)
+                .topicNameKmr(firstTopic != null ? firstTopic.getNameKmr() : null)
+                .topics(topicViews)
                 .contentLanguages(s.getContentLanguages() != null
                         ? new LinkedHashSet<>(s.getContentLanguages()) : new LinkedHashSet<>())
                 .ckbContent(toContentDto(s.getCkbContent()))

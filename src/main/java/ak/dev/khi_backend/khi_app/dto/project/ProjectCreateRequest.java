@@ -42,6 +42,9 @@ public class ProjectCreateRequest {
 
     private String projectTypeKmr;
 
+    /** Multi-select project types — merged with the legacy pair on write. */
+    private List<ProjectTypeEntry> projectTypes;
+
     private ProjectStatus status;
 
     private Set<Language> contentLanguages;
@@ -63,4 +66,14 @@ public class ProjectCreateRequest {
 
     private List<String> keywordsCkb;
     private List<String> keywordsKmr;
+
+    /** One bilingual project-type selection. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectTypeEntry {
+        private String nameCkb;
+        private String nameKmr;
+    }
 }

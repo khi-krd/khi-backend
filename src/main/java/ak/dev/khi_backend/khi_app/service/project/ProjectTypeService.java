@@ -66,6 +66,7 @@ public class ProjectTypeService {
         type.setNameKmr(kmr);
         if (!oldCkb.equals(ckb)) {
             projectRepository.renameType(oldCkb, ckb, kmr);
+            projectRepository.renameTypeInSelections(oldCkb, ckb, kmr);
         }
         return toResponse(projectTypeRepository.save(type));
     }
@@ -83,7 +84,7 @@ public class ProjectTypeService {
                 .id(type.getId())
                 .nameCkb(type.getNameCkb())
                 .nameKmr(type.getNameKmr())
-                .projectCount(projectRepository.countByProjectTypeCkb(type.getNameCkb()))
+                .projectCount(projectRepository.countProjectsUsingType(type.getNameCkb()))
                 .build();
     }
 

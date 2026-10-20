@@ -8,6 +8,7 @@ import ak.dev.khi_backend.khi_app.model.publishment.video.VideoLog;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoCastMember;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoHighlightClip;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoSourceFile;
+import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -155,10 +156,13 @@ public final class VideoMapper {
                 .featureImageUrl(video.getFeatureImageUrl())
                 .videoType(video.getVideoType())
                 .albumOfMemories(video.isAlbumOfMemories())
-                // topic
-                .topicId(video.getTopic() != null ? video.getTopic().getId() : null)
-                .topicNameCkb(video.getTopic() != null ? video.getTopic().getNameCkb() : null)
-                .topicNameKmr(video.getTopic() != null ? video.getTopic().getNameKmr() : null)
+                // topics — singular fields keep the first entry for compatibility
+                .topicId(primaryTopic(video) != null ? primaryTopic(video).getId() : null)
+                .topicNameCkb(primaryTopic(video) != null ? primaryTopic(video).getNameCkb() : null)
+                .topicNameKmr(primaryTopic(video) != null ? primaryTopic(video).getNameKmr() : null)
+                .topics(video.getTopics() != null
+                        ? video.getTopics().stream().map(VideoMapper::toTopicView).toList()
+                        : List.of())
                 // content languages
                 .contentLanguages(video.getContentLanguages() != null
                         ? new LinkedHashSet<>(video.getContentLanguages()) : null)
@@ -344,6 +348,20 @@ public final class VideoMapper {
 
     private static <T> Set<T> safeSet(Set<T> s) {
         return s == null ? new LinkedHashSet<>() : new LinkedHashSet<>(s);
+    }
+
+    private static PublishmentTopic primaryTopic(Video video) {
+        if (video.getTopics() == null || video.getTopics().isEmpty()) return null;
+        return video.getTopics().iterator().next();
+    }
+
+    private static VideoDTO.TopicView toTopicView(PublishmentTopic t) {
+        return VideoDTO.TopicView.builder()
+                .id(t.getId())
+                .nameCkb(t.getNameCkb())
+                .nameKmr(t.getNameKmr())
+                .createdAt(t.getCreatedAt())
+                .build();
     }
 
     private static boolean isBlank(String s) {

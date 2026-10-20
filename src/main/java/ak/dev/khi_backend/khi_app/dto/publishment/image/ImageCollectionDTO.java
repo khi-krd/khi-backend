@@ -57,6 +57,18 @@ public final class ImageCollectionDTO {
         private String nameKmr;
     }
 
+    /** One linked topic on a response. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class TopicInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private Long   id;
+        private String nameCkb;
+        private String nameKmr;
+    }
+
     // =========================================================================
     // SHARED: Single image item inside the album
     // =========================================================================
@@ -131,9 +143,11 @@ public final class ImageCollectionDTO {
         private String kmrCoverUrl;
         private String hoverCoverUrl;
 
-        // ── Topic ─────────────────────────────────────────────────────────────
+        // ── Topics ────────────────────────────────────────────────────────────
         private Long topicId;
         private InlineTopicRequest newTopic;
+        private Set<Long> topicIds;
+        private List<InlineTopicRequest> newTopics;
 
         // ── Core fields ───────────────────────────────────────────────────────
         private LocalDate publishmentDate;
@@ -169,10 +183,12 @@ public final class ImageCollectionDTO {
         private String kmrCoverUrl;
         private String hoverCoverUrl;
 
-        // ── Topic ─────────────────────────────────────────────────────────────
+        // ── Topics ────────────────────────────────────────────────────────────
         private Long topicId;
         private InlineTopicRequest newTopic;
         private boolean clearTopic;
+        private Set<Long> topicIds;
+        private List<InlineTopicRequest> newTopics;
 
         // ── Core fields ───────────────────────────────────────────────────────
         private LocalDate publishmentDate;
@@ -211,10 +227,11 @@ public final class ImageCollectionDTO {
         /** Hero picture for the homepage carousel; written via the featured PATCH. */
         private String featureImageUrl;
 
-        // ── Topic ─────────────────────────────────────────────────────────────
+        // ── Topics ────────────────────────────────────────────────────────────
         private Long   topicId;
         private String topicNameCkb;
         private String topicNameKmr;
+        private List<TopicInfo> topics;
 
         // ── Core ──────────────────────────────────────────────────────────────
         private LocalDate     publishmentDate;

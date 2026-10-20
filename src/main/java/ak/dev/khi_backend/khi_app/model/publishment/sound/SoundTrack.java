@@ -18,7 +18,6 @@ import java.util.Set;
                 @Index(name = "idx_soundtrack_type",       columnList = "sound_type"),
                 @Index(name = "idx_soundtrack_state",      columnList = "track_state"),
                 @Index(name = "idx_soundtrack_album",      columnList = "is_album_of_memories"),
-                @Index(name = "idx_soundtrack_topic",      columnList = "topic_id"),
                 @Index(name = "idx_soundtrack_created_at", columnList = "created_at"),
                 @Index(name = "idx_soundtrack_updated_at", columnList = "updated_at")
         }
@@ -47,8 +46,20 @@ public class SoundTrack {
 
     // ─── Sound Type ───────────────────────────────────────────────────────────
 
+    /** Primary (first) sound type — kept for indexing/back-compat. */
     @Column(name = "sound_type", nullable = false, length = 100)
     private String soundType;
+
+    /** All sound types assigned to the track; the primary type is the first entry. */
+    @Builder.Default
+    @BatchSize(size = 50)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "sound_track_sound_types",
+            joinColumns = @JoinColumn(name = "sound_track_id")
+    )
+    @Column(name = "sound_type", nullable = false, length = 100)
+    private Set<String> soundTypes = new LinkedHashSet<>();
 
     // ─── Track State ──────────────────────────────────────────────────────────
 
@@ -60,11 +71,17 @@ public class SoundTrack {
     @Column(name = "is_album_of_memories", nullable = false)
     private boolean albumOfMemories = false;
 
-    // ─── Topic ────────────────────────────────────────────────────────────────
+    // ─── Topics ───────────────────────────────────────────────────────────────
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
-    private PublishmentTopic topic;
+    @Builder.Default
+    @BatchSize(size = 50)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "sound_track_topics",
+            joinColumns = @JoinColumn(name = "sound_track_id"),
+            inverseJoinColumns = @JoinColumn(name = "topic_id")
+    )
+    private Set<PublishmentTopic> topics = new LinkedHashSet<>();
 
     // ─── Content Languages ────────────────────────────────────────────────────
 

@@ -97,6 +97,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
         LEFT JOIN ic.tagsKmr     tkmr
         LEFT JOIN ic.keywordsCkb kckb
         LEFT JOIN ic.keywordsKmr kkmr
+        LEFT JOIN ic.topics     tp
         WHERE lower(ic.ckbContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(ic.kmrContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(ic.ckbContent.description) LIKE lower(concat('%', :q, '%'))
@@ -109,8 +110,8 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
            OR lower(tkmr)                      LIKE lower(concat('%', :q, '%'))
            OR lower(kckb)                      LIKE lower(concat('%', :q, '%'))
            OR lower(kkmr)                      LIKE lower(concat('%', :q, '%'))
-           OR lower(ic.topic.nameCkb)          LIKE lower(concat('%', :q, '%'))
-           OR lower(ic.topic.nameKmr)          LIKE lower(concat('%', :q, '%'))
+           OR lower(tp.nameCkb)                LIKE lower(concat('%', :q, '%'))
+           OR lower(tp.nameKmr)                LIKE lower(concat('%', :q, '%'))
         ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
         """)
     Page<Long> findIdsByGlobalSearch(@Param("q") String q, Pageable pageable);
@@ -120,7 +121,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
      */
     @Query("""
         SELECT ic.id FROM ImageCollection ic
-        WHERE ic.topic.id = :topicId
+        WHERE EXISTS (SELECT tp FROM ic.topics tp WHERE tp.id = :topicId)
         ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
                  ic.publishmentDate DESC, ic.createdAt DESC
         """)
@@ -155,14 +156,14 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
             "contentLanguages",
             "tagsCkb", "tagsKmr",
             "keywordsCkb", "keywordsKmr",
-            "imageAlbum", "topic"
+            "imageAlbum", "topics"
     })
     @Query("SELECT ic FROM ImageCollection ic WHERE ic.id = :id")
     Optional<ImageCollection> findByIdWithGraph(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {
             "contentLanguages", "tagsCkb", "tagsKmr", "keywordsCkb",
-            "keywordsKmr", "imageAlbum", "topic"
+            "keywordsKmr", "imageAlbum", "topics"
     })
     Optional<ImageCollection> findBySlugCkbOrSlugKmr(String slugCkb, String slugKmr);
 

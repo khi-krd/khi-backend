@@ -50,11 +50,12 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
 
     /**
      * FILTER BY SOUND TYPE — Phase 1
-     * Hits idx_soundtrack_type.
+     * Matches any type in the soundTypes collection (primary included).
      */
     @Query("""
         SELECT s.id FROM SoundTrack s
         WHERE lower(s.soundType) = lower(:soundType)
+           OR EXISTS (SELECT st FROM s.soundTypes st WHERE lower(st) = lower(:soundType))
         ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsBySoundType(
@@ -63,11 +64,11 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
 
     /**
      * FILTER BY TOPIC — Phase 1
-     * Hits idx_soundtrack_topic.
+     * Matches any topic in the topics set.
      */
     @Query("""
         SELECT s.id FROM SoundTrack s
-        WHERE s.topic.id = :topicId
+        WHERE EXISTS (SELECT tp FROM s.topics tp WHERE tp.id = :topicId)
         ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.createdAt DESC
         """)
     Page<Long> findIdsByTopic(
@@ -139,6 +140,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
         LEFT JOIN s.tagsKmr     tkmr
         LEFT JOIN s.keywordsCkb kckb
         LEFT JOIN s.keywordsKmr kkmr
+        LEFT JOIN s.topics      tp
         WHERE lower(s.ckbContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(s.kmrContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(s.ckbContent.description) LIKE lower(concat('%', :q, '%'))
@@ -149,8 +151,8 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
            OR lower(tkmr)                     LIKE lower(concat('%', :q, '%'))
            OR lower(kckb)                     LIKE lower(concat('%', :q, '%'))
            OR lower(kkmr)                     LIKE lower(concat('%', :q, '%'))
-           OR lower(s.topic.nameCkb)          LIKE lower(concat('%', :q, '%'))
-           OR lower(s.topic.nameKmr)          LIKE lower(concat('%', :q, '%'))
+           OR lower(tp.nameCkb)               LIKE lower(concat('%', :q, '%'))
+           OR lower(tp.nameKmr)               LIKE lower(concat('%', :q, '%'))
         GROUP BY s.id
         ORDER BY max(s.createdAt) DESC
         """)
@@ -199,7 +201,8 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
             "files",
             "attachments",
             "brochures",
-            "topic"
+            "topics",
+            "soundTypes"
     })
     @Query("SELECT s FROM SoundTrack s WHERE s.id = :id")
     Optional<SoundTrack> findByIdWithGraph(@Param("id") Long id);
@@ -215,10 +218,24 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     // ── Sound-type vocabulary: usage counts + rename propagation ─────────
     long countBySoundType(String soundType);
 
+    /** Tracks carrying the type anywhere in their type set (or as primary). */
+    @Query("select count(distinct s) from SoundTrack s "
+            + "left join s.soundTypes st "
+            + "where lower(s.soundType) = lower(:soundType) "
+            + "   or lower(st) = lower(:soundType)")
+    long countTracksUsingType(@Param("soundType") String soundType);
+
     @Modifying
     @Query("update SoundTrack s set s.soundType = :newType "
             + "where lower(s.soundType) = lower(:oldType)")
     int renameSoundType(@Param("oldType") String oldType,
                         @Param("newType") String newType);
+
+    /** Renames the type inside the soundTypes element collection. */
+    @Modifying
+    @Query(value = "update sound_track_sound_types set sound_type = :newType "
+            + "where lower(sound_type) = lower(:oldType)", nativeQuery = true)
+    int renameSoundTypeInCollection(@Param("oldType") String oldType,
+                                    @Param("newType") String newType);
 
 }

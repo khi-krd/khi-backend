@@ -27,10 +27,12 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -127,7 +129,7 @@ public class VideoService {
         PublishmentTopic topic = findTopicOrThrow(topicId);
 
         List<Video> linked = videoRepository.findByTopicId(topicId);
-        for (Video v : linked) v.setTopic(null);
+        for (Video v : linked) v.getTopics().removeIf(t -> topicId.equals(t.getId()));
 
         if (!linked.isEmpty()) {
             videoRepository.saveAll(linked);
@@ -191,8 +193,9 @@ public class VideoService {
             video.setHoverCoverUrl(hoverUrl);
         }
 
-        // Topic
-        video.setTopic(resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic()));
+        // Topics
+        video.setTopics(resolveOrCreateTopics(
+                dto.getTopicIds(), dto.getNewTopics(), dto.getTopicId(), dto.getNewTopic()));
 
         enforceAlbumRule(video, dto);
 
@@ -356,10 +359,12 @@ public class VideoService {
             validateClipUpdate(video, dto.getVideoClipItems());
         }
 
-        boolean updatesTopic = !dto.isClearTopic()
-                && (dto.getTopicId() != null || dto.getNewTopic() != null);
-        PublishmentTopic resolvedTopic = updatesTopic
-                ? resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic())
+        boolean updatesTopics = !dto.isClearTopic()
+                && (dto.getTopicIds() != null || dto.getNewTopics() != null
+                    || dto.getTopicId() != null || dto.getNewTopic() != null);
+        Set<PublishmentTopic> resolvedTopics = updatesTopics
+                ? resolveOrCreateTopics(dto.getTopicIds(), dto.getNewTopics(),
+                        dto.getTopicId(), dto.getNewTopic())
                 : null;
 
         VideoMapper.updateEntity(video, dto);
@@ -367,11 +372,12 @@ public class VideoService {
         // ✅ نوێکردنەوەی ٣ وێنەی بەرگ بە سەربەخۆیی (تەنها ئەگەن نێردرابن)
         applyCoverUpdate(video, dto, ckbCoverImage, kmrCoverImage, hoverImage);
 
-        // بابەت: clearTopic > topicId > newTopic
+        // بابەت: clearTopic > topicIds > newTopics
         if (dto.isClearTopic()) {
-            video.setTopic(null);
-        } else if (updatesTopic) {
-            video.setTopic(resolvedTopic);
+            video.getTopics().clear();
+        } else if (updatesTopics) {
+            video.getTopics().clear();
+            video.getTopics().addAll(resolvedTopics);
         }
 
         enforceAlbumRule(video, dto);
@@ -447,23 +453,60 @@ public class VideoService {
      */
     private PublishmentTopic resolveOrCreateTopic(Long topicId, VideoDTO.InlineTopicRequest newTopic) {
         if (topicId != null) return findTopicOrThrow(topicId);
-
-        if (newTopic != null) {
-            if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
-                // No usable name — link no topic instead of rejecting the save.
-                return null;
-            }
-            PublishmentTopic created = topicRepository.save(
-                    PublishmentTopic.builder()
-                            .entityType(TOPIC_ENTITY_TYPE)
-                            .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                            .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                            .build()
-            );
-            log.info("بابەتی VIDEO دروستکرا inline id={}", created.getId());
-            return created;
-        }
+        if (newTopic != null) return createInlineTopic(newTopic);
         return null;
+    }
+
+    /**
+     * Resolves every supplied topic reference — plural fields first, then the
+     * legacy singular fields merged in — into an ordered de-duplicated set.
+     */
+    private Set<PublishmentTopic> resolveOrCreateTopics(
+            Set<Long> topicIds,
+            List<VideoDTO.InlineTopicRequest> newTopics,
+            Long legacyTopicId,
+            VideoDTO.InlineTopicRequest legacyNewTopic
+    ) {
+        Set<PublishmentTopic> out = new LinkedHashSet<>();
+        if (topicIds != null) {
+            topicIds.stream().filter(Objects::nonNull).distinct()
+                    .forEach(id -> {
+                        PublishmentTopic t = findTopicOrThrow(id);
+                        if (t != null) out.add(t);
+                    });
+        }
+        if (legacyTopicId != null) {
+            PublishmentTopic t = findTopicOrThrow(legacyTopicId);
+            if (t != null) out.add(t);
+        }
+        if (newTopics != null) {
+            newTopics.stream().filter(Objects::nonNull)
+                    .forEach(n -> {
+                        PublishmentTopic t = createInlineTopic(n);
+                        if (t != null) out.add(t);
+                    });
+        }
+        if (legacyNewTopic != null) {
+            PublishmentTopic t = createInlineTopic(legacyNewTopic);
+            if (t != null) out.add(t);
+        }
+        return out;
+    }
+
+    private PublishmentTopic createInlineTopic(VideoDTO.InlineTopicRequest newTopic) {
+        if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
+            // No usable name — link no topic instead of rejecting the save.
+            return null;
+        }
+        PublishmentTopic created = topicRepository.save(
+                PublishmentTopic.builder()
+                        .entityType(TOPIC_ENTITY_TYPE)
+                        .nameCkb(trimOrNull(newTopic.getNameCkb()))
+                        .nameKmr(trimOrNull(newTopic.getNameKmr()))
+                        .build()
+        );
+        log.info("بابەتی VIDEO دروستکرا inline id={}", created.getId());
+        return created;
     }
 
     private PublishmentTopic findTopicOrThrow(Long topicId) {

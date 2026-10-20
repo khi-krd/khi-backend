@@ -100,6 +100,17 @@ public class Project extends AuditableEntity {
     @Column(name = "project_type_kmr", length = 128)
     private String projectTypeKmr;
 
+    /** Every selected project type — the full multi-select set. The legacy
+     *  columns above keep the primary (first) entry. */
+    @Builder.Default
+    @BatchSize(size = 50)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "project_type_selections",
+            joinColumns = @JoinColumn(name = "project_id")
+    )
+    private Set<ProjectTypeSelection> projectTypes = new LinkedHashSet<>();
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
     @Builder.Default

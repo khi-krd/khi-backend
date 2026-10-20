@@ -87,10 +87,25 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // ── Project-type vocabulary: usage counts + rename propagation ───────
     long countByProjectTypeCkb(String projectTypeCkb);
 
+    /** Projects carrying the type as primary or anywhere in their selection. */
+    @Query("select count(distinct p) from Project p "
+            + "left join p.projectTypes pt "
+            + "where lower(p.projectTypeCkb) = lower(:ckb) "
+            + "   or lower(pt.typeCkb) = lower(:ckb)")
+    long countProjectsUsingType(@Param("ckb") String ckb);
+
     @Modifying
     @Query("update Project p set p.projectTypeCkb = :ckb, p.projectTypeKmr = :kmr "
             + "where p.projectTypeCkb = :oldCkb")
     int renameType(@Param("oldCkb") String oldCkb,
                    @Param("ckb") String ckb,
                    @Param("kmr") String kmr);
+
+    /** Renames the type inside the project_type_selections collection. */
+    @Modifying
+    @Query(value = "update project_type_selections set type_ckb = :ckb, type_kmr = :kmr "
+            + "where lower(type_ckb) = lower(:oldCkb)", nativeQuery = true)
+    int renameTypeInSelections(@Param("oldCkb") String oldCkb,
+                               @Param("ckb") String ckb,
+                               @Param("kmr") String kmr);
 }

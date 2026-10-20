@@ -37,30 +37,37 @@ public class VideoDTO {
     private VideoType videoType;
     private Boolean albumOfMemories;
 
-    // ─── Topic (FK) ───────────────────────────────────────────────────────────
+    // ─── Topics (FK) ──────────────────────────────────────────────────────────
 
-    /**
-     * Option A: assign an existing topic by ID.
-     */
+    /** Legacy single-topic assign; merged into topicIds when both are sent. */
     private Long topicId;
 
+    /** Assign multiple existing topics by ID. */
+    private Set<Long> topicIds;
+
     /**
-     * Option B: create a brand-new topic inline and assign it automatically.
-     * If both topicId and newTopic are supplied, topicId takes precedence.
+     * Create a brand-new topic inline and assign it automatically.
      * Ignored on response.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private InlineTopicRequest newTopic;
 
-    /** On update only — set true to clear the topic relation. */
+    /** Create multiple topics inline and assign them. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<InlineTopicRequest> newTopics;
+
+    /** On update only — set true to clear all topic relations. */
     @Builder.Default
     private boolean clearTopic = false;
 
-    /** Response only — CKB name of the assigned topic. */
+    /** Response only — CKB name of the primary (first) assigned topic. */
     private String topicNameCkb;
 
-    /** Response only — KMR name of the assigned topic. */
+    /** Response only — KMR name of the primary (first) assigned topic. */
     private String topicNameKmr;
+
+    /** Response only — every assigned topic. */
+    private List<TopicView> topics;
 
     // ─── Languages ────────────────────────────────────────────────────────────
     private Set<Language> contentLanguages;

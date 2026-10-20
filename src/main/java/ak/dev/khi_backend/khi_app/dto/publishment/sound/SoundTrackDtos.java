@@ -311,6 +311,7 @@ public final class SoundTrackDtos {
 
         // ── Core ──────────────────────────────────────────────────────────────
         private String soundType;
+        private Set<String> soundTypes;
 
         private TrackState trackState;
 
@@ -323,9 +324,11 @@ public final class SoundTrackDtos {
 
         private String hoverCoverUrl;
 
-        // ── Topic ─────────────────────────────────────────────────────────────
+        // ── Topics ────────────────────────────────────────────────────────────
         private Long topicId;
+        private Set<Long> topicIds;
         private InlineTopicRequest newTopic;
+        private List<InlineTopicRequest> newTopics;
 
         // ── Languages ─────────────────────────────────────────────────────────
         private Set<Language> contentLanguages;
@@ -393,6 +396,7 @@ public final class SoundTrackDtos {
 
         // ── Core ──────────────────────────────────────────────────────────────
         private String soundType;
+        private Set<String> soundTypes;
 
         private TrackState trackState;
         private Boolean albumOfMemories;
@@ -404,9 +408,11 @@ public final class SoundTrackDtos {
 
         private String hoverCoverUrl;
 
-        // ── Topic ─────────────────────────────────────────────────────────────
+        // ── Topics ────────────────────────────────────────────────────────────
         private Long topicId;
+        private Set<Long> topicIds;
         private InlineTopicRequest newTopic;
+        private List<InlineTopicRequest> newTopics;
         private boolean clearTopic;
 
         // ── Languages ─────────────────────────────────────────────────────────
@@ -493,12 +499,14 @@ public final class SoundTrackDtos {
         private String featureImageUrl;
 
         private String soundType;
+        private Set<String> soundTypes;
         private TrackState trackState;
         private Boolean albumOfMemories;
 
         private Long topicId;
         private String topicNameCkb;
         private String topicNameKmr;
+        private List<TopicView> topics;
 
         private Set<Language> contentLanguages;
         private LanguageContentDto ckbContent;

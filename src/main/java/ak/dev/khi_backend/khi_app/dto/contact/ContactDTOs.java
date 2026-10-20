@@ -2,6 +2,8 @@ package ak.dev.khi_backend.khi_app.dto.contact;
 
 import lombok.*;
 
+import java.util.Set;
+
 /**
  * ContactDTOs — Request / response DTOs for the Contact module.
  *
@@ -44,6 +46,8 @@ public class ContactDTOs {
         private Double longitude;
         private String heroImageUrl;
         private String officeType;
+        /** Multi-select office types — merged with officeType on write. */
+        private Set<String> officeTypes;
         private String badgeCkb;
         private String badgeKmr;
         private Boolean active;
@@ -92,6 +96,8 @@ public class ContactDTOs {
         private Double longitude;
         private String heroImageUrl;
         private String officeType;
+        /** Every selected office type — always non-null. */
+        private Set<String> officeTypes;
         private String badgeCkb;
         private String badgeKmr;
         private Integer displayOrder;

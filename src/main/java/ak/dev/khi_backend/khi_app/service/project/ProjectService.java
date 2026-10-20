@@ -308,10 +308,8 @@ public class ProjectService {
         project.setCoverThumbnailUrl(blankToNull(dto.getCoverThumbnailUrl()));
         project.setMediaGallery(buildGallery(dto.getMediaGallery()));
         project.setProjectDate(dto.getProjectDate());
-        project.setProjectTypeCkb(dto.getProjectTypeCkb());
-        project.setProjectTypeKmr(dto.getProjectTypeKmr());
+        applyProjectTypes(project, dto);
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
-        ensureTypeExists(dto.getProjectTypeCkb(), dto.getProjectTypeKmr());
 
         project.getContentLanguages().clear();
         if (dto.getContentLanguages() != null) {
@@ -380,11 +378,9 @@ public class ProjectService {
                 ? dto.getCoverMediaType() : MediaKind.IMAGE);
         project.setCoverThumbnailUrl(blankToNull(dto.getCoverThumbnailUrl()));
         project.setMediaGallery(buildGallery(dto.getMediaGallery()));
-        project.setProjectTypeCkb(dto.getProjectTypeCkb());
-        project.setProjectTypeKmr(dto.getProjectTypeKmr());
+        applyProjectTypes(project, dto);
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
         project.setProjectDate(dto.getProjectDate());
-        ensureTypeExists(dto.getProjectTypeCkb(), dto.getProjectTypeKmr());
         project.getContentLanguages().clear();
         if (dto.getContentLanguages() != null) {
             project.getContentLanguages().addAll(dto.getContentLanguages());
@@ -500,6 +496,14 @@ public class ProjectService {
                         : new ArrayList<>())
                 .projectTypeCkb(project.getProjectTypeCkb())
                 .projectTypeKmr(project.getProjectTypeKmr())
+                .projectTypes(project.getProjectTypes() != null
+                        ? project.getProjectTypes().stream()
+                                .map(t -> ProjectResponse.ProjectTypeEntry.builder()
+                                        .nameCkb(t.getTypeCkb())
+                                        .nameKmr(t.getTypeKmr())
+                                        .build())
+                                .toList()
+                        : List.of())
                 .status(project.getStatus())
                 .projectDate(project.getProjectDate())
                 .contentLanguages(
@@ -563,6 +567,41 @@ public class ProjectService {
             if (item != null && !isBlank(fn.name(item))) out.add(fn.name(item));
         }
         return out;
+    }
+
+    /**
+     * Merge the plural {@code projectTypes} entries with the legacy
+     * {@code projectTypeCkb}/{@code projectTypeKmr} pair into an ordered,
+     * de-duplicated selection set. The first entry also fills the legacy
+     * primary columns. Every selected name auto-registers into the managed
+     * type vocabulary.
+     */
+    private void applyProjectTypes(Project project, ProjectCreateRequest dto) {
+        Set<ProjectTypeSelection> merged = new LinkedHashSet<>();
+        if (dto.getProjectTypes() != null) {
+            for (ProjectCreateRequest.ProjectTypeEntry e : dto.getProjectTypes()) {
+                if (e == null || isBlank(e.getNameCkb())) continue;
+                merged.add(ProjectTypeSelection.builder()
+                        .typeCkb(e.getNameCkb().trim())
+                        .typeKmr(e.getNameKmr() != null && !e.getNameKmr().isBlank()
+                                ? e.getNameKmr().trim() : e.getNameCkb().trim())
+                        .build());
+            }
+        }
+        if (!isBlank(dto.getProjectTypeCkb())) {
+            String ckb = dto.getProjectTypeCkb().trim();
+            merged.add(ProjectTypeSelection.builder()
+                    .typeCkb(ckb)
+                    .typeKmr(!isBlank(dto.getProjectTypeKmr())
+                            ? dto.getProjectTypeKmr().trim() : ckb)
+                    .build());
+        }
+        project.getProjectTypes().clear();
+        project.getProjectTypes().addAll(merged);
+        ProjectTypeSelection primary = merged.stream().findFirst().orElse(null);
+        project.setProjectTypeCkb(primary != null ? primary.getTypeCkb() : null);
+        project.setProjectTypeKmr(primary != null ? primary.getTypeKmr() : null);
+        merged.forEach(t -> ensureTypeExists(t.getTypeCkb(), t.getTypeKmr()));
     }
 
     private String traceId()           { String t = MDC.get("traceId"); return t != null ? t : UUID.randomUUID().toString(); }

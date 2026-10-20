@@ -57,7 +57,6 @@ import java.util.Set;
         name = "image_collections",
         indexes = {
                 @Index(name = "idx_img_collection_type",  columnList = "collection_type"),
-                @Index(name = "idx_img_topic",            columnList = "topic_id"),
                 @Index(name = "idx_img_title_ckb",        columnList = "title_ckb"),
                 @Index(name = "idx_img_title_kmr",        columnList = "title_kmr"),
                 @Index(name = "idx_img_publishment_date", columnList = "publishment_date"),
@@ -102,15 +101,17 @@ public class ImageCollection {
     @Column(name = "hover_cover_url", columnDefinition = "TEXT")
     private String hoverCoverUrl;
 
-    // ─── Topic ────────────────────────────────────────────────────────────────
-    //
-    // LAZY + @BatchSize on the PublishmentTopic CLASS (not here).
-    // When a page of N collections is loaded, Hibernate fires
-    // 1 IN-query to load all their topics instead of N queries.
+    // ─── Topics ───────────────────────────────────────────────────────────────
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "topic_id")
-    private PublishmentTopic topic;
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "image_collection_topics",
+            joinColumns = @JoinColumn(name = "collection_id"),
+            inverseJoinColumns = @JoinColumn(name = "topic_id")
+    )
+    @BatchSize(size = 50)
+    private Set<PublishmentTopic> topics = new LinkedHashSet<>();
 
     // ─── CKB (Sorani) Embedded Content ───────────────────────────────────────
 

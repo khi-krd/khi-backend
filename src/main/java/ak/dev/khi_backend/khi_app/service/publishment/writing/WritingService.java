@@ -66,7 +66,9 @@ public class WritingService {
         String ckbFileUrl = uploadFile(ckbBookFile, "فایلی کتێبی CKB");
         String kmrFileUrl = uploadFile(kmrBookFile, "فایلی کتێبی KMR");
 
-        PublishmentTopic topic = resolveTopic(request.getTopicId(), request.getNewTopic());
+        Set<PublishmentTopic> topics = resolveTopics(
+                request.getTopicIds(), request.getNewTopics(),
+                request.getTopicId(), request.getNewTopic());
 
         Writing parentBook  = null;
         String  seriesId    = request.getSeriesId();
@@ -85,7 +87,7 @@ public class WritingService {
                 .ckbCoverUrl(ckbCoverUrl)
                 .kmrCoverUrl(kmrCoverUrl)
                 .hoverCoverUrl(hoverCoverUrl)
-                .topic(topic)
+                .topics(topics)
                 .genres(bookGenreService.resolve(request.getGenreIds(), request.getBookGenres()))
                 .contentLanguages(new LinkedHashSet<>(safeLangs(request.getContentLanguages())))
                 .publishedByInstitute(request.isPublishedByInstitute())
@@ -131,10 +133,14 @@ public class WritingService {
 
         // Resolve references before any S3 or Tiptap upload. A failed topic or
         // parent lookup must not leave an orphaned object in S3.
-        PublishmentTopic resolvedTopic = null;
-        if (!Boolean.TRUE.equals(request.getClearTopic())
-                && (request.getTopicId() != null || request.getNewTopic() != null)) {
-            resolvedTopic = resolveTopic(request.getTopicId(), request.getNewTopic());
+        Set<PublishmentTopic> resolvedTopics = null;
+        boolean updatesTopics = !Boolean.TRUE.equals(request.getClearTopic())
+                && (request.getTopicIds() != null || request.getNewTopics() != null
+                    || request.getTopicId() != null || request.getNewTopic() != null);
+        if (updatesTopics) {
+            resolvedTopics = resolveTopics(
+                    request.getTopicIds(), request.getNewTopics(),
+                    request.getTopicId(), request.getNewTopic());
         }
         Writing resolvedParent = request.getParentBookId() != null
                 ? findOrThrow(request.getParentBookId(), "parent_book.not_found")
@@ -148,9 +154,10 @@ public class WritingService {
         String kmrFileUrl = uploadFile(kmrBookFile, "فایلی کتێبی KMR");
 
         if (Boolean.TRUE.equals(request.getClearTopic())) {
-            writing.setTopic(null);
-        } else if (resolvedTopic != null) {
-            writing.setTopic(resolvedTopic);
+            writing.getTopics().clear();
+        } else if (updatesTopics) {
+            writing.getTopics().clear();
+            writing.getTopics().addAll(resolvedTopics);
         }
 
         // ─── Book Genres ─────────────────────────────────────────────────────
@@ -375,17 +382,51 @@ public class WritingService {
                     .orElseThrow(() -> Errors.notFound("topic.not_found", Map.of("topicId", topicId)));
         }
         if (newTopic != null && (!isBlank(newTopic.getNameCkb()) || !isBlank(newTopic.getNameKmr()))) {
-            PublishmentTopic created = PublishmentTopic.builder()
-                    .entityType(ENTITY_TYPE)
-                    .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                    .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                    .build();
-            created = topicRepository.save(created);
-            log.info("بابەتی inline دروستکرا — id={}, ckb='{}', kmr='{}'",
-                    created.getId(), created.getNameCkb(), created.getNameKmr());
-            return created;
+            return createInlineTopic(newTopic);
         }
         return null;
+    }
+
+    /**
+     * Resolves every supplied topic reference — plural fields first, then the
+     * legacy singular fields merged in — into an ordered de-duplicated set.
+     */
+    private Set<PublishmentTopic> resolveTopics(Set<Long> topicIds,
+                                                List<TopicPayload> newTopics,
+                                                Long legacyTopicId,
+                                                TopicPayload legacyNewTopic) {
+        Set<PublishmentTopic> out = new LinkedHashSet<>();
+        if (topicIds != null) {
+            topicIds.stream().filter(Objects::nonNull).distinct()
+                    .forEach(id -> out.add(topicRepository.findById(id)
+                            .orElseThrow(() -> Errors.notFound("topic.not_found", Map.of("topicId", id)))));
+        }
+        if (legacyTopicId != null) {
+            out.add(topicRepository.findById(legacyTopicId)
+                    .orElseThrow(() -> Errors.notFound("topic.not_found", Map.of("topicId", legacyTopicId))));
+        }
+        if (newTopics != null) {
+            newTopics.stream().filter(Objects::nonNull)
+                    .filter(n -> !isBlank(n.getNameCkb()) || !isBlank(n.getNameKmr()))
+                    .forEach(n -> out.add(createInlineTopic(n)));
+        }
+        if (legacyNewTopic != null
+                && (!isBlank(legacyNewTopic.getNameCkb()) || !isBlank(legacyNewTopic.getNameKmr()))) {
+            out.add(createInlineTopic(legacyNewTopic));
+        }
+        return out;
+    }
+
+    private PublishmentTopic createInlineTopic(TopicPayload newTopic) {
+        PublishmentTopic created = PublishmentTopic.builder()
+                .entityType(ENTITY_TYPE)
+                .nameCkb(trimOrNull(newTopic.getNameCkb()))
+                .nameKmr(trimOrNull(newTopic.getNameKmr()))
+                .build();
+        created = topicRepository.save(created);
+        log.info("بابەتی inline دروستکرا — id={}, ckb='{}', kmr='{}'",
+                created.getId(), created.getNameCkb(), created.getNameKmr());
+        return created;
     }
 
     // =========================================================================
@@ -484,6 +525,20 @@ public class WritingService {
     // گۆڕین بۆ Response
     // =========================================================================
 
+    private TopicInfo primaryTopic(Writing w) {
+        if (w.getTopics() == null || w.getTopics().isEmpty()) return null;
+        PublishmentTopic t = w.getTopics().iterator().next();
+        return toTopicInfo(t);
+    }
+
+    private TopicInfo toTopicInfo(PublishmentTopic t) {
+        return TopicInfo.builder()
+                .id(t.getId())
+                .nameCkb(t.getNameCkb())
+                .nameKmr(t.getNameKmr())
+                .build();
+    }
+
     private Response mapToResponse(Writing w) {
         Response r = Response.builder()
                 .id(w.getId())
@@ -493,13 +548,10 @@ public class WritingService {
                 .kmrCoverUrl(w.getKmrCoverUrl())
                 .hoverCoverUrl(w.getHoverCoverUrl())
                 .featureImageUrl(w.getFeatureImageUrl())
-                .topic(w.getTopic() != null
-                        ? TopicInfo.builder()
-                        .id(w.getTopic().getId())
-                        .nameCkb(w.getTopic().getNameCkb())
-                        .nameKmr(w.getTopic().getNameKmr())
-                        .build()
-                        : null)
+                .topic(primaryTopic(w))
+                .topics(w.getTopics() != null
+                        ? w.getTopics().stream().map(this::toTopicInfo).toList()
+                        : List.of())
                 .bookGenres(w.getGenres() != null
                         ? w.getGenres().stream().map(g -> g.getSlug())
                                 .collect(Collectors.toCollection(LinkedHashSet::new))

@@ -62,7 +62,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      *
      * Use this instead of plain findById() everywhere a VideoDTO is returned.
      */
-    @EntityGraph(attributePaths = {"videoClipItems", "topic"})
+    @EntityGraph(attributePaths = {"videoClipItems", "topics"})
     @Query("SELECT v FROM Video v WHERE v.id = :id")
     Optional<Video> findByIdWithDetails(@Param("id") Long id);
 
@@ -75,7 +75,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      * display. Separated countQuery hits only the videos table (no JOIN).
      */
     @Query(
-            value      = "SELECT v FROM Video v LEFT JOIN FETCH v.topic",
+            value      = "SELECT v FROM Video v",
             countQuery = "SELECT COUNT(v) FROM Video v"
     )
     Page<Video> findAllWithTopic(Pageable pageable);
@@ -85,7 +85,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      * e.g. findAllByType(VideoType.FILM, pageable)
      */
     @Query(
-            value      = "SELECT v FROM Video v LEFT JOIN FETCH v.topic WHERE v.videoType = :type",
+            value      = "SELECT v FROM Video v WHERE v.videoType = :type",
             countQuery = "SELECT COUNT(v) FROM Video v WHERE v.videoType = :type"
     )
     Page<Video> findAllByType(@Param("type") VideoType type, Pageable pageable);
@@ -94,7 +94,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      * All VIDEO_CLIP videos filtered by album flag, paged.
      */
     @Query(
-            value      = "SELECT v FROM Video v LEFT JOIN FETCH v.topic " +
+            value      = "SELECT v FROM Video v " +
                     "WHERE v.videoType = ak.dev.khi_backend.khi_app.model.publishment.video.VideoType.VIDEO_CLIP " +
                     "  AND v.albumOfMemories = :album",
             countQuery = "SELECT COUNT(v) FROM Video v " +
@@ -107,8 +107,8 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
      * All videos for a topic, paged.
      */
     @Query(
-            value      = "SELECT v FROM Video v LEFT JOIN FETCH v.topic t WHERE t.id = :topicId",
-            countQuery = "SELECT COUNT(v) FROM Video v WHERE v.topic.id = :topicId"
+            value      = "SELECT v FROM Video v JOIN v.topics t WHERE t.id = :topicId",
+            countQuery = "SELECT COUNT(DISTINCT v) FROM Video v JOIN v.topics t WHERE t.id = :topicId"
     )
     Page<Video> findAllByTopicId(@Param("topicId") Long topicId, Pageable pageable);
 
@@ -202,7 +202,8 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /** Used by deleteTopic() to un-link all videos before topic removal. */
-    List<Video> findByTopicId(Long topicId);
+    @Query("SELECT DISTINCT v FROM Video v JOIN v.topics t WHERE t.id = :topicId")
+    List<Video> findByTopicId(@Param("topicId") Long topicId);
 
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -258,11 +259,11 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     // NEW — used by SiteContentService.getFeatured(). Same join as above, scoped to featured
     // records and ordered by featuredOrder instead of recency.
-    @Query("select v from Video v left join fetch v.topic where v.featured = true order by v.featuredOrder asc, v.id desc")
+    @Query("select distinct v from Video v left join fetch v.topics where v.featured = true order by v.featuredOrder asc, v.id desc")
     List<Video> findFeaturedWithTopic();
 
     @Query(
-            value = "select v from Video v left join fetch v.topic where v.featured = true",
+            value = "select v from Video v where v.featured = true",
             countQuery = "select count(v) from Video v where v.featured = true"
     )
     Page<Video> findFeaturedWithTopic(Pageable pageable);

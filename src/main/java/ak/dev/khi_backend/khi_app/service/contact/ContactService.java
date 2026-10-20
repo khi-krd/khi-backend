@@ -83,7 +83,8 @@ public class ContactService {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .heroImageUrl(blankToNull(request.getHeroImageUrl()))
-                .officeType(blankToNull(request.getOfficeType()))
+                .officeType(primaryOfficeType(request))
+                .officeTypes(mergedOfficeTypes(request))
                 .badgeCkb(blankToNull(request.getBadgeCkb()))
                 .badgeKmr(blankToNull(request.getBadgeKmr()))
                 .active(request.getActive() == null || request.getActive())
@@ -91,7 +92,7 @@ public class ContactService {
                 .build();
 
         Contact saved = contactRepository.save(contact);
-        officeTypeService.ensureExists(saved.getOfficeType());
+        saved.getOfficeTypes().forEach(officeTypeService::ensureExists);
         log.info("Contact page created — id={}, slugCkb={}", saved.getId(), saved.getSlugCkb());
         return toResponse(saved);
     }
@@ -116,14 +117,16 @@ public class ContactService {
         contact.setLatitude(request.getLatitude());
         contact.setLongitude(request.getLongitude());
         contact.setHeroImageUrl(blankToNull(request.getHeroImageUrl()));
-        contact.setOfficeType(blankToNull(request.getOfficeType()));
+        contact.setOfficeType(primaryOfficeType(request));
+        contact.getOfficeTypes().clear();
+        contact.getOfficeTypes().addAll(mergedOfficeTypes(request));
         contact.setBadgeCkb(blankToNull(request.getBadgeCkb()));
         contact.setBadgeKmr(blankToNull(request.getBadgeKmr()));
         if (request.getActive() != null) contact.setActive(request.getActive());
         if (request.getDisplayOrder() != null) contact.setDisplayOrder(request.getDisplayOrder());
 
         Contact updated = contactRepository.save(contact);
-        officeTypeService.ensureExists(updated.getOfficeType());
+        updated.getOfficeTypes().forEach(officeTypeService::ensureExists);
         log.info("Contact page updated — id={}", updated.getId());
         return toResponse(updated);
     }
@@ -220,6 +223,9 @@ public class ContactService {
                 .longitude(c.getLongitude())
                 .heroImageUrl(c.getHeroImageUrl())
                 .officeType(c.getOfficeType())
+                .officeTypes(c.getOfficeTypes() != null
+                        ? new java.util.LinkedHashSet<>(c.getOfficeTypes())
+                        : new java.util.LinkedHashSet<>())
                 .badgeCkb(c.getBadgeCkb())
                 .badgeKmr(c.getBadgeKmr())
                 .displayOrder(c.getDisplayOrder())
@@ -246,5 +252,27 @@ public class ContactService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    /**
+     * Merge the plural officeTypes field with the legacy singular officeType
+     * into an ordered, de-duplicated, trimmed set.
+     */
+    private java.util.Set<String> mergedOfficeTypes(
+            ak.dev.khi_backend.khi_app.dto.contact.ContactDTOs.ContactRequest request) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        if (request.getOfficeTypes() != null) {
+            request.getOfficeTypes().stream()
+                    .map(this::blankToNull).filter(java.util.Objects::nonNull)
+                    .forEach(out::add);
+        }
+        String legacy = blankToNull(request.getOfficeType());
+        if (legacy != null) out.add(legacy);
+        return out;
+    }
+
+    private String primaryOfficeType(
+            ak.dev.khi_backend.khi_app.dto.contact.ContactDTOs.ContactRequest request) {
+        return mergedOfficeTypes(request).stream().findFirst().orElse(null);
     }
 }

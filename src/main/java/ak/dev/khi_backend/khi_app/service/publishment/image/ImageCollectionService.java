@@ -64,7 +64,9 @@ public class ImageCollectionService {
             String kmrCoverUrl   = resolveCoverUrl(dto.getKmrCoverUrl(),   kmrCoverImage);
             String hoverCoverUrl = resolveCoverUrl(dto.getHoverCoverUrl(), hoverCoverImage);
 
-            PublishmentTopic topic = resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic());
+            Set<PublishmentTopic> topics = resolveOrCreateTopics(
+                    dto.getTopicIds(), dto.getNewTopics(),
+                    dto.getTopicId(), dto.getNewTopic());
 
             ImageCollection entity = ImageCollection.builder()
                     .slugCkb(trimOrNull(dto.getSlugCkb()))
@@ -73,7 +75,7 @@ public class ImageCollectionService {
                     .ckbCoverUrl(ckbCoverUrl)
                     .kmrCoverUrl(kmrCoverUrl)
                     .hoverCoverUrl(hoverCoverUrl)
-                    .topic(topic)
+                    .topics(topics)
                     .publishmentDate(dto.getPublishmentDate())
                     .contentLanguages(new LinkedHashSet<>(safeLangs(dto.getContentLanguages())))
                     .tagsCkb(new LinkedHashSet<>(safeSet(
@@ -96,7 +98,8 @@ public class ImageCollectionService {
             ImageCollection saved = imageCollectionRepository.save(entity);
             createLog(saved.getId(), titleOf(saved), "CREATE",
                     "کۆمەڵەی وێنە دروستکرا — جۆر=" + saved.getCollectionType()
-                            + (topic != null ? " بابەتid=" + topic.getId() : ""));
+                            + (topics.isEmpty() ? "" : " بابەت="
+                                    + topics.size()));
 
             return toResponse(saved);
 
@@ -143,10 +146,12 @@ public class ImageCollectionService {
             validateAlbumItemCount(targetType, entity.getImageAlbum().size());
         }
 
-        boolean updatesTopic = !dto.isClearTopic()
-                && (dto.getTopicId() != null || dto.getNewTopic() != null);
-        PublishmentTopic resolvedTopic = updatesTopic
-                ? resolveOrCreateTopic(dto.getTopicId(), dto.getNewTopic())
+        boolean updatesTopics = !dto.isClearTopic()
+                && (dto.getTopicIds() != null || dto.getNewTopics() != null
+                    || dto.getTopicId() != null || dto.getNewTopic() != null);
+        Set<PublishmentTopic> resolvedTopics = updatesTopics
+                ? resolveOrCreateTopics(dto.getTopicIds(), dto.getNewTopics(),
+                        dto.getTopicId(), dto.getNewTopic())
                 : null;
 
         try {
@@ -175,9 +180,10 @@ public class ImageCollectionService {
             }
 
             if (dto.isClearTopic()) {
-                entity.setTopic(null);
-            } else if (updatesTopic) {
-                entity.setTopic(resolvedTopic);
+                entity.getTopics().clear();
+            } else if (updatesTopics) {
+                entity.getTopics().clear();
+                entity.getTopics().addAll(resolvedTopics);
             }
 
             if (dto.getPublishmentDate() != null) {
@@ -498,21 +504,65 @@ public class ImageCollectionService {
             return findImageTopicOrThrow(topicId);
         }
         if (newTopic != null) {
-            if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
-                throw Errors.imageValidation("error.validation", Map.of(
-                        "message",
-                        "بابەتی نوێ پێویستی بە لانیکەم ناوێکی کوردییە (ناوەندی یان باکوور)"));
-            }
-            PublishmentTopic created = topicRepository.save(
-                    PublishmentTopic.builder()
-                            .entityType(TOPIC_ENTITY_TYPE)
-                            .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                            .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                            .build());
-            log.info("بابەتی IMAGE دروستکرا inline id={}", created.getId());
-            return created;
+            return createInlineTopic(newTopic);
         }
         return null;
+    }
+
+    /**
+     * Resolves every supplied topic reference — plural fields first, then the
+     * legacy singular fields merged in — into an ordered de-duplicated set.
+     */
+    private Set<PublishmentTopic> resolveOrCreateTopics(
+            Set<Long> topicIds,
+            List<InlineTopicRequest> newTopics,
+            Long legacyTopicId,
+            InlineTopicRequest legacyNewTopic) {
+        Set<PublishmentTopic> out = new LinkedHashSet<>();
+        if (topicIds != null) {
+            topicIds.stream().filter(Objects::nonNull).distinct()
+                    .forEach(id -> out.add(findImageTopicOrThrow(id)));
+        }
+        if (legacyTopicId != null) {
+            out.add(findImageTopicOrThrow(legacyTopicId));
+        }
+        if (newTopics != null) {
+            newTopics.stream().filter(Objects::nonNull)
+                    .forEach(n -> out.add(createInlineTopic(n)));
+        }
+        if (legacyNewTopic != null) {
+            out.add(createInlineTopic(legacyNewTopic));
+        }
+        return out;
+    }
+
+    private PublishmentTopic createInlineTopic(InlineTopicRequest newTopic) {
+        if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
+            throw Errors.imageValidation("error.validation", Map.of(
+                    "message",
+                    "بابەتی نوێ پێویستی بە لانیکەم ناوێکی کوردییە (ناوەندی یان باکوور)"));
+        }
+        PublishmentTopic created = topicRepository.save(
+                PublishmentTopic.builder()
+                        .entityType(TOPIC_ENTITY_TYPE)
+                        .nameCkb(trimOrNull(newTopic.getNameCkb()))
+                        .nameKmr(trimOrNull(newTopic.getNameKmr()))
+                        .build());
+        log.info("بابەتی IMAGE دروستکرا inline id={}", created.getId());
+        return created;
+    }
+
+    private static PublishmentTopic primaryTopic(ImageCollection e) {
+        if (e.getTopics() == null || e.getTopics().isEmpty()) return null;
+        return e.getTopics().iterator().next();
+    }
+
+    private static TopicInfo toTopicInfo(PublishmentTopic t) {
+        return TopicInfo.builder()
+                .id(t.getId())
+                .nameCkb(t.getNameCkb())
+                .nameKmr(t.getNameKmr())
+                .build();
     }
 
     private PublishmentTopic findImageTopicOrThrow(Long topicId) {
@@ -972,9 +1022,17 @@ public class ImageCollectionService {
                 .kmrCoverUrl(entity.getKmrCoverUrl())
                 .hoverCoverUrl(entity.getHoverCoverUrl())
                 .featureImageUrl(entity.getFeatureImageUrl())
-                .topicId(entity.getTopic()      != null ? entity.getTopic().getId()      : null)
-                .topicNameCkb(entity.getTopic() != null ? entity.getTopic().getNameCkb() : null)
-                .topicNameKmr(entity.getTopic() != null ? entity.getTopic().getNameKmr() : null)
+                .topicId(primaryTopic(entity) != null
+                        ? primaryTopic(entity).getId() : null)
+                .topicNameCkb(primaryTopic(entity) != null
+                        ? primaryTopic(entity).getNameCkb() : null)
+                .topicNameKmr(primaryTopic(entity) != null
+                        ? primaryTopic(entity).getNameKmr() : null)
+                .topics(entity.getTopics() != null
+                        ? entity.getTopics().stream()
+                                .map(ImageCollectionService::toTopicInfo)
+                                .toList()
+                        : List.of())
                 .publishmentDate(entity.getPublishmentDate())
                 // ← copy into plain Set — prevents LazyInitializationException
                 .contentLanguages(entity.getContentLanguages() != null

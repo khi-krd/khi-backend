@@ -3,10 +3,13 @@ package ak.dev.khi_backend.khi_app.model.contact;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Contact — Contact-page entity.
@@ -125,9 +128,21 @@ public class Contact {
     @Column(name = "hero_image_url", columnDefinition = "TEXT")
     private String heroImageUrl;
 
-    /** HQ or REGIONAL; kept as text so additional office types do not require a migration. */
+    /** HQ or REGIONAL; kept as text so additional office types do not require a migration.
+     *  Primary (first) office type — the full selection lives in officeTypes. */
     @Column(name = "office_type", length = 40)
     private String officeType;
+
+    /** Every selected office type — the full multi-select set. */
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "contact_office_types",
+            joinColumns = @JoinColumn(name = "contact_id")
+    )
+    @Column(name = "office_type", nullable = false, length = 40)
+    @BatchSize(size = 50)
+    private Set<String> officeTypes = new LinkedHashSet<>();
 
     @Column(name = "badge_ckb", length = 200)
     private String badgeCkb;
