@@ -145,7 +145,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/about/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
                         // ── Contact Page: public detail reads, admin writes ───────
-                        .requestMatchers(HttpMethod.POST, "/api/v1/contact")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/contact",
+                                "/api/v1/contact/office-types")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/contact/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")

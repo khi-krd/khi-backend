@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class ContactService {
 
     private final ContactRepository contactRepository;
+    private final OfficeTypeService officeTypeService;
     private final TiptapHtmlProcessor tiptapHtmlProcessor;
 
     private static final DateTimeFormatter FORMATTER =
@@ -90,6 +91,7 @@ public class ContactService {
                 .build();
 
         Contact saved = contactRepository.save(contact);
+        officeTypeService.ensureExists(saved.getOfficeType());
         log.info("Contact page created — id={}, slugCkb={}", saved.getId(), saved.getSlugCkb());
         return toResponse(saved);
     }
@@ -121,6 +123,7 @@ public class ContactService {
         if (request.getDisplayOrder() != null) contact.setDisplayOrder(request.getDisplayOrder());
 
         Contact updated = contactRepository.save(contact);
+        officeTypeService.ensureExists(updated.getOfficeType());
         log.info("Contact page updated — id={}", updated.getId());
         return toResponse(updated);
     }

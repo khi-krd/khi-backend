@@ -42,6 +42,7 @@ public class SoundTrackService {
     private final SoundReklamVideoRepository soundReklamVideoRepository;
     private final SoundTrackLogRepository    soundTrackLogRepository;
     private final PublishmentTopicRepository topicRepository;
+    private final SoundTrackTypeService      soundTrackTypeService;
     private final S3Service                  s3Service;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
 
@@ -106,6 +107,7 @@ public class SoundTrackService {
             buildAndAttachAlbumBrochures(entity, dto.getBrochures(), albumBrochureFiles);
 
             SoundTrack saved = soundTrackRepository.save(entity);
+            soundTrackTypeService.ensureExists(saved.getSoundType());
 
             createLog(saved.getId(), titleOf(saved), "CREATED",
                     "سەدا دروستکرا — جۆر=" + saved.getSoundType()
@@ -293,6 +295,7 @@ public class SoundTrackService {
             }
 
             SoundTrack saved = soundTrackRepository.save(entity);
+            soundTrackTypeService.ensureExists(saved.getSoundType());
 
             createLog(saved.getId(), titleOf(saved), "UPDATED",
                     "سەدا نوێکرایەوە — جۆر=" + saved.getSoundType()

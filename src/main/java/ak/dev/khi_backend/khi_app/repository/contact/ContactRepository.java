@@ -2,6 +2,9 @@ package ak.dev.khi_backend.khi_app.repository.contact;
 
 import ak.dev.khi_backend.khi_app.model.contact.Contact;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
@@ -25,4 +28,13 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
 
     /** All active contact pages ordered by displayOrder. */
     Page<Contact> findAllByActiveTrueOrderByDisplayOrderAsc(Pageable pageable);
+
+    // ── Office-type vocabulary: usage counts + rename propagation ────────
+    long countByOfficeType(String officeType);
+
+    @Modifying
+    @Query("update Contact c set c.officeType = :newType "
+            + "where lower(c.officeType) = lower(:oldType)")
+    int renameOfficeType(@Param("oldType") String oldType,
+                         @Param("newType") String newType);
 }
