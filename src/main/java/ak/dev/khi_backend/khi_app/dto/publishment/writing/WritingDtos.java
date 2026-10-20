@@ -38,6 +38,8 @@ public final class WritingDtos {
         private Integer pageCount;
 
         private String genre;
+
+        private String location;
     }
 
     // =========================================================================

@@ -197,6 +197,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
             "keywordsCkb", "keywordsKmr",
             "files",
             "attachments",
+            "brochures",
             "topic"
     })
     @Query("SELECT s FROM SoundTrack s WHERE s.id = :id")

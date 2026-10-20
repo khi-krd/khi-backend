@@ -147,7 +147,8 @@ public class Writing {
             @AttributeOverride(name = "fileFormat",    column = @Column(name = "file_format_ckb",      length = 20)),
             @AttributeOverride(name = "fileSizeBytes", column = @Column(name = "file_size_bytes_ckb")),
             @AttributeOverride(name = "pageCount",     column = @Column(name = "page_count_ckb")),
-            @AttributeOverride(name = "genre",         column = @Column(name = "genre_ckb",            length = 150))
+            @AttributeOverride(name = "genre",         column = @Column(name = "genre_ckb",            length = 150)),
+            @AttributeOverride(name = "location",      column = @Column(name = "location_ckb",         length = 255))
     })
     private WritingContent ckbContent;
 
@@ -160,7 +161,8 @@ public class Writing {
             @AttributeOverride(name = "fileFormat",    column = @Column(name = "file_format_kmr",      length = 20)),
             @AttributeOverride(name = "fileSizeBytes", column = @Column(name = "file_size_bytes_kmr")),
             @AttributeOverride(name = "pageCount",     column = @Column(name = "page_count_kmr")),
-            @AttributeOverride(name = "genre",         column = @Column(name = "genre_kmr",            length = 150))
+            @AttributeOverride(name = "genre",         column = @Column(name = "genre_kmr",            length = 150)),
+            @AttributeOverride(name = "location",      column = @Column(name = "location_kmr",         length = 255))
     })
     private WritingContent kmrContent;
 

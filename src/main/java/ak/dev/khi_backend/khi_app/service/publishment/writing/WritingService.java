@@ -448,6 +448,7 @@ public class WritingService {
                 .fileSizeBytes(dto.getFileSizeBytes())
                 .pageCount(dto.getPageCount())
                 .genre(trimOrNull(dto.getGenre()))
+                .location(trimOrNull(dto.getLocation()))
                 .build();
     }
 
@@ -464,6 +465,7 @@ public class WritingService {
         if (dto.getFileSizeBytes() != null) existing.setFileSizeBytes(dto.getFileSizeBytes());
         if (dto.getPageCount()     != null) existing.setPageCount(dto.getPageCount());
         if (dto.getGenre()         != null) existing.setGenre(trimOrNull(dto.getGenre()));
+        if (dto.getLocation()      != null) existing.setLocation(trimOrNull(dto.getLocation()));
         return existing;
     }
 
@@ -518,7 +520,8 @@ public class WritingService {
             r.setCkbContent(LanguageContentDto.builder()
                     .title(c.getTitle()).description(c.getDescription()).writer(c.getWriter())
                     .fileUrl(c.getFileUrl()).fileFormat(c.getFileFormat())
-                    .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount()).genre(c.getGenre())
+                    .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount())
+                    .genre(c.getGenre()).location(c.getLocation())
                     .build());
         }
 
@@ -527,7 +530,8 @@ public class WritingService {
             r.setKmrContent(LanguageContentDto.builder()
                     .title(c.getTitle()).description(c.getDescription()).writer(c.getWriter())
                     .fileUrl(c.getFileUrl()).fileFormat(c.getFileFormat())
-                    .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount()).genre(c.getGenre())
+                    .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount())
+                    .genre(c.getGenre()).location(c.getLocation())
                     .build());
         }
 

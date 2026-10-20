@@ -94,6 +94,8 @@ public class NewsDto implements Serializable {
         private String title;
         /** Tiptap HTML produced by the editor. */
         private String description;
+        /** Where the news took place / was reported from. */
+        private String location;
     }
 
     @Getter @Setter

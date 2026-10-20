@@ -105,6 +105,62 @@ public final class SoundTrackDtos {
     }
 
     // =========================================================================
+    // ALBUM BROCHURE DTOs
+    // =========================================================================
+
+    /**
+     * Album-level brochure file attached to a SoundTrack — independent of the
+     * individual sound files. Accepts mixed file types (PDF, images …); the
+     * binary may be supplied via the {@code albumBrochureFiles} multipart part
+     * (index-matched like {@code attachmentFiles}) or as a plain URL.
+     */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    @JsonIgnoreProperties(value = "brochureOrder")
+    public static class AlbumBrochureRequest {
+
+        /** Existing brochure ID used to preserve its source during update. */
+        private Long id;
+
+        // fileUrl may be null when the binary is supplied via the
+        // albumBrochureFiles multipart part. The service skips entries where
+        // the resolved fileUrl stays blank.
+        private String fileUrl;
+
+        private String title;
+
+        /** Brochure kind — PDF / IMAGE / OTHER. Defaults to OTHER. */
+        private AttachmentType fileType;
+
+        /** File size in bytes. 0 when unknown. */
+        private long sizeBytes;
+
+        private String mimeType;
+
+        /**
+         * Display order in the editor's own list. The payload partitions
+         * staged-binary rows to the front for multipart pairing, so the
+         * position in this array is NOT the display order — this field is.
+         */
+        private Integer brochureOrder;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class AlbumBrochureResponse implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private Long id;
+        private String fileUrl;
+        private String title;
+        private AttachmentType fileType;
+        private long sizeBytes;
+        private String mimeType;
+        private Integer brochureOrder;
+    }
+
+    // =========================================================================
     // ATTACHMENT DTOs
     // =========================================================================
 
@@ -115,7 +171,6 @@ public final class SoundTrackDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    @JsonIgnoreProperties(value = "attachmentOrder")
     public static class AttachmentRequest {
 
         /** Existing attachment ID used to preserve its source during update. */
@@ -137,6 +192,13 @@ public final class SoundTrackDtos {
         private long sizeBytes;
 
         private String mimeType;
+
+        /**
+         * Display order in the editor's own list. The payload partitions
+         * staged-binary rows to the front for multipart pairing, so the
+         * position in this array is NOT the display order — this field is.
+         */
+        private Integer attachmentOrder;
     }
 
     @Getter @Setter
@@ -313,6 +375,12 @@ public final class SoundTrackDtos {
          * Available for both SINGLE and MULTI tracks.
          */
         private List<AttachmentRequest> attachments;
+
+        /**
+         * Album-level brochure files (PDF booklets, scanned pages …),
+         * independent of the sound files.
+         */
+        private List<AlbumBrochureRequest> brochures;
     }
 
     // =========================================================================
@@ -386,6 +454,9 @@ public final class SoundTrackDtos {
          * Available for both SINGLE and MULTI tracks.
          */
         private List<AttachmentRequest> attachments;
+
+        /** Album-level brochure files; null leaves the list unchanged. */
+        private List<AlbumBrochureRequest> brochures;
     }
 
     // =========================================================================
@@ -461,6 +532,9 @@ public final class SoundTrackDtos {
 
         /** Optional supplementary attachments. */
         private List<AttachmentResponse> attachments;
+
+        /** Album-level brochure files (PDFs, scanned pages …). */
+        private List<AlbumBrochureResponse> brochures;
 
         /** Manual position of this track in list views; lower renders first. */
         private Integer sortOrder;

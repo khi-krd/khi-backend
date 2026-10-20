@@ -15,4 +15,7 @@ public class NewsContent {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "location", length = 255)
+    private String location;
 }

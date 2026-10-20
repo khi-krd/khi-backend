@@ -62,4 +62,8 @@ public class WritingContent {
      */
     @Column(name = "genre", length = 150)
     private String genre;
+
+    /** Place the book was written / published / is about, in this language. */
+    @Column(name = "location", length = 255)
+    private String location;
 }

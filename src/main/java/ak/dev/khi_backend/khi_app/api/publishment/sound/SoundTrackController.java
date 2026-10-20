@@ -132,23 +132,27 @@ public class SoundTrackController {
             List<MultipartFile> brochureFiles,
 
             @RequestPart(value = "attachmentFiles",  required = false)
-            List<MultipartFile> attachmentFiles
+            List<MultipartFile> attachmentFiles,
+
+            @RequestPart(value = "albumBrochureFiles", required = false)
+            List<MultipartFile> albumBrochureFiles
     ) throws Exception {
 
         CreateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, CreateRequest.class);
 
         log.info("POST /api/v1/sound-tracks | soundType={} state={} langs={} " +
                         "ckbCover={} kmrCover={} hoverCover={} " +
-                        "audioFiles={} brochureFiles={} attachmentFiles={} fileDtos={}",
+                        "audioFiles={} brochureFiles={} attachmentFiles={} albumBrochureFiles={} fileDtos={}",
                 dto.getSoundType(), dto.getTrackState(), dto.getContentLanguages(),
                 hasFile(ckbCoverImage), hasFile(kmrCoverImage), hasFile(hoverCoverImage),
                 countFiles(audioFiles), countFiles(brochureFiles), countFiles(attachmentFiles),
+                countFiles(albumBrochureFiles),
                 dto.getFiles() != null ? dto.getFiles().size() : 0);
 
         Response created = soundTrackService.create(
                 dto,
                 ckbCoverImage, kmrCoverImage, hoverCoverImage,
-                audioFiles, brochureFiles, attachmentFiles);
+                audioFiles, brochureFiles, attachmentFiles, albumBrochureFiles);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(created, "SoundTrack created successfully"));
@@ -190,23 +194,27 @@ public class SoundTrackController {
             List<MultipartFile> brochureFiles,
 
             @RequestPart(value = "attachmentFiles",  required = false)
-            List<MultipartFile> attachmentFiles
+            List<MultipartFile> attachmentFiles,
+
+            @RequestPart(value = "albumBrochureFiles", required = false)
+            List<MultipartFile> albumBrochureFiles
     ) throws Exception {
 
         UpdateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, UpdateRequest.class);
 
         log.info("PUT /api/v1/sound-tracks/{} | soundType={} state={} clearTopic={} " +
                         "ckbCover={} kmrCover={} hoverCover={} " +
-                        "audioFiles={} brochureFiles={} attachmentFiles={} fileDtos={}",
+                        "audioFiles={} brochureFiles={} attachmentFiles={} albumBrochureFiles={} fileDtos={}",
                 id, dto.getSoundType(), dto.getTrackState(), dto.isClearTopic(),
                 hasFile(ckbCoverImage), hasFile(kmrCoverImage), hasFile(hoverCoverImage),
                 countFiles(audioFiles), countFiles(brochureFiles), countFiles(attachmentFiles),
+                countFiles(albumBrochureFiles),
                 dto.getFiles() != null ? dto.getFiles().size() : -1);
 
         Response updated = soundTrackService.update(
                 id, dto,
                 ckbCoverImage, kmrCoverImage, hoverCoverImage,
-                audioFiles, brochureFiles, attachmentFiles);
+                audioFiles, brochureFiles, attachmentFiles, albumBrochureFiles);
 
         return ResponseEntity.ok(
                 ApiResponse.success(updated, "SoundTrack updated successfully"));

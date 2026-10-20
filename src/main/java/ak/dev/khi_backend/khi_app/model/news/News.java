@@ -98,14 +98,16 @@ public class News {
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "title",       column = @Column(name = "title_ckb",       length = 250)),
-            @AttributeOverride(name = "description", column = @Column(name = "description_ckb", columnDefinition = "TEXT"))
+            @AttributeOverride(name = "description", column = @Column(name = "description_ckb", columnDefinition = "TEXT")),
+            @AttributeOverride(name = "location",    column = @Column(name = "location_ckb",    length = 255))
     })
     private NewsContent ckbContent;
 
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "title",       column = @Column(name = "title_kmr",       length = 250)),
-            @AttributeOverride(name = "description", column = @Column(name = "description_kmr", columnDefinition = "TEXT"))
+            @AttributeOverride(name = "description", column = @Column(name = "description_kmr", columnDefinition = "TEXT")),
+            @AttributeOverride(name = "location",    column = @Column(name = "location_kmr",    length = 255))
     })
     private NewsContent kmrContent;
 

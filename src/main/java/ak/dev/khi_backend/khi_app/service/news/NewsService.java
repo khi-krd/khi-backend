@@ -486,10 +486,12 @@ public class NewsService {
 
     private NewsContent buildContent(NewsDto.LanguageContentDto dto) {
         if (dto == null) return null;
-        if (isBlank(dto.getTitle()) && isBlank(dto.getDescription())) return null;
+        if (isBlank(dto.getTitle()) && isBlank(dto.getDescription())
+                && isBlank(dto.getLocation())) return null;
         return NewsContent.builder()
                 .title(trimOrNull(dto.getTitle()))
                 .description(tiptapHtmlProcessor.process(dto.getDescription(), "news"))
+                .location(trimOrNull(dto.getLocation()))
                 .build();
     }
 
@@ -553,6 +555,7 @@ public class NewsService {
             dto.setCkbContent(NewsDto.LanguageContentDto.builder()
                     .title(news.getCkbContent().getTitle())
                     .description(news.getCkbContent().getDescription())
+                    .location(news.getCkbContent().getLocation())
                     .build());
         }
 
@@ -560,6 +563,7 @@ public class NewsService {
             dto.setKmrContent(NewsDto.LanguageContentDto.builder()
                     .title(news.getKmrContent().getTitle())
                     .description(news.getKmrContent().getDescription())
+                    .location(news.getKmrContent().getLocation())
                     .build());
         }
 

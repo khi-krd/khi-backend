@@ -241,6 +241,23 @@ public class SoundTrack {
     @OrderBy("attachmentOrder ASC, id ASC")
     private Set<SoundTrackAttachment> attachments = new LinkedHashSet<>();
 
+    // ─── Album Brochures ──────────────────────────────────────────────────────
+    //
+    // Album-level brochure files (PDF booklets, scanned pages …) — independent
+    // of the individual sound files which carry their own image-only
+    // brochure lists.
+
+    @Builder.Default
+    @BatchSize(size = 50)
+    @OneToMany(
+            mappedBy = "soundTrack",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    @OrderBy("brochureOrder ASC, id ASC")
+    private Set<SoundAlbumBrochure> brochures = new LinkedHashSet<>();
+
     // ─── Timestamps ───────────────────────────────────────────────────────────
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -295,6 +312,16 @@ public class SoundTrack {
     public void removeAttachment(SoundTrackAttachment attachment) {
         attachments.remove(attachment);
         attachment.setSoundTrack(null);
+    }
+
+    public void addBrochure(SoundAlbumBrochure brochure) {
+        brochures.add(brochure);
+        brochure.setSoundTrack(this);
+    }
+
+    public void removeBrochure(SoundAlbumBrochure brochure) {
+        brochures.remove(brochure);
+        brochure.setSoundTrack(null);
     }
 
     public boolean isMultiAlbumOfMemories() {
