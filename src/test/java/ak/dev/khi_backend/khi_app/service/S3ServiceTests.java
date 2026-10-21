@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.service;
 
 import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
+import ak.dev.khi_backend.khi_app.service.media.MediaProcessingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,11 +32,14 @@ class S3ServiceTests {
     @Mock
     private S3Client s3Client;
 
+    @Mock
+    private MediaProcessingService mediaProcessing;
+
     private S3Service s3Service;
 
     @BeforeEach
     void setUp() throws Exception {
-        s3Service = new S3Service(s3Client);
+        s3Service = new S3Service(s3Client, mediaProcessing);
         setField("bucket", "my-bucket");
         setField("baseFolder", "khi-web-folders");
         setField("region", "eu-central-1");
