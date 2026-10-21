@@ -600,9 +600,26 @@ public class VideoService {
                     .titleKmr(trimOrNull(clipDto.getTitleKmr()))
                     .descriptionCkb(trimOrNull(clipDto.getDescriptionCkb()))
                     .descriptionKmr(trimOrNull(clipDto.getDescriptionKmr()))
+                    .main(Boolean.TRUE.equals(clipDto.getMain()))
                     .build();
 
             video.addClipItem(item);
+        }
+        normalizeClipMainFlag(video.getVideoClipItems());
+    }
+
+    /** At most one clip is main: the first flagged one, else the first clip. */
+    private void normalizeClipMainFlag(List<VideoClipItem> clips) {
+        if (clips == null || clips.isEmpty()) return;
+        int mainIdx = -1;
+        for (int i = 0; i < clips.size(); i++) {
+            VideoClipItem c = clips.get(i);
+            if (c != null && c.isMain()) { mainIdx = i; break; }
+        }
+        if (mainIdx < 0) mainIdx = 0;
+        for (int i = 0; i < clips.size(); i++) {
+            VideoClipItem c = clips.get(i);
+            if (c != null) c.setMain(i == mainIdx);
         }
     }
 
@@ -698,9 +715,11 @@ public class VideoService {
             if (dto.getDescriptionKmr() != null) {
                 item.setDescriptionKmr(trimOrNull(dto.getDescriptionKmr()));
             }
+            if (dto.getMain() != null) item.setMain(dto.getMain());
             merged.add(item);
         }
 
+        normalizeClipMainFlag(merged);
         return merged;
     }
 

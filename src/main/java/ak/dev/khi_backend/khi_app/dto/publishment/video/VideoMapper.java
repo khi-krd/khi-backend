@@ -339,6 +339,7 @@ public final class VideoMapper {
                 .titleKmr(item.getTitleKmr())
                 .descriptionCkb(item.getDescriptionCkb())
                 .descriptionKmr(item.getDescriptionKmr())
+                .main(item.isMain())
                 .build();
     }
 

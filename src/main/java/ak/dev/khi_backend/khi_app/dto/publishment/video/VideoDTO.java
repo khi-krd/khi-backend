@@ -177,6 +177,8 @@ public class VideoDTO {
         private String titleKmr;
         private String descriptionCkb;
         private String descriptionKmr;
+        /** Primary clip — the detail page opens with it. */
+        private Boolean main;
     }
 
     /**

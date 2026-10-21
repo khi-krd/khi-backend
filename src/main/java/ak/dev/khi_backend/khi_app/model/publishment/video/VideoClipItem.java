@@ -81,6 +81,16 @@ public class VideoClipItem {
     @Column(name = "title_kmr", length = 300)
     private String titleKmr;
 
+    // ─── Default Clip ─────────────────────────────────────────────────────────
+
+    /**
+     * True for the clip the detail page plays first. At most one clip per
+     * video is main — see VideoService#normalizeClipMainFlag. Older rows
+     * (pre-flag) carry all-false and the site falls back to clip order.
+     */
+    @Column(name = "is_main", nullable = false)
+    private boolean main = false;
+
     // ─── Bilingual Clip Description ────────────────────────────────────────────
 
     @Column(name = "description_ckb", columnDefinition = "TEXT")
