@@ -2,6 +2,7 @@ package ak.dev.khi_backend.khi_app.service;
 
 import ak.dev.khi_backend.khi_app.enums.project.ProjectMediaType;
 import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
+import ak.dev.khi_backend.khi_app.service.media.MediaProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Slf4j
@@ -32,7 +36,14 @@ public class S3Service {
         InputStream open() throws IOException;
     }
 
+    /**
+     * Object keys embed a random UUID, so a key's bytes never change — every
+     * object is safe to cache for a year in browsers and CDN edges.
+     */
+    public static final String CACHE_CONTROL = "public, max-age=31536000, immutable";
+
     private final S3Client s3Client;
+    private final MediaProcessingService mediaProcessing;
 
     @Value("${aws.s3.bucket}")
     private String bucket;
@@ -93,21 +104,74 @@ public class S3Service {
         log.info("⬆️ Uploading to S3: bucket={}, folder={}, key={}, contentType={}",
                 bucket, resolvedFolder, key, contentType);
 
+        return putBytes(key, fileBytes, originalFilename, contentType);
+    }
+
+    /**
+     * Shared PUT for in-memory uploads: MP4-family media is remuxed to
+     * faststart first, and every object carries the immutable cache header.
+     */
+    private String putBytes(String key, byte[] fileBytes, String originalFilename, String contentType) {
+        if (mediaProcessing.isFaststartCandidate(contentType, originalFilename)) {
+            Path tmp = null;
+            try {
+                tmp = Files.createTempFile("khi-upload-", ".bin");
+                Files.write(tmp, fileBytes);
+                return putFile(key, tmp, originalFilename, contentType);
+            } catch (IOException e) {
+                log.warn("Temp file for faststart failed ({}), uploading as-is", e.getMessage());
+            } finally {
+                deleteQuietly(tmp);
+            }
+        }
         try {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(request, RequestBody.fromBytes(fileBytes));
-
+            s3Client.putObject(putRequest(key, contentType, null), RequestBody.fromBytes(fileBytes));
             String publicUrl = getPublicUrl(key);
             log.info("✅ File uploaded successfully: {}", publicUrl);
             return publicUrl;
         } catch (S3Exception e) {
             log.error("❌ S3 upload failed: {}", e.getMessage(), e);
             throw new BadRequestException("s3.upload.failed", "Failed to upload file to S3: " + e.getMessage());
+        }
+    }
+
+    /** PUT a local file, faststarting MP4-family media first. */
+    private String putFile(String key, Path file, String originalFilename, String contentType) {
+        Path upload = mediaProcessing.isFaststartCandidate(contentType, originalFilename)
+                ? mediaProcessing.faststartIfNeeded(file, originalFilename)
+                : file;
+        try {
+            long length = Files.size(upload);
+            s3Client.putObject(putRequest(key, contentType, length), RequestBody.fromFile(upload));
+            String publicUrl = getPublicUrl(key);
+            log.info("✅ File uploaded successfully: {}", publicUrl);
+            return publicUrl;
+        } catch (IOException e) {
+            throw new BadRequestException("s3.upload.failed", "Failed to read upload: " + e.getMessage());
+        } catch (S3Exception | SdkClientException e) {
+            log.error("❌ S3 upload failed: {}", e.getMessage(), e);
+            throw new BadRequestException("s3.upload.failed", "Failed to upload file to S3: " + e.getMessage());
+        } finally {
+            if (!upload.equals(file)) deleteQuietly(upload);
+        }
+    }
+
+    private PutObjectRequest putRequest(String key, String contentType, Long contentLength) {
+        PutObjectRequest.Builder builder = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .cacheControl(CACHE_CONTROL);
+        if (contentLength != null) builder.contentLength(contentLength);
+        return builder.build();
+    }
+
+    private static void deleteQuietly(Path path) {
+        if (path == null) return;
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // temp file — the OS reclaims it
         }
     }
 
@@ -125,23 +189,7 @@ public class S3Service {
         log.info("⬆️ Uploading to S3: bucket={}, folder={}, key={}, contentType={}",
                 bucket, folder, key, contentType);
 
-        try {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(request, RequestBody.fromBytes(fileBytes));
-
-            String publicUrl = getPublicUrl(key);
-            log.info("✅ File uploaded successfully: {}", publicUrl);
-
-            return publicUrl;
-        } catch (S3Exception e) {
-            log.error("❌ S3 upload failed: {}", e.getMessage(), e);
-            throw new BadRequestException("s3.upload.failed", "Failed to upload file to S3: " + e.getMessage());
-        }
+        return putBytes(key, fileBytes, originalFilename, contentType);
     }
 
     /**
@@ -181,13 +229,25 @@ public class S3Service {
         log.info("⬆️ Streaming to S3: bucket={}, folder={}, key={}, contentType={}, size={}",
                 bucket, resolvedFolder, key, resolvedContentType, contentLength);
 
+        // MP4-family media goes through a temp file so the moov index can be
+        // moved to the front (faststart) before the object is written.
+        if (mediaProcessing.isFaststartCandidate(resolvedContentType, originalFilename)) {
+            Path tmp = null;
+            try (InputStream in = streamProvider.open()) {
+                tmp = Files.createTempFile("khi-upload-", ".bin");
+                Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
+                return putFile(key, tmp, originalFilename, resolvedContentType);
+            } catch (IOException e) {
+                log.error("❌ Could not buffer media for faststart: {}", e.getMessage(), e);
+                throw new BadRequestException("s3.upload.failed",
+                        "Failed to read uploaded file: " + e.getMessage());
+            } finally {
+                deleteQuietly(tmp);
+            }
+        }
+
         try {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(resolvedContentType)
-                    .contentLength(contentLength)
-                    .build();
+            PutObjectRequest request = putRequest(key, resolvedContentType, contentLength);
 
             RequestBody body = RequestBody.fromContentProvider(
                     () -> {
@@ -227,13 +287,7 @@ public class S3Service {
         log.info("⬆️ Uploading album cover ({}): {}", isCkb ? "CKB" : "KMR", key);
 
         try {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(request, RequestBody.fromBytes(fileBytes));
+            s3Client.putObject(putRequest(key, contentType, null), RequestBody.fromBytes(fileBytes));
 
             String publicUrl = getPublicUrl(key);
             log.info("✅ Album cover uploaded: {}", publicUrl);
@@ -254,13 +308,7 @@ public class S3Service {
         log.info("⬆️ Uploading album hover image: {}", key);
 
         try {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(request, RequestBody.fromBytes(fileBytes));
+            s3Client.putObject(putRequest(key, contentType, null), RequestBody.fromBytes(fileBytes));
 
             String publicUrl = getPublicUrl(key);
             log.info("✅ Album hover image uploaded: {}", publicUrl);
@@ -269,6 +317,69 @@ public class S3Service {
             log.error("❌ Failed to upload hover image: {}", e.getMessage(), e);
             throw new BadRequestException("s3.upload.failed", "Failed to upload hover: " + e.getMessage());
         }
+    }
+
+    // ============================================================
+    // MAINTENANCE (faststart backfill, cache headers)
+    // ============================================================
+
+    public String getBaseFolder() {
+        return baseFolder;
+    }
+
+    /** Every object key under the base folder (paginated listing). */
+    public java.util.List<String> listKeys() {
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        String token = null;
+        do {
+            software.amazon.awssdk.services.s3.model.ListObjectsV2Response page = s3Client.listObjectsV2(
+                    software.amazon.awssdk.services.s3.model.ListObjectsV2Request.builder()
+                            .bucket(bucket)
+                            .prefix(baseFolder + "/")
+                            .continuationToken(token)
+                            .build());
+            page.contents().forEach(o -> keys.add(o.key()));
+            token = Boolean.TRUE.equals(page.isTruncated()) ? page.nextContinuationToken() : null;
+        } while (token != null);
+        return keys;
+    }
+
+    public software.amazon.awssdk.services.s3.model.HeadObjectResponse head(String key) {
+        return s3Client.headObject(software.amazon.awssdk.services.s3.model.HeadObjectRequest.builder()
+                .bucket(bucket).key(key).build());
+    }
+
+    /** Stream an object to a temp file (never into JVM memory). */
+    public Path downloadToTemp(String key) throws IOException {
+        Path tmp = Files.createTempFile("khi-dl-", ".bin");
+        Files.deleteIfExists(tmp);
+        s3Client.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build(),
+                software.amazon.awssdk.core.sync.ResponseTransformer.toFile(tmp));
+        return tmp;
+    }
+
+    /** Server-side copy; metadata is carried over unchanged. */
+    public void copy(String sourceKey, String destinationKey) {
+        s3Client.copyObject(software.amazon.awssdk.services.s3.model.CopyObjectRequest.builder()
+                .sourceBucket(bucket).sourceKey(sourceKey)
+                .destinationBucket(bucket).destinationKey(destinationKey)
+                .build());
+    }
+
+    /** Overwrite an existing key with a local file (same URL, new bytes). */
+    public void replaceFromFile(String key, Path file, String contentType) throws IOException {
+        s3Client.putObject(putRequest(key, contentType, Files.size(file)), RequestBody.fromFile(file));
+    }
+
+    /** Rewrite an object's headers in place to add the immutable cache header. */
+    public void stampCacheControl(String key, String contentType) {
+        s3Client.copyObject(software.amazon.awssdk.services.s3.model.CopyObjectRequest.builder()
+                .sourceBucket(bucket).sourceKey(key)
+                .destinationBucket(bucket).destinationKey(key)
+                .metadataDirective(software.amazon.awssdk.services.s3.model.MetadataDirective.REPLACE)
+                .contentType(contentType)
+                .cacheControl(CACHE_CONTROL)
+                .build());
     }
 
     // ============================================================

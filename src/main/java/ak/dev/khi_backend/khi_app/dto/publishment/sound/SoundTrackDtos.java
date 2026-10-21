@@ -91,6 +91,8 @@ public final class SoundTrackDtos {
         private String imageUrl;
 
         private String caption;
+        private String captionCkb;
+        private String captionKmr;
     }
 
     @Getter @Setter
@@ -101,6 +103,8 @@ public final class SoundTrackDtos {
         private Long id;
         private String imageUrl;
         private String caption;
+        private String captionCkb;
+        private String captionKmr;
         private Integer brochureOrder;
     }
 
@@ -128,6 +132,8 @@ public final class SoundTrackDtos {
         private String fileUrl;
 
         private String title;
+        private String titleCkb;
+        private String titleKmr;
 
         /** Brochure kind — PDF / IMAGE / OTHER. Defaults to OTHER. */
         private AttachmentType fileType;
@@ -153,6 +159,8 @@ public final class SoundTrackDtos {
         private Long id;
         private String fileUrl;
         private String title;
+        private String titleCkb;
+        private String titleKmr;
         private AttachmentType fileType;
         private long sizeBytes;
         private String mimeType;
@@ -181,6 +189,8 @@ public final class SoundTrackDtos {
         private String fileUrl;
 
         private String title;
+        private String titleCkb;
+        private String titleKmr;
 
         // FIX: Removed — the service now defaults to AttachmentType.OTHER
         // when this field is absent, so a missing value no longer triggers a
@@ -208,6 +218,8 @@ public final class SoundTrackDtos {
         private Long id;
         private String fileUrl;
         private String title;
+        private String titleCkb;
+        private String titleKmr;
         private AttachmentType attachmentType;
         private long sizeBytes;
         private String mimeType;
@@ -235,6 +247,8 @@ public final class SoundTrackDtos {
 
         // ── Identity ──────────────────────────────────────────────────────────
         private String title;
+        private String titleCkb;
+        private String titleKmr;
 
         private FileType fileType;
 
@@ -280,6 +294,8 @@ public final class SoundTrackDtos {
         private String embedUrl;
 
         private String title;
+        private String titleCkb;
+        private String titleKmr;
         private FileType fileType;
         private Integer publishmentYear;
 

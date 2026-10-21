@@ -45,6 +45,7 @@ public class SoundTrackService {
     private final SoundTrackTypeService      soundTrackTypeService;
     private final S3Service                  s3Service;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
+    private final ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
 
     // =========================================================================
     // دروستکردن (CREATE)
@@ -114,6 +115,7 @@ public class SoundTrackService {
             buildAndAttachAttachments(entity, dto.getAttachments(), attachmentFiles);
             buildAndAttachAlbumBrochures(entity, dto.getBrochures(), albumBrochureFiles);
 
+            mediaMetadata.safely(() -> mediaMetadata.applyToSoundTrack(entity));
             SoundTrack saved = soundTrackRepository.save(entity);
             saved.getSoundTypes().forEach(soundTrackTypeService::ensureExists);
 
@@ -313,6 +315,7 @@ public class SoundTrackService {
                 entity.getBrochures().addAll(mergedBrochures);
             }
 
+            mediaMetadata.safely(() -> mediaMetadata.applyToSoundTrack(entity));
             SoundTrack saved = soundTrackRepository.save(entity);
             saved.getSoundTypes().forEach(soundTrackTypeService::ensureExists);
 
@@ -603,11 +606,15 @@ public class SoundTrackService {
             if (isBlank(fileUrl) && isBlank(externalUrl) && isBlank(embedUrl))
                 continue; // file row with no source — skip it, keep the save
 
+            String[] fileTitle = mergeBilingual(null, null, null,
+                    fDto != null ? fDto.getTitle() : null,
+                    fDto != null ? fDto.getTitleCkb() : null,
+                    fDto != null ? fDto.getTitleKmr() : null);
             SoundTrackFile file = SoundTrackFile.builder()
                     .fileUrl(fileUrl)
                     .externalUrl(externalUrl)
                     .embedUrl(embedUrl)
-                    .title(fDto != null ? trimOrNull(fDto.getTitle())          : null)
+                    .title(fileTitle[0]).titleCkb(fileTitle[1]).titleKmr(fileTitle[2])
                     .fileType(fDto != null && fDto.getFileType() != null
                             ? fDto.getFileType()
                             : FileType.AUDIO)
@@ -757,7 +764,11 @@ public class SoundTrackService {
             boolean hasUpload
     ) {
         if (dto == null) return;
-        if (dto.getTitle() != null) file.setTitle(trimOrNull(dto.getTitle()));
+        String[] t = mergeBilingual(file.getTitle(), file.getTitleCkb(), file.getTitleKmr(),
+                dto.getTitle(), dto.getTitleCkb(), dto.getTitleKmr());
+        file.setTitle(t[0]);
+        file.setTitleCkb(t[1]);
+        file.setTitleKmr(t[2]);
         if (dto.getFileType() != null) file.setFileType(dto.getFileType());
         if (isNew && file.getFileType() == null)
             file.setFileType(FileType.AUDIO);
@@ -816,9 +827,11 @@ public class SoundTrackService {
             } else if (!isBlank(dto.getImageUrl())) {
                 brochure.setImageUrl(dto.getImageUrl().trim());
             }
-            if (dto.getCaption() != null) {
-                brochure.setCaption(trimOrNull(dto.getCaption()));
-            }
+            String[] cap = mergeBilingual(brochure.getCaption(), brochure.getCaptionCkb(),
+                    brochure.getCaptionKmr(), dto.getCaption(), dto.getCaptionCkb(), dto.getCaptionKmr());
+            brochure.setCaption(cap[0]);
+            brochure.setCaptionCkb(cap[1]);
+            brochure.setCaptionKmr(cap[2]);
             brochure.setBrochureOrder(i);
             merged.add(brochure);
         }
@@ -870,7 +883,11 @@ public class SoundTrackService {
                 attachment.setFileUrl(dto.getFileUrl().trim());
             }
             if (dto != null) {
-                if (dto.getTitle() != null) attachment.setTitle(trimOrNull(dto.getTitle()));
+                String[] t = mergeBilingual(attachment.getTitle(), attachment.getTitleCkb(),
+                        attachment.getTitleKmr(), dto.getTitle(), dto.getTitleCkb(), dto.getTitleKmr());
+                attachment.setTitle(t[0]);
+                attachment.setTitleCkb(t[1]);
+                attachment.setTitleKmr(t[2]);
                 if (dto.getAttachmentType() != null) {
                     attachment.setAttachmentType(dto.getAttachmentType());
                 } else if (isNew) {
@@ -1051,9 +1068,11 @@ public class SoundTrackService {
             // no matching file part was provided).
             if (isBlank(imageUrl)) continue;
 
+            String[] cap = mergeBilingual(null, null, null,
+                    bDto.getCaption(), bDto.getCaptionCkb(), bDto.getCaptionKmr());
             file.addBrochure(SoundTrackBrochure.builder()
                     .imageUrl(imageUrl)
-                    .caption(trimOrNull(bDto.getCaption()))
+                    .caption(cap[0]).captionCkb(cap[1]).captionKmr(cap[2])
                     .brochureOrder(b)
                     .build());
         }
@@ -1110,9 +1129,13 @@ public class SoundTrackService {
                     ? aDto.getAttachmentType()
                     : AttachmentType.OTHER;
 
+            String[] attTitle = mergeBilingual(null, null, null,
+                    aDto != null ? aDto.getTitle() : null,
+                    aDto != null ? aDto.getTitleCkb() : null,
+                    aDto != null ? aDto.getTitleKmr() : null);
             owner.addAttachment(SoundTrackAttachment.builder()
                     .fileUrl(fileUrl)
-                    .title(aDto != null ? trimOrNull(aDto.getTitle()) : null)
+                    .title(attTitle[0]).titleCkb(attTitle[1]).titleKmr(attTitle[2])
                     .attachmentType(resolvedType)
                     .sizeBytes(fileSize)
                     .mimeType(aDto != null ? trimOrNull(aDto.getMimeType()) : null)
@@ -1169,9 +1192,13 @@ public class SoundTrackService {
                     ? bDto.getFileType()
                     : guessBrochureType(mimeType);
 
+            String[] brTitle = mergeBilingual(null, null, null,
+                    bDto != null ? bDto.getTitle() : null,
+                    bDto != null ? bDto.getTitleCkb() : null,
+                    bDto != null ? bDto.getTitleKmr() : null);
             owner.addBrochure(SoundAlbumBrochure.builder()
                     .fileUrl(fileUrl)
-                    .title(bDto != null ? trimOrNull(bDto.getTitle()) : null)
+                    .title(brTitle[0]).titleCkb(brTitle[1]).titleKmr(brTitle[2])
                     .fileType(resolvedType)
                     .sizeBytes(fileSize)
                     .mimeType(mimeType)
@@ -1227,7 +1254,11 @@ public class SoundTrackService {
                 brochure.setFileUrl(dto.getFileUrl().trim());
             }
             if (dto != null) {
-                if (dto.getTitle() != null) brochure.setTitle(trimOrNull(dto.getTitle()));
+                String[] t = mergeBilingual(brochure.getTitle(), brochure.getTitleCkb(),
+                        brochure.getTitleKmr(), dto.getTitle(), dto.getTitleCkb(), dto.getTitleKmr());
+                brochure.setTitle(t[0]);
+                brochure.setTitleCkb(t[1]);
+                brochure.setTitleKmr(t[2]);
                 if (dto.getFileType() != null) {
                     brochure.setFileType(dto.getFileType());
                 } else if (isNew) {
@@ -1533,18 +1564,44 @@ public class SoundTrackService {
         );
     }
 
+    /**
+     * Merge a bilingual file name. Explicit CKB/KMR values win; a bare legacy
+     * value (older clients) fills CKB. Returns {legacyMirror, ckb, kmr} — the
+     * legacy column always mirrors the primary (CKB, else KMR).
+     */
+    private static String[] mergeBilingual(String curLegacy, String curCkb, String curKmr,
+                                           String inLegacy, String inCkb, String inKmr) {
+        String ckb = curCkb;
+        String kmr = curKmr;
+        if (ckb == null && kmr == null) ckb = trimOrNull(curLegacy);
+        if (inCkb != null) ckb = trimOrNull(inCkb);
+        if (inKmr != null) kmr = trimOrNull(inKmr);
+        if (inCkb == null && inKmr == null && inLegacy != null) ckb = trimOrNull(inLegacy);
+        return new String[]{ckb != null ? ckb : kmr, ckb, kmr};
+    }
+
+    private static String firstNonBlankOf(String a, String b) {
+        return a != null && !a.isBlank() ? a : (b != null && !b.isBlank() ? b : null);
+    }
+
     private FileResponse toFileResponse(SoundTrackFile f) {
         List<BrochureResponse> brochures = f.getBrochures() == null ? List.of()
                 : new ArrayList<>(f.getBrochures()).stream()
                 .map(b -> BrochureResponse.builder()
                         .id(b.getId()).imageUrl(b.getImageUrl())
-                        .caption(b.getCaption()).brochureOrder(b.getBrochureOrder()).build())
+                        .caption(b.getCaption())
+                        .captionCkb(firstNonBlankOf(b.getCaptionCkb(), b.getCaptionKmr() == null ? b.getCaption() : null))
+                        .captionKmr(b.getCaptionKmr())
+                        .brochureOrder(b.getBrochureOrder()).build())
                 .collect(Collectors.toList());
 
         return FileResponse.builder()
                 .id(f.getId()).fileUrl(f.getFileUrl())
                 .externalUrl(f.getExternalUrl()).embedUrl(f.getEmbedUrl())
-                .title(f.getTitle()).fileType(f.getFileType())
+                .title(f.getTitle())
+                .titleCkb(firstNonBlankOf(f.getTitleCkb(), f.getTitleKmr() == null ? f.getTitle() : null))
+                .titleKmr(f.getTitleKmr())
+                .fileType(f.getFileType())
                 .publishmentYear(f.getPublishmentYear())
                 .sizeBytes(f.getSizeBytes()).durationSeconds(f.getDurationSeconds())
                 .durationMinutes(f.getDurationMinutes())
@@ -1559,6 +1616,8 @@ public class SoundTrackService {
     private AttachmentResponse toAttachmentResponse(SoundTrackAttachment a) {
         return AttachmentResponse.builder()
                 .id(a.getId()).fileUrl(a.getFileUrl()).title(a.getTitle())
+                .titleCkb(firstNonBlankOf(a.getTitleCkb(), a.getTitleKmr() == null ? a.getTitle() : null))
+                .titleKmr(a.getTitleKmr())
                 .attachmentType(a.getAttachmentType()).sizeBytes(a.getSizeBytes())
                 .mimeType(a.getMimeType()).attachmentOrder(a.getAttachmentOrder())
                 .build();
@@ -1567,6 +1626,8 @@ public class SoundTrackService {
     private AlbumBrochureResponse toAlbumBrochureResponse(SoundAlbumBrochure b) {
         return AlbumBrochureResponse.builder()
                 .id(b.getId()).fileUrl(b.getFileUrl()).title(b.getTitle())
+                .titleCkb(firstNonBlankOf(b.getTitleCkb(), b.getTitleKmr() == null ? b.getTitle() : null))
+                .titleKmr(b.getTitleKmr())
                 .fileType(b.getFileType()).sizeBytes(b.getSizeBytes())
                 .mimeType(b.getMimeType()).brochureOrder(b.getBrochureOrder())
                 .build();
@@ -1662,7 +1723,7 @@ public class SoundTrackService {
 
     private boolean isBlank(String s)   { return s == null || s.isBlank(); }
 
-    private String trimOrNull(String s) {
+    private static String trimOrNull(String s) {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;

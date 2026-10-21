@@ -46,6 +46,14 @@ public class SoundAlbumBrochure {
     @Column(name = "title", length = 300)
     private String title;
 
+    /** Sorani title — the legacy `title` column mirrors the primary one. */
+    @Column(name = "title_ckb", length = 300)
+    private String titleCkb;
+
+    /** Kurmanji title. */
+    @Column(name = "title_kmr", length = 300)
+    private String titleKmr;
+
     /**
      * Kind of brochure file: PDF, IMAGE, OTHER.
      * Shares the {@link AttachmentType} vocabulary.

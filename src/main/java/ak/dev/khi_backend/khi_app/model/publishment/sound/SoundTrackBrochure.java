@@ -43,6 +43,14 @@ public class SoundTrackBrochure {
     @Column(name = "caption", length = 300)
     private String caption;
 
+    /** Sorani caption — the legacy `caption` column mirrors the primary one. */
+    @Column(name = "caption_ckb", length = 300)
+    private String captionCkb;
+
+    /** Kurmanji caption. */
+    @Column(name = "caption_kmr", length = 300)
+    private String captionKmr;
+
     /**
      * Position in the brochure list.
      * Managed automatically by @OrderColumn on SoundTrackFile.brochures.

@@ -336,4 +336,8 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
 
     long countByFeaturedTrue();
 
+
+    /** Every id, for batch maintenance jobs. */
+    @org.springframework.data.jpa.repository.Query("SELECT e.id FROM Writing e ORDER BY e.id")
+    java.util.List<Long> findEveryId();
 }

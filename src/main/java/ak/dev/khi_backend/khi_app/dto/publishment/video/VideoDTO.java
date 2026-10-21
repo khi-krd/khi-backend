@@ -193,6 +193,8 @@ public class VideoDTO {
         private String embedUrl;
         private Boolean main;
         private String label;
+        private String labelCkb;
+        private String labelKmr;
         private Integer durationSeconds;
     }
 

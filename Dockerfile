@@ -11,6 +11,10 @@ COPY src ./src
 RUN mvn -B -q -DskipTests package
 
 FROM eclipse-temurin:21-jre
+# ffmpeg/ffprobe: faststart remux of uploaded MP4s + automatic file metadata.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 1001 app
 WORKDIR /app
 COPY --from=build /build/target/khi_backend-0.0.1-SNAPSHOT.jar app.jar

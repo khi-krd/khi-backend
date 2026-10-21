@@ -43,6 +43,7 @@ public class ImageCollectionService {
     private final PublishmentTopicRepository   topicRepository;
     private final S3Service                    s3Service;
     private final TiptapHtmlProcessor          tiptapHtmlProcessor;
+    private final ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
 
     // =========================================================================
     // دروستکردن (CREATE)
@@ -95,6 +96,7 @@ public class ImageCollectionService {
                     entity, dto.getCollectionType(), dto.getImageAlbum(), images);
             entity.getImageAlbum().addAll(items);
 
+            mediaMetadata.safely(() -> mediaMetadata.applyToCollection(entity));
             ImageCollection saved = imageCollectionRepository.save(entity);
             createLog(saved.getId(), titleOf(saved), "CREATE",
                     "کۆمەڵەی وێنە دروستکرا — جۆر=" + saved.getCollectionType()
@@ -227,6 +229,7 @@ public class ImageCollectionService {
                 entity.getImageAlbum().addAll(mergedItems);
             }
 
+            mediaMetadata.safely(() -> mediaMetadata.applyToCollection(entity));
             ImageCollection saved = imageCollectionRepository.save(entity);
             createLog(saved.getId(), titleOf(saved), "UPDATE",
                     "کۆمەڵەی وێنە نوێکرایەوە — جۆر=" + saved.getCollectionType());

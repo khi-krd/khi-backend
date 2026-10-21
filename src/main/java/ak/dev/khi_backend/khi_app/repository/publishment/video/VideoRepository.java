@@ -271,4 +271,8 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     long countByFeaturedTrue();
 
 
+
+    /** Every id, for batch maintenance jobs. */
+    @org.springframework.data.jpa.repository.Query("SELECT e.id FROM Video e ORDER BY e.id")
+    java.util.List<Long> findEveryId();
 }

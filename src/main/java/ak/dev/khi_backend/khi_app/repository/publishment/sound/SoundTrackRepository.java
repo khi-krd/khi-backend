@@ -238,4 +238,8 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     int renameSoundTypeInCollection(@Param("oldType") String oldType,
                                     @Param("newType") String newType);
 
+
+    /** Every id, for batch maintenance jobs. */
+    @org.springframework.data.jpa.repository.Query("SELECT e.id FROM SoundTrack e ORDER BY e.id")
+    java.util.List<Long> findEveryId();
 }

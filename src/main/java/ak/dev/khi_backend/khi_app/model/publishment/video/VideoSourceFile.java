@@ -49,6 +49,14 @@ public class VideoSourceFile {
     @Column(name = "label", length = 300)
     private String label;
 
+    /** Sorani label — the legacy `label` column mirrors the primary one. */
+    @Column(name = "label_ckb", length = 300)
+    private String labelCkb;
+
+    /** Kurmanji label. */
+    @Column(name = "label_kmr", length = 300)
+    private String labelKmr;
+
     /** Optional per-source runtime in seconds. */
     @Column(name = "duration_seconds")
     private Integer durationSeconds;

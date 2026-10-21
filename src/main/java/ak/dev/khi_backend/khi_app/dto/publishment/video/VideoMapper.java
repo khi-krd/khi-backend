@@ -233,6 +233,9 @@ public final class VideoMapper {
                 .embedUrl(s.getEmbedUrl())
                 .main(s.isMain())
                 .label(s.getLabel())
+                .labelCkb(s.getLabelCkb() != null ? s.getLabelCkb()
+                        : (s.getLabelKmr() == null ? s.getLabel() : null))
+                .labelKmr(s.getLabelKmr())
                 .durationSeconds(s.getDurationSeconds())
                 .build();
     }

@@ -83,6 +83,7 @@ public class VideoService {
     private final FilmReklamVideoRepository  filmReklamVideoRepository;
     private final S3Service                  s3Service;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
+    private final ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // بابەت - دروستکردن، خوێندنەوە، سڕینەوە
@@ -212,6 +213,7 @@ public class VideoService {
 
         processTiptapHtml(video);
 
+        mediaMetadata.safely(() -> mediaMetadata.applyToVideo(video));
         Video saved = videoRepository.save(video);
 
         logAction(
@@ -397,6 +399,7 @@ public class VideoService {
 
         processTiptapHtml(video);
 
+        mediaMetadata.safely(() -> mediaMetadata.applyToVideo(video));
         Video updated = videoRepository.save(video);
         logAction(updated.getId(), getTitle(updated), "UPDATED", "ڤیدیۆ نوێکرایەوە");
         return VideoMapper.toDTO(updated);
@@ -818,11 +821,17 @@ public class VideoService {
         if (dto != null && dto.getVideoSources() != null && !dto.getVideoSources().isEmpty()) {
             for (VideoDTO.VideoSourceDTO s : dto.getVideoSources()) {
                 if (s == null) continue;
+                // Explicit CKB/KMR labels win; a bare legacy label fills CKB.
+                String labelCkb = s.getLabelCkb() != null || s.getLabelKmr() != null
+                        ? trimOrNull(s.getLabelCkb()) : trimOrNull(s.getLabel());
+                String labelKmr = trimOrNull(s.getLabelKmr());
                 sources.add(VideoSourceFile.builder()
                         .url(trimOrNull(s.getUrl()))
                         .externalUrl(trimOrNull(s.getExternalUrl()))
                         .embedUrl(trimOrNull(s.getEmbedUrl()))
-                        .label(trimOrNull(s.getLabel()))
+                        .label(labelCkb != null ? labelCkb : labelKmr)
+                        .labelCkb(labelCkb)
+                        .labelKmr(labelKmr)
                         .durationSeconds(s.getDurationSeconds())
                         .main(Boolean.TRUE.equals(s.getMain()))
                         .build());

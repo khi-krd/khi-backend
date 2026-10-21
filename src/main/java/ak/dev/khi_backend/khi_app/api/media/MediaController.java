@@ -34,6 +34,28 @@ import java.util.List;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final ak.dev.khi_backend.khi_app.service.media.MediaMaintenanceService maintenanceService;
+
+    /**
+     * Start a background library maintenance run (admin only via the
+     * /api/v1/media/** security rule). Body: {"tasks": ["faststart",
+     * "cache", "metadata"]} — omit for all three.
+     */
+    @PostMapping(value = "/maintenance", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String, Object>> startMaintenance(
+            @RequestBody(required = false) java.util.Map<String, java.util.List<String>> body
+    ) {
+        java.util.List<String> tasks = body == null ? null : body.get("tasks");
+        java.util.Set<String> selected = tasks == null || tasks.isEmpty()
+                ? java.util.Set.of("faststart", "cache", "metadata")
+                : new java.util.HashSet<>(tasks);
+        return ResponseEntity.accepted().body(maintenanceService.start(selected));
+    }
+
+    @GetMapping(value = "/maintenance", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String, Object>> maintenanceStatus() {
+        return ResponseEntity.ok(maintenanceService.status());
+    }
 
     /**
      * Upload a single media file to S3.

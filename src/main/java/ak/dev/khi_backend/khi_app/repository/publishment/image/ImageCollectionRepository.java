@@ -177,4 +177,8 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
 
 
 
+
+    /** Every id, for batch maintenance jobs. */
+    @org.springframework.data.jpa.repository.Query("SELECT e.id FROM ImageCollection e ORDER BY e.id")
+    java.util.List<Long> findEveryId();
 }

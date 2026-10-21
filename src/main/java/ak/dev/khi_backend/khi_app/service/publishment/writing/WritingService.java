@@ -41,6 +41,7 @@ public class WritingService {
     private final S3Service                  s3Service;
     private final ObjectMapper               objectMapper;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
+    private final ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
 
     // =========================================================================
     // دروستکردن
@@ -103,6 +104,7 @@ public class WritingService {
 
         applyContent(writing, request, ckbFileUrl, kmrFileUrl);
 
+        mediaMetadata.safely(() -> mediaMetadata.applyToWriting(writing));
         Writing saved = writingRepository.save(writing);
         updateSeriesCount(saved.getSeriesId());
 
@@ -185,6 +187,7 @@ public class WritingService {
             writing.setSeriesId(resolvedParent.getSeriesId());
         }
 
+        mediaMetadata.safely(() -> mediaMetadata.applyToWriting(writing));
         Writing updated = writingRepository.save(writing);
 
         if (oldSeriesId != null && !oldSeriesId.equals(updated.getSeriesId())) {
