@@ -92,7 +92,8 @@ public class MediaProcessingService {
             String ext = extensionOf(filename, ".mp4");
             Path out = Files.createTempFile("khi-faststart-", ext);
             List<String> cmd = List.of("ffmpeg", "-y", "-v", "error", "-i", input.toString(),
-                    "-map", "0", "-c", "copy", "-movflags", "+faststart", out.toString());
+                    "-map", "0:v?", "-map", "0:a?", "-map", "0:s?",
+                    "-c", "copy", "-movflags", "+faststart", out.toString());
             long started = System.currentTimeMillis();
             Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
             String output = readAll(p.getInputStream());
