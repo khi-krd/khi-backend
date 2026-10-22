@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -157,17 +158,8 @@ public class SoundTrackService {
                 .orElseThrow(() -> Errors.soundNotFound(id));
 
         boolean updatesFiles = dto.getFiles() != null || hasUploads(audioFiles);
-        if (updatesFiles) {
-            validateFileUpdate(entity, dto.getFiles(), audioFiles);
-        }
         boolean updatesAttachments = dto.getAttachments() != null || hasUploads(attachmentFiles);
-        if (updatesAttachments) {
-            validateAttachmentUpdate(entity, dto.getAttachments());
-        }
         boolean updatesBrochures = dto.getBrochures() != null || hasUploads(albumBrochureFiles);
-        if (updatesBrochures) {
-            validateAlbumBrochureUpdate(entity, dto.getBrochures());
-        }
         boolean updatesTopics = !dto.isClearTopic()
                 && (dto.getTopicIds() != null || dto.getNewTopics() != null
                     || dto.getTopicId() != null || dto.getNewTopic() != null);
@@ -639,47 +631,6 @@ public class SoundTrackService {
         }
     }
 
-    private void validateFileUpdate(
-            SoundTrack owner,
-            List<FileCreateRequest> fileDtos,
-            List<MultipartFile> audioFiles
-    ) {
-        Set<SoundTrackFile> existingFiles = owner.getFiles() == null
-                ? Set.of()
-                : owner.getFiles();
-        Map<Long, SoundTrackFile> existingById = existingFiles.stream()
-                .filter(Objects::nonNull)
-                .filter(file -> file.getId() != null)
-                .collect(Collectors.toMap(
-                        SoundTrackFile::getId,
-                        file -> file,
-                        (first, ignored) -> first,
-                        LinkedHashMap::new
-                ));
-        Set<Long> requestedIds = new HashSet<>();
-        int dtoCount = fileDtos == null ? 0 : fileDtos.size();
-        int fileCount = nonEmptyFileCount(audioFiles);
-        int total = Math.max(dtoCount, fileCount);
-        int audioIndex = 0;
-
-        for (int i = 0; i < total; i++) {
-            FileCreateRequest dto = fileDtos != null && i < fileDtos.size()
-                    ? fileDtos.get(i)
-                    : null;
-            MultipartFile upload = nextNonEmpty(audioFiles, audioIndex);
-            if (upload != null) audioIndex = advanceIndex(audioFiles, audioIndex);
-
-            SoundTrackFile existing = resolveExistingFile(
-                    existingById, requestedIds, dto, i);
-            validateBrochureIds(existing, dto, i);
-            // A file entry with no source is skipped rather than rejecting the save.
-            if (!hasFile(upload) && !hasSoundSource(dto)
-                    && (existing == null || !hasSoundSource(existing))) {
-                continue;
-            }
-        }
-    }
-
     private Set<SoundTrackFile> mergeFiles(
             SoundTrack owner,
             List<FileCreateRequest> fileDtos,
@@ -698,6 +649,13 @@ public class SoundTrackService {
                         (first, ignored) -> first,
                         LinkedHashMap::new
                 ));
+        Map<String, SoundTrackFile> existingBySource = new LinkedHashMap<>();
+        for (SoundTrackFile f : existingFiles) {
+            if (f == null) continue;
+            for (String u : new String[]{f.getFileUrl(), f.getExternalUrl(), f.getEmbedUrl()}) {
+                if (!isBlank(u)) existingBySource.putIfAbsent(u.trim(), f);
+            }
+        }
         Set<Long> requestedIds = new HashSet<>();
         LinkedHashSet<SoundTrackFile> merged = new LinkedHashSet<>();
         int dtoCount = fileDtos == null ? 0 : fileDtos.size();
@@ -714,7 +672,7 @@ public class SoundTrackService {
             if (upload != null) audioIndex = advanceIndex(audioFiles, audioIndex);
 
             SoundTrackFile file = resolveExistingFile(
-                    existingById, requestedIds, dto, i);
+                    existingById, existingBySource, requestedIds, dto);
             boolean isNew = file == null;
             if (isNew) {
                 file = new SoundTrackFile();
@@ -804,6 +762,8 @@ public class SoundTrackService {
                         (first, ignored) -> first,
                         LinkedHashMap::new
                 ));
+        Map<String, SoundTrackBrochure> existingBySource =
+                indexBySources(owner.getBrochures(), SoundTrackBrochure::getImageUrl);
         Set<Long> requestedIds = new HashSet<>();
         List<SoundTrackBrochure> merged = new ArrayList<>();
 
@@ -815,7 +775,7 @@ public class SoundTrackService {
             if (upload != null) uploadIndex[0] = advanceIndex(uploads, uploadIndex[0]);
 
             SoundTrackBrochure brochure = resolveExistingBrochure(
-                    existingById, requestedIds, dto, i);
+                    existingById, existingBySource, requestedIds, dto);
             if (brochure == null) {
                 if (!hasFile(upload) && isBlank(dto.getImageUrl())) continue;
                 brochure = new SoundTrackBrochure();
@@ -855,6 +815,8 @@ public class SoundTrackService {
                         (first, ignored) -> first,
                         LinkedHashMap::new
                 ));
+        Map<String, SoundTrackAttachment> existingBySource =
+                indexBySources(existingAttachments, SoundTrackAttachment::getFileUrl);
         Set<Long> requestedIds = new HashSet<>();
         LinkedHashSet<SoundTrackAttachment> merged = new LinkedHashSet<>();
         int dtoCount = dtos == null ? 0 : dtos.size();
@@ -868,7 +830,7 @@ public class SoundTrackService {
             if (upload != null) uploadIndex = advanceIndex(uploads, uploadIndex);
 
             SoundTrackAttachment attachment = resolveExistingAttachment(
-                    existingById, requestedIds, dto, i);
+                    existingById, existingBySource, requestedIds, dto);
             boolean isNew = attachment == null;
             if (isNew) {
                 if (!hasFile(upload) && (dto == null || isBlank(dto.getFileUrl()))) continue;
@@ -907,120 +869,96 @@ public class SoundTrackService {
         return merged;
     }
 
-    private void validateBrochureIds(
-            SoundTrackFile existingFile,
-            FileCreateRequest fileDto,
-            int fileIndex
-    ) {
-        if (fileDto == null || fileDto.getBrochures() == null) return;
-
-        Map<Long, SoundTrackBrochure> existingById = existingFile == null
-                ? Map.of()
-                : existingFile.getBrochures().stream()
-                .filter(Objects::nonNull)
-                .filter(item -> item.getId() != null)
-                .collect(Collectors.toMap(
-                        SoundTrackBrochure::getId,
-                        item -> item,
-                        (first, ignored) -> first,
-                        LinkedHashMap::new
-                ));
-        Set<Long> requestedIds = new HashSet<>();
-
-        for (int i = 0; i < fileDto.getBrochures().size(); i++) {
-            BrochureRequest brochure = fileDto.getBrochures().get(i);
-            if (brochure == null || brochure.getId() == null) continue;
-            if (!existingById.containsKey(brochure.getId())
-                    || !requestedIds.add(brochure.getId())) {
-                throw Errors.soundValidation("error.validation", Map.of(
-                        "field", "files[" + fileIndex + "].brochures[" + i + "].id",
-                        "id", brochure.getId(),
-                        "message", "ئایدی بڕۆشور لەم فایلەدا نەدۆزرایەوە یان دووبارەیە"));
-            }
-        }
-    }
-
-    private void validateAttachmentUpdate(
-            SoundTrack owner,
-            List<AttachmentRequest> dtos
-    ) {
-        if (dtos == null) return;
-
-        Set<SoundTrackAttachment> existingAttachments = owner.getAttachments() == null
-                ? Set.of()
-                : owner.getAttachments();
-        Map<Long, SoundTrackAttachment> existingById = existingAttachments.stream()
-                .filter(Objects::nonNull)
-                .filter(item -> item.getId() != null)
-                .collect(Collectors.toMap(
-                        SoundTrackAttachment::getId,
-                        item -> item,
-                        (first, ignored) -> first,
-                        LinkedHashMap::new
-                ));
-        Set<Long> requestedIds = new HashSet<>();
-
-        for (int i = 0; i < dtos.size(); i++) {
-            AttachmentRequest dto = dtos.get(i);
-            if (dto == null || dto.getId() == null) continue;
-            if (!existingById.containsKey(dto.getId())
-                    || !requestedIds.add(dto.getId())) {
-                throw invalidNestedId("attachments", i, dto.getId());
-            }
-        }
-    }
-
     private SoundTrackFile resolveExistingFile(
             Map<Long, SoundTrackFile> existingById,
+            Map<String, SoundTrackFile> existingBySource,
             Set<Long> requestedIds,
-            FileCreateRequest dto,
-            int index
+            FileCreateRequest dto
     ) {
-        if (dto == null || dto.getId() == null) return null;
-        SoundTrackFile existing = existingById.get(dto.getId());
-        if (existing == null || !requestedIds.add(dto.getId())) {
-            throw invalidNestedId("files", index, dto.getId());
+        if (dto == null) return null;
+        if (dto.getId() != null) {
+            SoundTrackFile existing = existingById.get(dto.getId());
+            if (existing != null && requestedIds.add(dto.getId())) {
+                return existing;
+            }
         }
-        return existing;
+        // Lenient merge — a stale/unknown id (row recreated by an earlier save
+        // or a stale editor tab) must not reject the whole PUT with a 400.
+        // Match the row by its source URL so repeat saves stay idempotent;
+        // no match means the payload row is a genuinely new file.
+        SoundTrackFile bySource = firstByUrls(existingBySource,
+                dto.getFileUrl(), dto.getExternalUrl(), dto.getEmbedUrl());
+        if (bySource != null && bySource.getId() != null
+                && requestedIds.add(bySource.getId())) {
+            return bySource;
+        }
+        return null;
     }
 
     private SoundTrackBrochure resolveExistingBrochure(
             Map<Long, SoundTrackBrochure> existingById,
+            Map<String, SoundTrackBrochure> existingBySource,
             Set<Long> requestedIds,
-            BrochureRequest dto,
-            int index
+            BrochureRequest dto
     ) {
-        if (dto.getId() == null) return null;
-        SoundTrackBrochure existing = existingById.get(dto.getId());
-        if (existing == null || !requestedIds.add(dto.getId())) {
-            throw invalidNestedId("brochures", index, dto.getId());
+        if (dto.getId() != null) {
+            SoundTrackBrochure existing = existingById.get(dto.getId());
+            if (existing != null && requestedIds.add(dto.getId())) {
+                return existing;
+            }
         }
-        return existing;
+        SoundTrackBrochure bySource = firstByUrls(existingBySource, dto.getImageUrl());
+        if (bySource != null && bySource.getId() != null
+                && requestedIds.add(bySource.getId())) {
+            return bySource;
+        }
+        return null;
     }
 
     private SoundTrackAttachment resolveExistingAttachment(
             Map<Long, SoundTrackAttachment> existingById,
+            Map<String, SoundTrackAttachment> existingBySource,
             Set<Long> requestedIds,
-            AttachmentRequest dto,
-            int index
+            AttachmentRequest dto
     ) {
-        if (dto == null || dto.getId() == null) return null;
-        SoundTrackAttachment existing = existingById.get(dto.getId());
-        if (existing == null || !requestedIds.add(dto.getId())) {
-            throw invalidNestedId("attachments", index, dto.getId());
+        if (dto == null) return null;
+        if (dto.getId() != null) {
+            SoundTrackAttachment existing = existingById.get(dto.getId());
+            if (existing != null && requestedIds.add(dto.getId())) {
+                return existing;
+            }
         }
-        return existing;
+        SoundTrackAttachment bySource = firstByUrls(existingBySource, dto.getFileUrl());
+        if (bySource != null && bySource.getId() != null
+                && requestedIds.add(bySource.getId())) {
+            return bySource;
+        }
+        return null;
     }
 
-    private RuntimeException invalidNestedId(
-            String field,
-            int index,
-            Long id
+    /** Index existing nested rows by each non-blank source URL they carry. */
+    private <T> Map<String, T> indexBySources(
+            Collection<T> items,
+            Function<T, String> urlOf
     ) {
-        return Errors.soundValidation("error.validation", Map.of(
-                "field", field + "[" + index + "].id",
-                "id", id,
-                "message", "ئایدی فایل لەم سەدايەدا نەدۆزرایەوە یان دووبارەیە"));
+        Map<String, T> map = new LinkedHashMap<>();
+        if (items == null) return map;
+        for (T item : items) {
+            if (item == null) continue;
+            String url = urlOf.apply(item);
+            if (!isBlank(url)) map.putIfAbsent(url.trim(), item);
+        }
+        return map;
+    }
+
+    private <T> T firstByUrls(Map<String, T> map, String... urls) {
+        if (urls == null) return null;
+        for (String u : urls) {
+            if (isBlank(u)) continue;
+            T hit = map.get(u.trim());
+            if (hit != null) return hit;
+        }
+        return null;
     }
 
     private boolean hasSoundSource(FileCreateRequest dto) {
@@ -1225,6 +1163,8 @@ public class SoundTrackService {
                         (first, ignored) -> first,
                         LinkedHashMap::new
                 ));
+        Map<String, SoundAlbumBrochure> existingBySource =
+                indexBySources(existing, SoundAlbumBrochure::getFileUrl);
         Set<Long> requestedIds = new HashSet<>();
         LinkedHashSet<SoundAlbumBrochure> merged = new LinkedHashSet<>();
         int dtoCount = dtos == null ? 0 : dtos.size();
@@ -1238,7 +1178,7 @@ public class SoundTrackService {
             if (upload != null) uploadIndex = advanceIndex(uploads, uploadIndex);
 
             SoundAlbumBrochure brochure = resolveExistingAlbumBrochure(
-                    existingById, requestedIds, dto, i);
+                    existingById, existingBySource, requestedIds, dto);
             boolean isNew = brochure == null;
             if (isNew) {
                 if (!hasFile(upload) && (dto == null || isBlank(dto.getFileUrl()))) continue;
@@ -1280,48 +1220,25 @@ public class SoundTrackService {
         return merged;
     }
 
-    private void validateAlbumBrochureUpdate(
-            SoundTrack owner,
-            List<AlbumBrochureRequest> dtos
-    ) {
-        if (dtos == null) return;
-
-        Set<SoundAlbumBrochure> existing = owner.getBrochures() == null
-                ? Set.of()
-                : owner.getBrochures();
-        Map<Long, SoundAlbumBrochure> existingById = existing.stream()
-                .filter(Objects::nonNull)
-                .filter(item -> item.getId() != null)
-                .collect(Collectors.toMap(
-                        SoundAlbumBrochure::getId,
-                        item -> item,
-                        (first, ignored) -> first,
-                        LinkedHashMap::new
-                ));
-        Set<Long> requestedIds = new HashSet<>();
-
-        for (int i = 0; i < dtos.size(); i++) {
-            AlbumBrochureRequest dto = dtos.get(i);
-            if (dto == null || dto.getId() == null) continue;
-            if (!existingById.containsKey(dto.getId())
-                    || !requestedIds.add(dto.getId())) {
-                throw invalidNestedId("brochures", i, dto.getId());
-            }
-        }
-    }
-
     private SoundAlbumBrochure resolveExistingAlbumBrochure(
             Map<Long, SoundAlbumBrochure> existingById,
+            Map<String, SoundAlbumBrochure> existingBySource,
             Set<Long> requestedIds,
-            AlbumBrochureRequest dto,
-            int index
+            AlbumBrochureRequest dto
     ) {
-        if (dto == null || dto.getId() == null) return null;
-        SoundAlbumBrochure existing = existingById.get(dto.getId());
-        if (existing == null || !requestedIds.add(dto.getId())) {
-            throw invalidNestedId("brochures", index, dto.getId());
+        if (dto == null) return null;
+        if (dto.getId() != null) {
+            SoundAlbumBrochure existing = existingById.get(dto.getId());
+            if (existing != null && requestedIds.add(dto.getId())) {
+                return existing;
+            }
         }
-        return existing;
+        SoundAlbumBrochure bySource = firstByUrls(existingBySource, dto.getFileUrl());
+        if (bySource != null && bySource.getId() != null
+                && requestedIds.add(bySource.getId())) {
+            return bySource;
+        }
+        return null;
     }
 
     private AttachmentType guessBrochureType(String mimeType) {
