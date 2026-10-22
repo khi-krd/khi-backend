@@ -95,8 +95,8 @@ public class ServiceService {
     }
 
     /**
-     * Services flagged for the homepage carousel, ordered by featuredOrder
-     * (nulls last, then newest id first) — the same ordering
+     * Services flagged for the /services index rail (and, for the page-hero
+     * record, its homepage slide), ordered by featuredOrder — the same ordering
      * {@code SiteContentService.getFeatured()} applies globally.
      *
      * <p>Not cached: the flag is written from {@code SiteContentService} and this
@@ -110,6 +110,29 @@ public class ServiceService {
         );
         List<ak.dev.khi_backend.khi_app.model.service.Service> featured =
                 serviceRepository.findFeaturedWithContents();
+        int from = (int) Math.min(pageable.getOffset(), featured.size());
+        int to   = Math.min(from + pageable.getPageSize(), featured.size());
+        return new PageImpl<>(
+                featured.subList(from, to).stream()
+                        .map(this::toResponse)
+                        .collect(Collectors.toList()),
+                pageable,
+                featured.size()
+        );
+    }
+
+    /**
+     * Section services flagged for the homepage carousel (featuredOnHome),
+     * ordered by featuredHomeOrder — the dashboard's home list for services.
+     */
+    @Transactional(readOnly = true)
+    public Page<ServiceResponse> getFeaturedOnHome(int page, int size) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 100)
+        );
+        List<ak.dev.khi_backend.khi_app.model.service.Service> featured =
+                serviceRepository.findFeaturedOnHomeWithContents();
         int from = (int) Math.min(pageable.getOffset(), featured.size());
         int to   = Math.min(from + pageable.getPageSize(), featured.size());
         return new PageImpl<>(
@@ -717,6 +740,8 @@ public class ServiceService {
                         .collect(Collectors.toList()))
                 .featured(service.isFeatured())
                 .featuredOrder(service.getFeaturedOrder())
+                .featuredOnHome(service.isFeaturedOnHome())
+                .featuredHomeOrder(service.getFeaturedHomeOrder())
                 .featureImageUrl(service.getFeatureImageUrl())
                 .createdAt(service.getCreatedAt() != null
                         ? service.getCreatedAt().format(FORMATTER) : null)

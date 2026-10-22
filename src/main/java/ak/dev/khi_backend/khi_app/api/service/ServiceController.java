@@ -85,6 +85,23 @@ public class ServiceController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Feature / unfeature a service SECTION in the homepage hero carousel —
+     * the opt-in "sometimes a section belongs on home" path. Independent of
+     * {@code PATCH /{id}/featured}, which only lights the /services index rail.
+     * The slide links to the service's own /services section anchor, ordered on
+     * {@code featuredHomeOrder} against every other carousel slide.
+     */
+    @Operation(summary = "Feature / unfeature a service section in the home hero (ADMIN, SUPER_ADMIN)")
+    @PatchMapping("/{id}/featured-home")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<Void> setFeaturedHome(
+            @PathVariable Long id,
+            @RequestBody(required = false) SiteContentDtos.FeaturedRequest request) {
+        siteContentService.setServiceFeaturedHome(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
     // =========================================================================
     // SERVICE CRUD
     // =========================================================================
@@ -132,6 +149,16 @@ public class ServiceController {
         return ResponseEntity.ok(ApiResponse.success(
                 serviceService.getFeatured(page, size),
                 "Featured services fetched successfully"));
+    }
+
+    /** Sections flagged for the homepage hero — the dashboard's home list. */
+    @GetMapping("/featured-home")
+    public ResponseEntity<ApiResponse<Page<ServiceResponse>>> getFeaturedOnHome(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                serviceService.getFeaturedOnHome(page, size),
+                "Home-featured services fetched successfully"));
     }
 
     @GetMapping("/{id}")

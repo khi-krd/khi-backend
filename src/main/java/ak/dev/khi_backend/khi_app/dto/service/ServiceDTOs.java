@@ -126,6 +126,13 @@ public class ServiceDTOs {
          */
         private boolean featured;
         private Integer featuredOrder;
+        /**
+         * Second flag — this section in the homepage carousel. Written via
+         * {@code PATCH /api/v1/services/{id}/featured-home}; {@code featured}
+         * stays the /services rail highlight (and the page-hero record's slide).
+         */
+        private boolean featuredOnHome;
+        private Integer featuredHomeOrder;
         private String featureImageUrl;
         private String createdAt;
         private String updatedAt;

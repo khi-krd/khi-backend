@@ -122,6 +122,20 @@ public class Service {
     @Column(name = "featured_order")
     private Integer featuredOrder;
 
+    /**
+     * Second flag: puts THIS SECTION in the homepage hero pool. {@code featured}
+     * alone only lights the /services index rail (and, on the page-hero record,
+     * slides the page itself) — {@code featuredOnHome} is what turns a section
+     * into an actual carousel slide, ordered on {@link #featuredHomeOrder}.
+     */
+    @Builder.Default
+    @Column(name = "featured_on_home", nullable = false)
+    @ColumnDefault("false")
+    private boolean featuredOnHome = false;
+
+    @Column(name = "featured_home_order")
+    private Integer featuredHomeOrder;
+
     /** Wide picture for the homepage hero; falls back to the first gallery image. */
     @Column(name = "feature_image_url", columnDefinition = "TEXT")
     private String featureImageUrl;

@@ -156,6 +156,19 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
             """)
     List<Service> findFeaturedWithContents();
 
+    /**
+     * Section services flagged for the HOMEPAGE carousel (featuredOnHome), ordered
+     * by featuredHomeOrder — the "sometimes a section belongs on home" list, read
+     * by SiteContentService.getFeatured() and GET /api/v1/services/featured-home.
+     */
+    @Query("""
+            SELECT s FROM Service s
+            LEFT JOIN FETCH s.contents
+            WHERE s.featuredOnHome = true
+            ORDER BY COALESCE(s.featuredHomeOrder, 2147483647) ASC, s.id DESC
+            """)
+    List<Service> findFeaturedOnHomeWithContents();
+
     // =========================================================================
     // NAV ANCHOR UNIQUENESS
     // =========================================================================

@@ -92,10 +92,11 @@ public class SiteContentService {
     // ─── Page-level highlights ─────────────────────────────────────────────────────────────
     //  Service and About flags highlight the record on its own page — the band at the
     //  top of /services, the lead record on /about — read through GET /api/v1/services/featured
-    //  and the About list. One record joins the hero pool below: the services-PAGE record
-    //  itself (the "page-hero" service), whose slide promotes /services as a whole. Regular
-    //  service sections are page-only — a section's content is for the services page, not
-    //  the carousel. About stays page-only. See new documentation/FEATURED_ON_OWN_PAGES.md.
+    //  and the About list. The services-PAGE record (the "page-hero" service) joins the hero
+    //  pool below via `featured`, and a section can OPT IN to the hero through the separate
+    //  `featuredOnHome` flag — "sometimes a section belongs on home too". Its slide links to
+    //  its own /services section anchor. About stays page-only. See
+    //  new documentation/FEATURED_ON_OWN_PAGES.md.
     // =========================================================================================
 
     @Transactional(readOnly = true)
@@ -136,8 +137,22 @@ public class SiteContentService {
         serviceRepository.findFeaturedWithContents().stream()
                 .filter(SiteContentService::isServicesPageHero)
                 .forEach(service ->
-                        addCandidate(candidates, serviceFeatured(service, resolvedLocale, kmr),
+                        addCandidate(candidates,
+                                serviceFeatured(service, resolvedLocale, kmr,
+                                        service.isFeatured(), service.getFeaturedOrder()),
                                 service.getFeaturedOrder(), service.getId()));
+
+        // Section services slide too, but only via the separate featuredOnHome
+        // flag — the opt-in "sometimes a section belongs on home" path. The
+        // page-hero record is excluded here: it slides via `featured` above, and
+        // flagging both would paint its slide twice.
+        serviceRepository.findFeaturedOnHomeWithContents().stream()
+                .filter(service -> !isServicesPageHero(service))
+                .forEach(service ->
+                        addCandidate(candidates,
+                                serviceFeatured(service, resolvedLocale, kmr,
+                                        service.isFeaturedOnHome(), service.getFeaturedHomeOrder()),
+                                service.getFeaturedHomeOrder(), service.getId()));
 
         featuredDonationSettings().ifPresent(settings ->
                 addCandidate(candidates, donationFeatured(settings, resolvedLocale, kmr),
@@ -552,6 +567,29 @@ public class SiteContentService {
     }
 
     /**
+     * Second service flag — puts a SECTION in the homepage hero pool. Independent
+     * of {@code featured} (the /services rail): a section may sit in either, both,
+     * or neither. {@code featuredOrder} writes {@code featured_home_order} so the
+     * two sequences never fight over one column; the same hero picture field is
+     * shared since a service only ever has one slide image.
+     */
+    @CacheEvict(value = "services", allEntries = true)
+    @Transactional
+    public void setServiceFeaturedHome(Long id, FeaturedRequest request) {
+        if (request == null) request = new FeaturedRequest();
+        ak.dev.khi_backend.khi_app.model.service.Service service = serviceRepository.findById(id)
+                .orElseThrow(() -> notFound("Service", id));
+        boolean turningOn = request.getFeatured() == null || request.getFeatured();
+        if (request.getFeatureImageUrl() != null) {
+            service.setFeatureImageUrl(trimToNull(request.getFeatureImageUrl()));
+        }
+        // No image required — the site simply skips imageless slides.
+        service.setFeaturedOnHome(turningOn);
+        service.setFeaturedHomeOrder(turningOn ? request.getFeaturedOrder() : null);
+        serviceRepository.save(service);
+    }
+
+    /**
      * Donation is a singleton settings row — there is no id to address, so this takes no id and
      * returns the saved settings so the dashboard can re-render the donation screen in one call.
      */
@@ -725,12 +763,15 @@ public class SiteContentService {
     }
 
     /**
-     * A featured services-page record as a hero slide. Description prefers the short
-     * plain-text {@code featureDescription} written for highlights; the slug is "services"
-     * — the id of the sections grid on /services, so the slide lands on the page's list.
+     * A service record as a hero slide — the page hero itself, or a section opted in
+     * through {@code featuredOnHome}. Description prefers the short plain-text
+     * {@code featureDescription} written for highlights. The slug is "services" for the
+     * page record (the sections-grid id on /services) and the section anchor for a
+     * section (navAnchorId, else the numeric id the section element carries).
      */
     private FeaturedResponse serviceFeatured(
-            ak.dev.khi_backend.khi_app.model.service.Service service, String locale, boolean kmr) {
+            ak.dev.khi_backend.khi_app.model.service.Service service, String locale,
+            boolean kmr, boolean featured, Integer featuredOrder) {
         String wanted = kmr ? "KMR" : "CKB";
         String fallback = kmr ? "CKB" : "KMR";
         ServiceContent content = service.getContents().stream()
@@ -748,7 +789,7 @@ public class SiteContentService {
         return featuredSlide(
                 "service", service.getId(), "service", slug,
                 title, description, serviceSlideImage(service), locale,
-                service.isFeatured(), service.getFeaturedOrder());
+                featured, featuredOrder);
     }
 
     /** featureImageUrl, else the first usable gallery picture (video slots use their poster). */
