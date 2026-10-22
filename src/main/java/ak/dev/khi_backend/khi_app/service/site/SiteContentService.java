@@ -90,13 +90,12 @@ public class SiteContentService {
     //  image = featureImageUrl ?? heroImageUrl.
     //
     // ─── Page-level highlights ─────────────────────────────────────────────────────────────
-    //  Service and About flags also highlight the record on its own page — the band at the
+    //  Service and About flags highlight the record on its own page — the band at the
     //  top of /services, the lead record on /about — read through GET /api/v1/services/featured
-    //  and the About list. Services additionally join the hero pool below (a featured service
-    //  becomes a carousel slide linking back to its /services section); they stay uncapped on
-    //  the way IN (countAllFeatured ignores them) so featuring many services can never block
-    //  an article — the render cap still bounds what the carousel paints. About stays
-    //  page-only. See new documentation/FEATURED_ON_OWN_PAGES.md.
+    //  and the About list. One record joins the hero pool below: the services-PAGE record
+    //  itself (the "page-hero" service), whose slide promotes /services as a whole. Regular
+    //  service sections are page-only — a section's content is for the services page, not
+    //  the carousel. About stays page-only. See new documentation/FEATURED_ON_OWN_PAGES.md.
     // =========================================================================================
 
     @Transactional(readOnly = true)
@@ -130,13 +129,15 @@ public class SiteContentService {
                 addCandidate(candidates, imageFeatured(collection, resolvedLocale, kmr),
                         collection.getFeaturedOrder(), collection.getId()));
 
-        // Featured services ARE hero slides again — the slide links to the service's section
-        // on /services via its navAnchorId (numeric id when unset, which is what the section
-        // DOM id actually is). About pages stay page-only highlights. Donation stays a hero
-        // slide: it promotes a call-to-action page that has no list of its own.
-        serviceRepository.findFeaturedWithContents().forEach(service ->
-                addCandidate(candidates, serviceFeatured(service, resolvedLocale, kmr),
-                        service.getFeaturedOrder(), service.getId()));
+        // Only the services-PAGE record ("page-hero" serviceType/navAnchorId) is a hero
+        // slide — it promotes the /services page itself, linking to the sections grid.
+        // A regular service's featured flag stays a page-level highlight on /services;
+        // section content is for that page, never the carousel.
+        serviceRepository.findFeaturedWithContents().stream()
+                .filter(SiteContentService::isServicesPageHero)
+                .forEach(service ->
+                        addCandidate(candidates, serviceFeatured(service, resolvedLocale, kmr),
+                                service.getFeaturedOrder(), service.getId()));
 
         featuredDonationSettings().ifPresent(settings ->
                 addCandidate(candidates, donationFeatured(settings, resolvedLocale, kmr),
@@ -171,8 +172,9 @@ public class SiteContentService {
     // Sums featured records across every source that competes for a HERO slide: the six
     // publication types plus the donation page (at most 1 — it is a singleton settings row).
     //
-    // Services and About pages are excluded on purpose. Their flag is a page-level highlight,
-    // not a carousel slide, so featuring nine services can never block featuring an article.
+    // Service flags and About are excluded: sections and About are page-level highlights,
+    // and the single page-hero service stays uncapped on the way IN so a full carousel can
+    // never block featuring it — the render cap still bounds what the hero paints.
     private long countAllFeatured() {
         return newsRepository.countByFeaturedTrue()
                 + projectRepository.countByFeaturedTrue()
@@ -698,10 +700,34 @@ public class SiteContentService {
                 settings.isFeatured(), settings.getFeaturedOrder());
     }
 
+    /** Marker that identifies the services-PAGE record, matching the website/dashboard checks. */
+    private static final String SERVICES_PAGE_HERO_TYPE = "page-hero";
+    private static final String SERVICES_PAGE_HERO_ANCHOR = "page-hero";
+    private static final String SERVICES_PAGE_HERO_ANCHOR_LEGACY = "__page_hero__";
+
     /**
-     * A featured service as a hero slide. Description prefers the short plain-text
-     * {@code featureDescription} written for highlights; slug is the services-page section
-     * anchor (navAnchorId when set, else the numeric id — section elements are id'd by it).
+     * True only for the record that IS the /services page hero — every other service is a
+     * content section of that page, so its featured flag stays a page-level highlight.
+     */
+    private static boolean isServicesPageHero(
+            ak.dev.khi_backend.khi_app.model.service.Service service) {
+        String type = service.getServiceType();
+        if (type != null && SERVICES_PAGE_HERO_TYPE.equals(type.trim())) {
+            return true;
+        }
+        String anchor = service.getNavAnchorId();
+        if (anchor == null) {
+            return false;
+        }
+        String trimmed = anchor.trim();
+        return SERVICES_PAGE_HERO_ANCHOR.equals(trimmed)
+                || SERVICES_PAGE_HERO_ANCHOR_LEGACY.equals(trimmed);
+    }
+
+    /**
+     * A featured services-page record as a hero slide. Description prefers the short
+     * plain-text {@code featureDescription} written for highlights; the slug is "services"
+     * — the id of the sections grid on /services, so the slide lands on the page's list.
      */
     private FeaturedResponse serviceFeatured(
             ak.dev.khi_backend.khi_app.model.service.Service service, String locale, boolean kmr) {
@@ -717,9 +743,10 @@ public class SiteContentService {
         String title = content == null ? null : content.getTitle();
         String description = content == null ? null
                 : firstNonBlank(content.getFeatureDescription(), content.getDescription());
+        String slug = isServicesPageHero(service) ? "services"
+                : firstNonBlank(service.getNavAnchorId(), String.valueOf(service.getId()));
         return featuredSlide(
-                "service", service.getId(), "service",
-                firstNonBlank(service.getNavAnchorId(), String.valueOf(service.getId())),
+                "service", service.getId(), "service", slug,
                 title, description, serviceSlideImage(service), locale,
                 service.isFeatured(), service.getFeaturedOrder());
     }
