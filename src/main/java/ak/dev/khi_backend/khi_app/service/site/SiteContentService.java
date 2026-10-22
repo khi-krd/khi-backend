@@ -9,6 +9,7 @@ import ak.dev.khi_backend.khi_app.model.publishment.image.ImageCollection;
 import ak.dev.khi_backend.khi_app.model.publishment.sound.SoundTrack;
 import ak.dev.khi_backend.khi_app.model.publishment.video.Video;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.Writing;
+import ak.dev.khi_backend.khi_app.model.service.ServiceContent;
 import ak.dev.khi_backend.khi_app.model.service.ServiceMedia;
 import ak.dev.khi_backend.khi_app.model.site.*;
 import ak.dev.khi_backend.khi_app.repository.about.AboutRepository;
@@ -88,12 +89,14 @@ public class SiteContentService {
     //  cover, so its slide reads: title/description = the donation page copy,
     //  image = featureImageUrl ?? heroImageUrl.
     //
-    // ─── Page-level highlights (NOT here) ──────────────────────────────────────────────────
-    //  Service and About. Their flag highlights the record on its own page — the band at the
-    //  top of /services, the lead record on /about — so they never enter the carousel and take
-    //  no share of maxFeaturedSlides. They are read through GET /api/v1/services/featured and
-    //  the About list, which already carry featured / featuredOrder / featureImageUrl.
-    //  See new documentation/FEATURED_ON_OWN_PAGES.md.
+    // ─── Page-level highlights ─────────────────────────────────────────────────────────────
+    //  Service and About flags also highlight the record on its own page — the band at the
+    //  top of /services, the lead record on /about — read through GET /api/v1/services/featured
+    //  and the About list. Services additionally join the hero pool below (a featured service
+    //  becomes a carousel slide linking back to its /services section); they stay uncapped on
+    //  the way IN (countAllFeatured ignores them) so featuring many services can never block
+    //  an article — the render cap still bounds what the carousel paints. About stays
+    //  page-only. See new documentation/FEATURED_ON_OWN_PAGES.md.
     // =========================================================================================
 
     @Transactional(readOnly = true)
@@ -127,11 +130,14 @@ public class SiteContentService {
                 addCandidate(candidates, imageFeatured(collection, resolvedLocale, kmr),
                         collection.getFeaturedOrder(), collection.getId()));
 
-        // Services and About pages are deliberately NOT collected here. Their `featured` flag
-        // highlights them on their own page (/services band, /about lead record) — see
-        // FEATURED_ON_OWN_PAGES.md. They are read through GET /api/v1/services/featured and
-        // the About list instead. Donation stays a hero slide: it promotes a call-to-action
-        // page that has no list of its own to be highlighted in.
+        // Featured services ARE hero slides again — the slide links to the service's section
+        // on /services via its navAnchorId (numeric id when unset, which is what the section
+        // DOM id actually is). About pages stay page-only highlights. Donation stays a hero
+        // slide: it promotes a call-to-action page that has no list of its own.
+        serviceRepository.findFeaturedWithContents().forEach(service ->
+                addCandidate(candidates, serviceFeatured(service, resolvedLocale, kmr),
+                        service.getFeaturedOrder(), service.getId()));
+
         featuredDonationSettings().ifPresent(settings ->
                 addCandidate(candidates, donationFeatured(settings, resolvedLocale, kmr),
                         settings.getFeaturedOrder(), settings.getId()));
@@ -690,6 +696,32 @@ public class SiteContentService {
                 title, description,
                 firstNonBlank(settings.getFeatureImageUrl(), settings.getHeroImageUrl()), locale,
                 settings.isFeatured(), settings.getFeaturedOrder());
+    }
+
+    /**
+     * A featured service as a hero slide. Description prefers the short plain-text
+     * {@code featureDescription} written for highlights; slug is the services-page section
+     * anchor (navAnchorId when set, else the numeric id — section elements are id'd by it).
+     */
+    private FeaturedResponse serviceFeatured(
+            ak.dev.khi_backend.khi_app.model.service.Service service, String locale, boolean kmr) {
+        String wanted = kmr ? "KMR" : "CKB";
+        String fallback = kmr ? "CKB" : "KMR";
+        ServiceContent content = service.getContents().stream()
+                .filter(c -> wanted.equalsIgnoreCase(c.getLanguageCode()))
+                .findFirst()
+                .orElseGet(() -> service.getContents().stream()
+                        .filter(c -> fallback.equalsIgnoreCase(c.getLanguageCode()))
+                        .findFirst()
+                        .orElse(null));
+        String title = content == null ? null : content.getTitle();
+        String description = content == null ? null
+                : firstNonBlank(content.getFeatureDescription(), content.getDescription());
+        return featuredSlide(
+                "service", service.getId(), "service",
+                firstNonBlank(service.getNavAnchorId(), String.valueOf(service.getId())),
+                title, description, serviceSlideImage(service), locale,
+                service.isFeatured(), service.getFeaturedOrder());
     }
 
     /** featureImageUrl, else the first usable gallery picture (video slots use their poster). */
