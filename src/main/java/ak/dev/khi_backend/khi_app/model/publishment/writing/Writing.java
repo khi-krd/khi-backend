@@ -173,6 +173,13 @@ public class Writing {
 
     // ─── Shared Fields ────────────────────────────────────────────────────────
 
+    /** The book's own language (کوردی / عەرەبی / English…) — its name per dialect. */
+    @Column(name = "book_language_ckb", length = 120)
+    private String bookLanguageCkb;
+
+    @Column(name = "book_language_kmr", length = 120)
+    private String bookLanguageKmr;
+
     @Column(name = "published_by_institute", nullable = false)
     private boolean publishedByInstitute;
 

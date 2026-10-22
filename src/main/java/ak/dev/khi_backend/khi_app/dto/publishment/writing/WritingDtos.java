@@ -200,6 +200,10 @@ public final class WritingDtos {
 
         // ─── Shared ───────────────────────────────────────────────────────────
 
+        private String bookLanguageCkb;
+
+        private String bookLanguageKmr;
+
         private boolean publishedByInstitute;
 
         private BilingualSet tags;
@@ -263,6 +267,10 @@ public final class WritingDtos {
         private Set<BookGenre> bookGenres;
 
         // ─── Shared ───────────────────────────────────────────────────────────
+
+        private String bookLanguageCkb;
+
+        private String bookLanguageKmr;
 
         private Boolean publishedByInstitute;
 
@@ -328,6 +336,10 @@ public final class WritingDtos {
         private List<GenreInfo> genres;
 
         // ─── Shared ───────────────────────────────────────────────────────────
+
+        private String bookLanguageCkb;
+
+        private String bookLanguageKmr;
 
         private boolean publishedByInstitute;
 

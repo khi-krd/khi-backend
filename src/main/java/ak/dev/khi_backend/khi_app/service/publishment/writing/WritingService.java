@@ -91,6 +91,8 @@ public class WritingService {
                 .topics(topics)
                 .genres(bookGenreService.resolve(request.getGenreIds(), request.getBookGenres()))
                 .contentLanguages(new LinkedHashSet<>(safeLangs(request.getContentLanguages())))
+                .bookLanguageCkb(request.getBookLanguageCkb())
+                .bookLanguageKmr(request.getBookLanguageKmr())
                 .publishedByInstitute(request.isPublishedByInstitute())
                 .tagsCkb(new LinkedHashSet<>(safeSet(request.getTags()     != null ? request.getTags().getCkb()     : null)))
                 .tagsKmr(new LinkedHashSet<>(safeSet(request.getTags()     != null ? request.getTags().getKmr()     : null)))
@@ -178,6 +180,9 @@ public class WritingService {
         applyContent(writing, request, ckbFileUrl, kmrFileUrl);
 
         replaceBilingualSets(writing, request);
+
+        if (request.getBookLanguageCkb() != null) writing.setBookLanguageCkb(request.getBookLanguageCkb());
+        if (request.getBookLanguageKmr() != null) writing.setBookLanguageKmr(request.getBookLanguageKmr());
 
         String oldSeriesId = writing.getSeriesId();
         if (request.getSeriesName()  != null) writing.setSeriesName(request.getSeriesName());
@@ -565,6 +570,8 @@ public class WritingService {
                                 .nameCkb(g.getNameCkb()).nameKmr(g.getNameKmr())
                                 .build()).toList()
                         : List.of())
+                .bookLanguageCkb(w.getBookLanguageCkb())
+                .bookLanguageKmr(w.getBookLanguageKmr())
                 .publishedByInstitute(w.isPublishedByInstitute())
                 .createdAt(w.getCreatedAt())
                 .updatedAt(w.getUpdatedAt())
