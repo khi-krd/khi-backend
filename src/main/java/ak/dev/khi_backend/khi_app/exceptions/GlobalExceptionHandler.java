@@ -18,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -343,6 +344,33 @@ public class GlobalExceptionHandler {
         ));
         log.warn("MethodNotAllowed method={} path={} traceId={}", ex.getMethod(), req.getRequestURI(), body.getTraceId());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
+    }
+    /**
+     * 415 UNSUPPORTED_MEDIA_TYPE — Client sent the wrong Content-Type for the
+     * endpoint (e.g. application/json to a multipart/form-data upload route).
+     * Without this mapping the generic fallback answers 500, which reads like a
+     * server crash when it is only a request-format mistake.
+     *
+     * details:
+     *   receivedType → the Content-Type the client sent
+     *   hint         → the media type this endpoint expects
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException ex, HttpServletRequest req, Locale locale) {
+        ApiErrorResponse body = base(req, 415, ErrorCode.BAD_REQUEST);
+        body.setMessage  (resolve(locale,         "error.http.unsupported_media_type", null,
+                "This endpoint does not accept the content type of your request."));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.http.unsupported_media_type", null,
+                "This endpoint does not accept the content type of your request."));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.http.unsupported_media_type", null,
+                "ئەم ئامرازە جۆرە ناوەڕۆکی داواکارییەکەت قبوڵ ناکات."));
+        body.setDetails(Map.of(
+                "receivedType", req.getContentType() != null ? req.getContentType() : "none",
+                "hint",         "Send the request as 'multipart/form-data' for upload endpoints (file parts + 'data' JSON), or 'application/json' for JSON endpoints."
+        ));
+        log.warn("UnsupportedMediaType type={} path={} traceId={}", req.getContentType(), req.getRequestURI(), body.getTraceId());
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(body);
     }
     /**
      * 400 BAD_REQUEST — Request body is missing, empty, or contains malformed JSON.
