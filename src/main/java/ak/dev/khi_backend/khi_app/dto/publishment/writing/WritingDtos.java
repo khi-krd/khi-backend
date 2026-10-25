@@ -204,7 +204,7 @@ public final class WritingDtos {
 
         private String bookLanguageKmr;
 
-        private boolean publishedByInstitute;
+        private boolean publishedByInstitute = true;
 
         private BilingualSet tags;
         private BilingualSet keywords;
