@@ -56,7 +56,10 @@ spring:
     multipart:
       enabled: true
       max-file-size: 1GB
-      max-request-size: 1GB
+      # Request needs headroom over max-file-size — multipart bodies carry the
+      # JSON `data` part plus every cover/album file, so the same file staged
+      # in two slots (or a 1GB file plus its siblings) must not overflow it.
+      max-request-size: 2GB
       file-size-threshold: 2MB
 
   # ===============================
@@ -154,8 +157,11 @@ server:
   forward-headers-strategy: framework
   port: 8080
   tomcat:
-    max-swallow-size: 1GB
-    max-http-form-post-size: 1GB
+    # Default part-count is 50 — an album of ~47 images plus the three cover
+    # parts and the JSON part trips it with a multipart parse error.
+    max-part-count: 500
+    max-swallow-size: 2GB
+    max-http-form-post-size: 2GB
     max-parameter-count: 10000
 
   # ===============================
