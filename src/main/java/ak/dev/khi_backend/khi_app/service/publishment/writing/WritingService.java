@@ -8,6 +8,7 @@ import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.Writing;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.WritingContent;
+import ak.dev.khi_backend.khi_app.model.publishment.writing.WritingPerson;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.WritingLog;
 import ak.dev.khi_backend.khi_app.repository.publishment.topic.PublishmentTopicRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.WritingLogRepository;
@@ -102,8 +103,10 @@ public class WritingService {
                 .seriesName(request.getSeriesName())
                 .seriesOrder(seriesOrder)
                 .parentBook(parentBook)
+                .persons(new ArrayList<>())
                 .build();
 
+        applyPersons(writing, request.getPersons());
         applyContent(writing, request, ckbFileUrl, kmrFileUrl);
 
         mediaMetadata.safely(() -> mediaMetadata.applyToWriting(writing));
@@ -178,6 +181,11 @@ public class WritingService {
             writing.setContentLanguages(new LinkedHashSet<>(request.getContentLanguages()));
         }
         applyContent(writing, request, ckbFileUrl, kmrFileUrl);
+
+        if (request.getPersons() != null) {
+            writing.getPersons().clear();
+            applyPersons(writing, request.getPersons());
+        }
 
         replaceBilingualSets(writing, request);
 
@@ -477,6 +485,25 @@ public class WritingService {
         }
     }
 
+    /** Rebuilds the person rows from a payload list; entries without any name are skipped. */
+    private void applyPersons(Writing writing, List<PersonPayload> persons) {
+        if (persons == null) return;
+        int order = 0;
+        for (PersonPayload p : persons) {
+            if (p == null || p.getRole() == null) continue;
+            if (isBlank(p.getNameCkb()) && isBlank(p.getNameKmr())) continue;
+            writing.getPersons().add(WritingPerson.builder()
+                    .writing(writing)
+                    .role(p.getRole())
+                    .nameCkb(trimOrNull(p.getNameCkb()))
+                    .nameKmr(trimOrNull(p.getNameKmr()))
+                    .nicknameCkb(trimOrNull(p.getNicknameCkb()))
+                    .nicknameKmr(trimOrNull(p.getNicknameKmr()))
+                    .sortOrder(order++)
+                    .build());
+        }
+    }
+
     private void applyContent(Writing writing, UpdateRequest request, String ckbFileUrl, String kmrFileUrl) {
         if (request.getCkbContent() != null) {
             writing.setCkbContent(mergeContent(writing.getCkbContent(), request.getCkbContent(), ckbFileUrl));
@@ -573,6 +600,14 @@ public class WritingService {
                 .bookLanguageCkb(w.getBookLanguageCkb())
                 .bookLanguageKmr(w.getBookLanguageKmr())
                 .publishedByInstitute(w.isPublishedByInstitute())
+                .persons(w.getPersons() != null
+                        ? w.getPersons().stream().map(p -> PersonDto.builder()
+                                .id(p.getId()).role(p.getRole())
+                                .nameCkb(p.getNameCkb()).nameKmr(p.getNameKmr())
+                                .nicknameCkb(p.getNicknameCkb()).nicknameKmr(p.getNicknameKmr())
+                                .sortOrder(p.getSortOrder())
+                                .build()).toList()
+                        : List.of())
                 .createdAt(w.getCreatedAt())
                 .updatedAt(w.getUpdatedAt())
                 .build();

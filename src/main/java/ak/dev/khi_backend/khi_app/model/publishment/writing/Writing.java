@@ -215,6 +215,14 @@ public class Writing {
     @Column(name = "tag_kmr", nullable = false, length = 80)
     private Set<String> tagsKmr = new LinkedHashSet<>();
 
+    // ─── People (writer, collector, translator, ...) ──────────────────────────
+
+    @Builder.Default
+    @OneToMany(mappedBy = "writing", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    @BatchSize(size = 25)
+    private List<WritingPerson> persons = new ArrayList<>();
+
     // ─── Timestamps ───────────────────────────────────────────────────────────
 
     @Column(name = "created_at", nullable = false, updatable = false)

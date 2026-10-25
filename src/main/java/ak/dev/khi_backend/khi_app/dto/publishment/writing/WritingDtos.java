@@ -4,6 +4,7 @@ import ak.dev.khi_backend.khi_app.enums.Language;
 import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.enums.publishment.WritingFileFormat;
+import ak.dev.khi_backend.khi_app.enums.publishment.WritingPersonRole;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -128,6 +129,35 @@ public final class WritingDtos {
     // SERIES DTOS
     // =========================================================================
 
+    // =========================================================================
+    // PEOPLE (writer, collector, translator, ...)
+    // =========================================================================
+
+    /** One person entry in a create/update payload — no id, order = list order. */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class PersonPayload {
+        private WritingPersonRole role;
+        private String nameCkb;
+        private String nameKmr;
+        private String nicknameCkb;
+        private String nicknameKmr;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class PersonDto {
+        private Long id;
+        private WritingPersonRole role;
+        private String nameCkb;
+        private String nameKmr;
+        private String nicknameCkb;
+        private String nicknameKmr;
+        private Integer sortOrder;
+    }
+
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
@@ -218,6 +248,10 @@ public final class WritingDtos {
         private Double seriesOrder;
 
         private Long parentBookId;
+
+        // ─── People ───────────────────────────────────────────────────────────
+
+        private List<PersonPayload> persons;
     }
 
     // =========================================================================
@@ -284,6 +318,14 @@ public final class WritingDtos {
         private Double seriesOrder;
 
         private Long parentBookId;
+
+        // ─── People ───────────────────────────────────────────────────────────
+
+        /**
+         * Full replace when non-null — like the services contents rewrite.
+         * Omit to leave the current people unchanged.
+         */
+        private List<PersonPayload> persons;
     }
 
     // =========================================================================
@@ -345,6 +387,10 @@ public final class WritingDtos {
 
         private BilingualSet tags;
         private BilingualSet keywords;
+
+        // ─── People ───────────────────────────────────────────────────────────
+
+        private List<PersonDto> persons;
 
         // ─── Series ───────────────────────────────────────────────────────────
 
