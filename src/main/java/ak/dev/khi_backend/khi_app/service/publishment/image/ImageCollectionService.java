@@ -58,6 +58,7 @@ public class ImageCollectionService {
             MultipartFile hoverCoverImage,
             List<MultipartFile> images
     ) {
+        if (dto == null) dto = new CreateRequest();
         validateCreate(dto, ckbCoverImage);
 
         try {
@@ -125,6 +126,7 @@ public class ImageCollectionService {
             MultipartFile hoverCoverImage,
             List<MultipartFile> images
     ) {
+        if (dto == null) dto = new UpdateRequest();
         if (id == null) {
             throw Errors.imageValidation("error.validation",
                     Map.of("field", "id", "message", "ئایدی پێویستە"));
@@ -278,12 +280,11 @@ public class ImageCollectionService {
     // =========================================================================
 
     @Cacheable(value = "imageCollections",
-            key = "'type:' + #type.name() + ':p' + #page + ':s' + #size")
+            key = "'type:' + #type + ':p' + #page + ':s' + #size")
     @Transactional(readOnly = true)
     public Page<Response> getByType(ImageCollectionType type, int page, int size) {
         if (type == null) {
-            throw Errors.imageValidation("imageCollection.type.required",
-                    Map.of("field", "type"));
+            return getAll(page, size);
         }
 
         Page<Long> idPage = imageCollectionRepository.findIdsByType(
@@ -307,11 +308,11 @@ public class ImageCollectionService {
     // =========================================================================
 
     @Cacheable(value = "imageCollections",
-            key = "'tag:' + #tag.toLowerCase() + ':p' + #page + ':s' + #size")
+            key = "'tag:' + #tag + ':p' + #page + ':s' + #size")
     @Transactional(readOnly = true)
     public Page<Response> searchByTag(String tag, int page, int size) {
         if (isBlank(tag)) {
-            throw Errors.badRequest("tag.required", Map.of("field", "tag"));
+            return Page.empty(PageRequest.of(page, size));
         }
 
         Page<Long> idPage = imageCollectionRepository.findIdsByTag(
@@ -335,11 +336,11 @@ public class ImageCollectionService {
     // =========================================================================
 
     @Cacheable(value = "imageCollections",
-            key = "'kw:' + #keyword.toLowerCase() + ':p' + #page + ':s' + #size")
+            key = "'kw:' + #keyword + ':p' + #page + ':s' + #size")
     @Transactional(readOnly = true)
     public Page<Response> searchByKeyword(String keyword, int page, int size) {
         if (isBlank(keyword)) {
-            throw Errors.badRequest("keyword.required", Map.of("field", "keyword"));
+            return Page.empty(PageRequest.of(page, size));
         }
 
         Page<Long> idPage = imageCollectionRepository.findIdsByKeyword(
@@ -363,11 +364,11 @@ public class ImageCollectionService {
     // =========================================================================
 
     @Cacheable(value = "imageCollections",
-            key = "'search:' + #q.toLowerCase() + ':p' + #page + ':s' + #size")
+            key = "'search:' + #q + ':p' + #page + ':s' + #size")
     @Transactional(readOnly = true)
     public Page<Response> globalSearch(String q, int page, int size) {
         if (isBlank(q)) {
-            throw Errors.badRequest("keyword.required", Map.of("field", "q"));
+            return Page.empty(PageRequest.of(page, size));
         }
 
         Page<Long> idPage = imageCollectionRepository.findIdsByGlobalSearch(
@@ -395,7 +396,7 @@ public class ImageCollectionService {
     @Transactional(readOnly = true)
     public Page<Response> getByTopic(Long topicId, int page, int size) {
         if (topicId == null) {
-            throw Errors.imageValidation("error.validation", Map.of("field", "topicId"));
+            return getAll(page, size);
         }
 
         Page<Long> idPage = imageCollectionRepository.findIdsByTopic(
@@ -534,19 +535,21 @@ public class ImageCollectionService {
         }
         if (newTopics != null) {
             newTopics.stream().filter(Objects::nonNull)
-                    .forEach(n -> out.add(createInlineTopic(n)));
+                    .map(this::createInlineTopic)
+                    .filter(Objects::nonNull)
+                    .forEach(out::add);
         }
         if (legacyNewTopic != null) {
-            out.add(createInlineTopic(legacyNewTopic));
+            PublishmentTopic t = createInlineTopic(legacyNewTopic);
+            if (t != null) out.add(t);
         }
         return out;
     }
 
+    /** Name-less topic rows are dropped, never rejected. */
     private PublishmentTopic createInlineTopic(InlineTopicRequest newTopic) {
         if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
-            throw Errors.imageValidation("error.validation", Map.of(
-                    "message",
-                    "بابەتی نوێ پێویستی بە لانیکەم ناوێکی کوردییە (ناوەندی یان باکوور)"));
+            return null;
         }
         PublishmentTopic created = topicRepository.save(
                 PublishmentTopic.builder()

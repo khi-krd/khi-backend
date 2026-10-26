@@ -83,7 +83,9 @@ public class ImageCollectionController {
             @RequestPart(value = "images",          required = false) List<MultipartFile> images
     ) throws Exception {
 
-        CreateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, CreateRequest.class);
+        CreateRequest dto = isBlank(dataJson)
+                ? new CreateRequest()
+                : objectMapper.readValue(dataJson, CreateRequest.class);
 
         log.info("POST /api/v1/image-collections | type={} ckbCover={} kmrCover={} hoverCover={} " +
                         "imageFiles={} albumDtoItems={} langs={}",
@@ -112,6 +114,7 @@ public class ImageCollectionController {
     public ResponseEntity<ApiResponse<Response>> createJson(
             @Valid @RequestBody(required = false) CreateRequest dto
     ) {
+        if (dto == null) dto = new CreateRequest();
         log.info("POST /api/v1/image-collections/json | type={} albumDtoItems={} langs={}",
                 dto.getCollectionType(),
                 dto.getImageAlbum() != null ? dto.getImageAlbum().size() : 0,
@@ -144,7 +147,9 @@ public class ImageCollectionController {
             @RequestPart(value = "images",          required = false) List<MultipartFile> images
     ) throws Exception {
 
-        UpdateRequest dto = isBlank(dataJson) ? null : objectMapper.readValue(dataJson, UpdateRequest.class);
+        UpdateRequest dto = isBlank(dataJson)
+                ? new UpdateRequest()
+                : objectMapper.readValue(dataJson, UpdateRequest.class);
 
         log.info("PUT /api/v1/image-collections/{} | type={} ckbCover={} kmrCover={} hoverCover={} " +
                         "imageFiles={} albumDtoItems={} clearTopic={}",
