@@ -6,7 +6,8 @@ import lombok.*;
 /**
  * A person attached to a book — a book may carry several (writer, collector,
  * translator, ...). Name and nickname are bilingual like every other writing
- * field; role is free text entered by the editor (نووسەر, کۆکەرەوە, ...).
+ * field; role is free text entered by the editor per language
+ * (نووسەر / nivîskar, کۆکەرەوە / kolekter, ...).
  */
 @Entity
 @Table(
@@ -29,8 +30,11 @@ public class WritingPerson {
     @JoinColumn(name = "writing_id", nullable = false)
     private Writing writing;
 
-    @Column(name = "role", length = 120)
-    private String role;
+    @Column(name = "role_ckb", length = 120)
+    private String roleCkb;
+
+    @Column(name = "role_kmr", length = 120)
+    private String roleKmr;
 
     @Column(name = "name_ckb", length = 200)
     private String nameCkb;

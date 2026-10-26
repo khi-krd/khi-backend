@@ -494,7 +494,8 @@ public class WritingService {
             if (isBlank(p.getNameCkb()) && isBlank(p.getNameKmr())) continue;
             writing.getPersons().add(WritingPerson.builder()
                     .writing(writing)
-                    .role(trimOrNull(p.getRole()))
+                    .roleCkb(trimOrNull(p.getRoleCkb()))
+                    .roleKmr(trimOrNull(p.getRoleKmr()))
                     .nameCkb(trimOrNull(p.getNameCkb()))
                     .nameKmr(trimOrNull(p.getNameKmr()))
                     .nicknameCkb(trimOrNull(p.getNicknameCkb()))
@@ -601,7 +602,8 @@ public class WritingService {
                 .publishedByInstitute(w.isPublishedByInstitute())
                 .persons(w.getPersons() != null
                         ? w.getPersons().stream().map(p -> PersonDto.builder()
-                                .id(p.getId()).role(p.getRole())
+                                .id(p.getId())
+                                .roleCkb(p.getRoleCkb()).roleKmr(p.getRoleKmr())
                                 .nameCkb(p.getNameCkb()).nameKmr(p.getNameKmr())
                                 .nicknameCkb(p.getNicknameCkb()).nicknameKmr(p.getNicknameKmr())
                                 .sortOrder(p.getSortOrder())

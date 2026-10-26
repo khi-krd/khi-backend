@@ -135,7 +135,8 @@ public final class WritingDtos {
     @NoArgsConstructor @AllArgsConstructor
     @Builder
     public static class PersonPayload {
-        private String role;
+        private String roleCkb;
+        private String roleKmr;
         private String nameCkb;
         private String nameKmr;
         private String nicknameCkb;
@@ -147,7 +148,8 @@ public final class WritingDtos {
     @Builder
     public static class PersonDto {
         private Long id;
-        private String role;
+        private String roleCkb;
+        private String roleKmr;
         private String nameCkb;
         private String nameKmr;
         private String nicknameCkb;
