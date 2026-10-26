@@ -145,7 +145,10 @@ public class ImageCollectionService {
         if (updatesAlbum) {
             validateAlbumUpdate(entity, targetType, dto.getImageAlbum(), images);
         } else if (dto.getCollectionType() != null) {
-            validateAlbumItemCount(targetType, entity.getImageAlbum().size());
+            // Join-fetched bag repeats each managed row once per joined row —
+            // count distinct instances, not raw bag size.
+            validateAlbumItemCount(targetType,
+                    (int) entity.getImageAlbum().stream().distinct().count());
         }
 
         boolean updatesTopics = !dto.isClearTopic()
@@ -657,6 +660,7 @@ public class ImageCollectionService {
         validateAlbumItemCount(type, max);
 
         List<ImageAlbumItem> out = new ArrayList<>(max);
+        Set<String> seenSources = new HashSet<>();
         int fileIndex = 0;
 
         for (int i = 0; i < max; i++) {
@@ -677,6 +681,11 @@ public class ImageCollectionService {
             }
 
             applyImageSource(item, file, dto);
+
+            String source = itemSource(item);
+            if (source != null && !seenSources.add(source)) {
+                continue;
+            }
             out.add(item);
         }
         return out;
@@ -742,6 +751,7 @@ public class ImageCollectionService {
         validateAlbumItemCount(type, max);
 
         List<ImageAlbumItem> out = new ArrayList<>(max);
+        Set<String> seenSources = new HashSet<>();
         int fileIndex = 0;
 
         for (int i = 0; i < max; i++) {
@@ -774,10 +784,24 @@ public class ImageCollectionService {
                     : null);
 
             applyImageSourceForUpdate(item, file, dto);
+
+            // A repeated media source is a duplicated gallery row — keep the
+            // first occurrence rather than persisting the same image twice.
+            String source = itemSource(item);
+            if (source != null && !seenSources.add(source)) {
+                continue;
+            }
             out.add(item);
         }
 
         return out;
+    }
+
+    private String itemSource(ImageAlbumItem item) {
+        if (!isBlank(item.getImageUrl())) return item.getImageUrl();
+        if (!isBlank(item.getExternalUrl())) return item.getExternalUrl();
+        if (!isBlank(item.getEmbedUrl())) return item.getEmbedUrl();
+        return null;
     }
 
     private void applyImageSourceForUpdate(
@@ -1073,9 +1097,20 @@ public class ImageCollectionService {
                 .kmr(new LinkedHashSet<>(safeSet(entity.getKeywordsKmr())))
                 .build());
 
+        // The single-lookup entity graph join-fetches imageAlbum together with
+        // the Set-valued collections, so each managed row lands in the bag once
+        // per joined row — collapse repeated entity references by id first.
+        List<ImageAlbumItem> album = List.of();
+        if (entity.getImageAlbum() != null) {
+            Map<Object, ImageAlbumItem> unique = new LinkedHashMap<>();
+            for (ImageAlbumItem i : entity.getImageAlbum()) {
+                unique.putIfAbsent(i.getId() != null ? (Object) i.getId() : (Object) i, i);
+            }
+            album = new ArrayList<>(unique.values());
+        }
+
         // ← copy into plain List with NEW METADATA FIELDS included
-        List<ImageItemDto> items = entity.getImageAlbum() == null ? List.of()
-                : new ArrayList<>(entity.getImageAlbum()).stream()
+        List<ImageItemDto> items = album.stream()
                 .sorted(Comparator.comparing(
                         i -> i.getSortOrder() != null ? i.getSortOrder() : 0))
                 .map(i -> ImageItemDto.builder()
