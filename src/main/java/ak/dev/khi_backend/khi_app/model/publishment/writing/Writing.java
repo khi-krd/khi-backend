@@ -43,8 +43,6 @@ import java.util.List;
                 @Index(name = "idx_writing_institute",  columnList = "published_by_institute"),
                 @Index(name = "idx_writing_created_at", columnList = "created_at"),
                 @Index(name = "idx_writing_updated_at", columnList = "updated_at"),
-                @Index(name = "idx_writer_ckb",         columnList = "writer_ckb"),
-                @Index(name = "idx_writer_kmr",         columnList = "writer_kmr"),
                 @Index(name = "idx_series_id",          columnList = "series_id"),
                 @Index(name = "idx_series_composite",   columnList = "series_id, series_order"),
                 @Index(name = "idx_parent_book",        columnList = "parent_book_id")
@@ -147,7 +145,7 @@ public class Writing {
     @AttributeOverrides({
             @AttributeOverride(name = "title",         column = @Column(name = "title_ckb",           length = 300)),
             @AttributeOverride(name = "description",   column = @Column(name = "description_ckb",     columnDefinition = "TEXT")),
-            @AttributeOverride(name = "writer",        column = @Column(name = "writer_ckb",           length = 200)),
+
             @AttributeOverride(name = "fileUrl",       column = @Column(name = "file_url_ckb",         length = 1000)),
             @AttributeOverride(name = "fileFormat",    column = @Column(name = "file_format_ckb",      length = 20)),
             @AttributeOverride(name = "fileSizeBytes", column = @Column(name = "file_size_bytes_ckb")),
@@ -161,7 +159,7 @@ public class Writing {
     @AttributeOverrides({
             @AttributeOverride(name = "title",         column = @Column(name = "title_kmr",           length = 300)),
             @AttributeOverride(name = "description",   column = @Column(name = "description_kmr",     columnDefinition = "TEXT")),
-            @AttributeOverride(name = "writer",        column = @Column(name = "writer_kmr",           length = 200)),
+
             @AttributeOverride(name = "fileUrl",       column = @Column(name = "file_url_kmr",         length = 1000)),
             @AttributeOverride(name = "fileFormat",    column = @Column(name = "file_format_kmr",      length = 20)),
             @AttributeOverride(name = "fileSizeBytes", column = @Column(name = "file_size_bytes_kmr")),

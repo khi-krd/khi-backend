@@ -32,10 +32,6 @@ public class WritingContent {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    /** Writer / Author name in this language. */
-    @Column(name = "writer", length = 200)
-    private String writer;
-
     /**
      * The actual book file URL (PDF, DOCX, EPUB, etc.) for this language version.
      * Stored as S3 URL after upload, or an external URL.

@@ -518,7 +518,6 @@ public class WritingService {
         return WritingContent.builder()
                 .title(trimOrNull(dto.getTitle()))
                 .description(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "writings"))
-                .writer(trimOrNull(dto.getWriter()))
                 .fileUrl(fileUrl != null ? fileUrl : trimOrNull(dto.getFileUrl()))
                 .fileFormat(dto.getFileFormat())
                 .fileSizeBytes(dto.getFileSizeBytes())
@@ -532,7 +531,7 @@ public class WritingService {
         if (existing == null) return buildContent(dto, fileUrl);
         if (dto.getTitle()         != null) existing.setTitle(trimOrNull(dto.getTitle()));
         if (dto.getDescription()   != null) existing.setDescription(tiptapHtmlProcessor.process(trimOrNull(dto.getDescription()), "writings"));
-        if (dto.getWriter()        != null) existing.setWriter(trimOrNull(dto.getWriter()));
+
         // No new multipart file and no fileUrl in the DTO means retain the
         // persisted book source during metadata-only updates.
         if (fileUrl                != null) existing.setFileUrl(fileUrl);
@@ -615,7 +614,7 @@ public class WritingService {
         if (w.getCkbContent() != null) {
             WritingContent c = w.getCkbContent();
             r.setCkbContent(LanguageContentDto.builder()
-                    .title(c.getTitle()).description(c.getDescription()).writer(c.getWriter())
+                    .title(c.getTitle()).description(c.getDescription())
                     .fileUrl(c.getFileUrl()).fileFormat(c.getFileFormat())
                     .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount())
                     .genre(c.getGenre()).location(c.getLocation())
@@ -625,7 +624,7 @@ public class WritingService {
         if (w.getKmrContent() != null) {
             WritingContent c = w.getKmrContent();
             r.setKmrContent(LanguageContentDto.builder()
-                    .title(c.getTitle()).description(c.getDescription()).writer(c.getWriter())
+                    .title(c.getTitle()).description(c.getDescription())
                     .fileUrl(c.getFileUrl()).fileFormat(c.getFileFormat())
                     .fileSizeBytes(c.getFileSizeBytes()).pageCount(c.getPageCount())
                     .genre(c.getGenre()).location(c.getLocation())

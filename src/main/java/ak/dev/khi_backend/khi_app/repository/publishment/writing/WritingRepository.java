@@ -113,40 +113,31 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     Double findMaxSeriesOrder(@Param("seriesId") String seriesId);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // ── WRITER SEARCH ── (single collection column — no JOIN problem here)
+    // ── PERSON SEARCH ── (JOIN writing_persons — name lives there now)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Search by writer name in CKB only.
-     * O(log n) — uses idx_writer_ckb.
-     */
+    /** Search person names (writer, collector, ...) in CKB only. */
     @Query(
-            value      = "SELECT w FROM Writing w WHERE LOWER(w.ckbContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))",
-            countQuery = "SELECT COUNT(w) FROM Writing w WHERE LOWER(w.ckbContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))"
+            value      = "SELECT DISTINCT w FROM Writing w JOIN w.persons p WHERE LOWER(p.nameCkb) LIKE LOWER(CONCAT('%', :writer, '%'))",
+            countQuery = "SELECT COUNT(DISTINCT w) FROM Writing w JOIN w.persons p WHERE LOWER(p.nameCkb) LIKE LOWER(CONCAT('%', :writer, '%'))"
     )
     Page<Writing> findByWriterCkbContainingIgnoreCase(@Param("writer") String writer, Pageable pageable);
 
-    /**
-     * Search by writer name in KMR only.
-     * O(log n) — uses idx_writer_kmr.
-     */
+    /** Search person names (writer, collector, ...) in KMR only. */
     @Query(
-            value      = "SELECT w FROM Writing w WHERE LOWER(w.kmrContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))",
-            countQuery = "SELECT COUNT(w) FROM Writing w WHERE LOWER(w.kmrContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))"
+            value      = "SELECT DISTINCT w FROM Writing w JOIN w.persons p WHERE LOWER(p.nameKmr) LIKE LOWER(CONCAT('%', :writer, '%'))",
+            countQuery = "SELECT COUNT(DISTINCT w) FROM Writing w JOIN w.persons p WHERE LOWER(p.nameKmr) LIKE LOWER(CONCAT('%', :writer, '%'))"
     )
     Page<Writing> findByWriterKmrContainingIgnoreCase(@Param("writer") String writer, Pageable pageable);
 
-    /**
-     * Search by writer name in BOTH languages.
-     * Two indexed column checks with OR — no collection JOIN, no DISTINCT needed.
-     */
+    /** Search person names in BOTH languages. */
     @Query(
-            value      = "SELECT w FROM Writing w " +
-                    "WHERE LOWER(w.ckbContent.writer) LIKE LOWER(CONCAT('%', :writer, '%')) " +
-                    "   OR LOWER(w.kmrContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))",
-            countQuery = "SELECT COUNT(w) FROM Writing w " +
-                    "WHERE LOWER(w.ckbContent.writer) LIKE LOWER(CONCAT('%', :writer, '%')) " +
-                    "   OR LOWER(w.kmrContent.writer) LIKE LOWER(CONCAT('%', :writer, '%'))"
+            value      = "SELECT DISTINCT w FROM Writing w JOIN w.persons p " +
+                    "WHERE LOWER(p.nameCkb) LIKE LOWER(CONCAT('%', :writer, '%')) " +
+                    "   OR LOWER(p.nameKmr) LIKE LOWER(CONCAT('%', :writer, '%'))",
+            countQuery = "SELECT COUNT(DISTINCT w) FROM Writing w JOIN w.persons p " +
+                    "WHERE LOWER(p.nameCkb) LIKE LOWER(CONCAT('%', :writer, '%')) " +
+                    "   OR LOWER(p.nameKmr) LIKE LOWER(CONCAT('%', :writer, '%'))"
     )
     Page<Writing> findByWriterInBothLanguages(@Param("writer") String writer, Pageable pageable);
 
@@ -282,14 +273,14 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     // ── GLOBAL SEARCH — Phase 1 (ID-only, no entity hydration) ───────────────
 
     /**
-     * Global search across titles, descriptions, writer names,
+     * Global search across titles, descriptions, person names,
      * tags (CKB + KMR), and keywords (CKB + KMR).
      *
      * Returns DISTINCT IDs only — no entity loading, no Cartesian product.
      * Sorted newest first (id DESC as a proxy for creation date).
      *
      * DB indexes that help this query:
-     *   idx_writer_ckb, idx_writer_kmr (already defined on Writing.java)
+     *   idx_writing_persons_name_ckb (already defined on WritingPerson.java)
      *   (add functional indexes on lower(tag) / lower(keyword) for further gains)
      */
     @Query("""
@@ -298,12 +289,15 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
         LEFT JOIN w.tagsKmr     tkmr
         LEFT JOIN w.keywordsCkb kckb
         LEFT JOIN w.keywordsKmr kkmr
+        LEFT JOIN w.persons     p
         WHERE lower(w.ckbContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(w.kmrContent.title)       LIKE lower(concat('%', :q, '%'))
            OR lower(w.ckbContent.description) LIKE lower(concat('%', :q, '%'))
            OR lower(w.kmrContent.description) LIKE lower(concat('%', :q, '%'))
-           OR lower(w.ckbContent.writer)      LIKE lower(concat('%', :q, '%'))
-           OR lower(w.kmrContent.writer)      LIKE lower(concat('%', :q, '%'))
+           OR lower(p.nameCkb)               LIKE lower(concat('%', :q, '%'))
+           OR lower(p.nameKmr)               LIKE lower(concat('%', :q, '%'))
+           OR lower(p.nicknameCkb)           LIKE lower(concat('%', :q, '%'))
+           OR lower(p.nicknameKmr)           LIKE lower(concat('%', :q, '%'))
            OR lower(tckb)                     LIKE lower(concat('%', :q, '%'))
            OR lower(tkmr)                     LIKE lower(concat('%', :q, '%'))
            OR lower(kckb)                     LIKE lower(concat('%', :q, '%'))

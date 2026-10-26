@@ -28,8 +28,6 @@ public final class WritingDtos {
 
         private String description;
 
-        private String writer;
-
         private String fileUrl;
 
         private WritingFileFormat fileFormat;
