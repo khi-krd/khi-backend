@@ -490,11 +490,11 @@ public class WritingService {
         if (persons == null) return;
         int order = 0;
         for (PersonPayload p : persons) {
-            if (p == null || p.getRole() == null) continue;
+            if (p == null) continue;
             if (isBlank(p.getNameCkb()) && isBlank(p.getNameKmr())) continue;
             writing.getPersons().add(WritingPerson.builder()
                     .writing(writing)
-                    .role(p.getRole())
+                    .role(trimOrNull(p.getRole()))
                     .nameCkb(trimOrNull(p.getNameCkb()))
                     .nameKmr(trimOrNull(p.getNameKmr()))
                     .nicknameCkb(trimOrNull(p.getNicknameCkb()))

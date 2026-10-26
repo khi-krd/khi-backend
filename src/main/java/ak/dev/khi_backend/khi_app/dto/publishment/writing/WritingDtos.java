@@ -4,7 +4,6 @@ import ak.dev.khi_backend.khi_app.enums.Language;
 import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.enums.publishment.BookGenre;
 import ak.dev.khi_backend.khi_app.enums.publishment.WritingFileFormat;
-import ak.dev.khi_backend.khi_app.enums.publishment.WritingPersonRole;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -138,7 +137,7 @@ public final class WritingDtos {
     @NoArgsConstructor @AllArgsConstructor
     @Builder
     public static class PersonPayload {
-        private WritingPersonRole role;
+        private String role;
         private String nameCkb;
         private String nameKmr;
         private String nicknameCkb;
@@ -150,7 +149,7 @@ public final class WritingDtos {
     @Builder
     public static class PersonDto {
         private Long id;
-        private WritingPersonRole role;
+        private String role;
         private String nameCkb;
         private String nameKmr;
         private String nicknameCkb;

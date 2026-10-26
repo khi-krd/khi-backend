@@ -1,13 +1,12 @@
 package ak.dev.khi_backend.khi_app.model.publishment.writing;
 
-import ak.dev.khi_backend.khi_app.enums.publishment.WritingPersonRole;
 import jakarta.persistence.*;
 import lombok.*;
 
 /**
  * A person attached to a book — a book may carry several (writer, collector,
  * translator, ...). Name and nickname are bilingual like every other writing
- * field; role is a shared code localized at display time.
+ * field; role is free text entered by the editor (نووسەر, کۆکەرەوە, ...).
  */
 @Entity
 @Table(
@@ -30,9 +29,8 @@ public class WritingPerson {
     @JoinColumn(name = "writing_id", nullable = false)
     private Writing writing;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 30)
-    private WritingPersonRole role;
+    @Column(name = "role", length = 120)
+    private String role;
 
     @Column(name = "name_ckb", length = 200)
     private String nameCkb;
