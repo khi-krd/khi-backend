@@ -39,7 +39,7 @@ public class ProjectTypeService {
     @Transactional
     public ProjectTypeResponse create(ProjectTypeRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         projectTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             throw new BadRequestException("project.type.duplicate", ckb);
         });
@@ -55,7 +55,7 @@ public class ProjectTypeService {
         ProjectType type = projectTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("project.type.notFound", id));
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         projectTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new BadRequestException("project.type.duplicate", ckb);

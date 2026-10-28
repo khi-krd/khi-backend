@@ -441,15 +441,18 @@ public class NewsService {
     private NewsCategory getOrCreateCategory(NewsDto.CategoryDto categoryDto) {
         String ckb = trimOrNull(categoryDto != null ? categoryDto.getCkbName() : null);
         String kmr = trimOrNull(categoryDto != null ? categoryDto.getKmrName() : null);
+        boolean kmrSupplied = !isBlank(kmr);
 
         // category_id is NOT NULL — an omitted/blank category falls back to a
         // shared "General" bucket rather than failing the save.
         if (isBlank(ckb)) ckb = "گشتی";
-        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : ckb;
+        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : "";
 
         NewsCategory existing = newsCategoryRepository.findByNameCkb(ckb).orElse(null);
         if (existing != null) {
-            if (!kmr.equals(existing.getNameKmr())) {
+            // Only a supplied KMR name may update the vocabulary entry — a
+            // blank kmrName must never clobber an existing translation.
+            if (kmrSupplied && !kmr.equals(existing.getNameKmr())) {
                 existing.setNameKmr(kmr);
                 existing = newsCategoryRepository.save(existing);
             }
@@ -467,14 +470,15 @@ public class NewsService {
         }
         String ckb = trimOrNull(subDto != null ? subDto.getCkbName() : null);
         String kmr = trimOrNull(subDto != null ? subDto.getKmrName() : null);
+        boolean kmrSupplied = !isBlank(kmr);
 
         if (isBlank(ckb)) ckb = "گشتی";
-        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : ckb;
+        if (isBlank(kmr)) kmr = ckb.equals("گشتی") ? "Giştî" : "";
 
         NewsSubCategory existing =
                 newsSubCategoryRepository.findByCategoryAndNameCkb(category, ckb).orElse(null);
         if (existing != null) {
-            if (!kmr.equals(existing.getNameKmr())) {
+            if (kmrSupplied && !kmr.equals(existing.getNameKmr())) {
                 existing.setNameKmr(kmr);
                 existing = newsSubCategoryRepository.save(existing);
             }

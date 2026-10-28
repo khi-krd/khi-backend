@@ -39,7 +39,7 @@ public class SoundTrackTypeService {
     @Transactional
     public SoundTrackTypeResponse create(SoundTrackTypeRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         soundTrackTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             throw new BadRequestException("soundTrack.type.duplicate", ckb);
         });
@@ -55,7 +55,7 @@ public class SoundTrackTypeService {
         SoundTrackType type = soundTrackTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("soundTrack.type.notFound", id));
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         soundTrackTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new BadRequestException("soundTrack.type.duplicate", ckb);
@@ -91,7 +91,7 @@ public class SoundTrackTypeService {
         soundTrackTypeRepository.findByNameCkb(ckb).orElseGet(() ->
                 soundTrackTypeRepository.save(SoundTrackType.builder()
                         .nameCkb(ckb)
-                        .nameKmr(ckb)
+                        .nameKmr("")
                         .build()));
     }
 

@@ -37,7 +37,7 @@ public class OfficeTypeService {
     @Transactional
     public OfficeTypeResponse create(OfficeTypeRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         officeTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             throw new BadRequestException("contact.officeType.duplicate", ckb);
         });
@@ -52,7 +52,7 @@ public class OfficeTypeService {
         OfficeType type = officeTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("contact.officeType.notFound", id));
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         officeTypeRepository.findByNameCkb(ckb).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new BadRequestException("contact.officeType.duplicate", ckb);
@@ -86,7 +86,7 @@ public class OfficeTypeService {
         officeTypeRepository.findByNameCkb(ckb).orElseGet(() ->
                 officeTypeRepository.save(OfficeType.builder()
                         .nameCkb(ckb)
-                        .nameKmr(ckb)
+                        .nameKmr("")
                         .build()));
     }
 

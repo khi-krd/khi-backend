@@ -57,7 +57,7 @@ public class NewsTaxonomyService {
     @CacheEvict(value = "news", allEntries = true)
     public CategoryResponse createCategory(CategoryRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         categoryRepository.findByNameCkb(ckb).ifPresent(existing -> {
             throw new BadRequestException("news.category.duplicate", ckb);
         });
@@ -72,7 +72,7 @@ public class NewsTaxonomyService {
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         NewsCategory category = findCategory(id);
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         categoryRepository.findByNameCkb(ckb).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new BadRequestException("news.category.duplicate", ckb);
@@ -105,7 +105,7 @@ public class NewsTaxonomyService {
     @CacheEvict(value = "news", allEntries = true)
     public SubCategoryResponse createSubCategory(SubCategoryRequest request) {
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         NewsCategory category = resolveCategory(request);
         subCategoryRepository.findByCategoryAndNameCkb(category, ckb).ifPresent(existing -> {
             throw new BadRequestException("news.subcategory.duplicate", ckb);
@@ -122,7 +122,7 @@ public class NewsTaxonomyService {
     public SubCategoryResponse updateSubCategory(Long id, SubCategoryRequest request) {
         NewsSubCategory sub = findSubCategory(id);
         String ckb = requireName(request == null ? null : request.getNameCkb());
-        String kmr = kmrOr(request == null ? null : request.getNameKmr(), ckb);
+        String kmr = kmrOr(request == null ? null : request.getNameKmr(), "");
         NewsCategory target = request != null && request.getCategoryId() != null
                 ? findCategory(request.getCategoryId())
                 : sub.getCategory();
@@ -195,7 +195,7 @@ public class NewsTaxonomyService {
         return categoryRepository.findByNameCkb(ckb)
                 .orElseGet(() -> categoryRepository.save(NewsCategory.builder()
                         .nameCkb(ckb)
-                        .nameKmr(kmrOr(request.getCategoryKmr(), ckb))
+                        .nameKmr(kmrOr(request.getCategoryKmr(), ""))
                         .build()));
     }
 

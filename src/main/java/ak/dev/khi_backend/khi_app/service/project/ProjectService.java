@@ -610,8 +610,7 @@ public class ProjectService {
                 if (e == null || isBlank(e.getNameCkb())) continue;
                 merged.add(ProjectTypeSelection.builder()
                         .typeCkb(e.getNameCkb().trim())
-                        .typeKmr(e.getNameKmr() != null && !e.getNameKmr().isBlank()
-                                ? e.getNameKmr().trim() : e.getNameCkb().trim())
+                        .typeKmr(blankToNull(e.getNameKmr()))
                         .build());
             }
         }
@@ -619,8 +618,7 @@ public class ProjectService {
             String ckb = dto.getProjectTypeCkb().trim();
             merged.add(ProjectTypeSelection.builder()
                     .typeCkb(ckb)
-                    .typeKmr(!isBlank(dto.getProjectTypeKmr())
-                            ? dto.getProjectTypeKmr().trim() : ckb)
+                    .typeKmr(blankToNull(dto.getProjectTypeKmr()))
                     .build());
         }
         project.getProjectTypes().clear();
@@ -647,7 +645,7 @@ public class ProjectService {
             if (projectTypeRepository.findByNameCkb(name).isPresent()) return;
             projectTypeRepository.save(ProjectType.builder()
                     .nameCkb(name)
-                    .nameKmr(kmr != null && !kmr.isBlank() ? kmr.trim() : name)
+                    .nameKmr(kmr != null && !kmr.isBlank() ? kmr.trim() : "")
                     .build());
         } catch (RuntimeException ignored) {
             // vocabulary bookkeeping must never break the write it shadows
