@@ -45,6 +45,9 @@ public class ProjectResponse implements Serializable {
 
     private LocalDate projectDate;
 
+    /** Optional link to the finished project's result — shared across languages. */
+    private String resultUrl;
+
     /** Manual list position — written through {@code PUT /api/v1/projects/order}. */
     private Integer sortOrder;
 

@@ -331,6 +331,7 @@ public class ProjectService {
         project.setCoverThumbnailUrl(blankToNull(dto.getCoverThumbnailUrl()));
         project.setMediaGallery(buildGallery(dto.getMediaGallery()));
         project.setProjectDate(dto.getProjectDate());
+        project.setResultUrl(blankToNull(dto.getResultUrl()));
         applyProjectTypes(project, dto);
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
 
@@ -404,6 +405,7 @@ public class ProjectService {
         applyProjectTypes(project, dto);
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : ProjectStatus.ONGOING);
         project.setProjectDate(dto.getProjectDate());
+        project.setResultUrl(blankToNull(dto.getResultUrl()));
         project.getContentLanguages().clear();
         if (dto.getContentLanguages() != null) {
             project.getContentLanguages().addAll(dto.getContentLanguages());
@@ -529,6 +531,7 @@ public class ProjectService {
                         : List.of())
                 .status(project.getStatus())
                 .projectDate(project.getProjectDate())
+                .resultUrl(project.getResultUrl())
                 .sortOrder(project.getSortOrder())
                 .contentLanguages(
                         project.getContentLanguages() != null

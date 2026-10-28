@@ -52,6 +52,9 @@ public class ProjectCreateRequest {
 
     private LocalDate projectDate;
 
+    /** Optional link to the finished project's result — shared across languages. */
+    private String resultUrl;
+
     /**
      * Sorani (CKB) content. The {@code description} field accepts Tiptap HTML.
      */

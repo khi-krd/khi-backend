@@ -187,6 +187,14 @@ public class Project extends AuditableEntity {
     @Column(name = "feature_image_url", columnDefinition = "TEXT")
     private String featureImageUrl;
 
+    /**
+     * Optional link to the finished project's result (publication, archive
+     * page, external deliverable). Language-agnostic — one URL shared by all
+     * content languages.
+     */
+    @Column(name = "result_url", length = 1024)
+    private String resultUrl;
+
     // project_media table dropped — inline images / audio / video now live
     // inside the Tiptap HTML stored in ckbContent.description and
     // kmrContent.description. Uploads go through POST /api/v1/media/upload.
