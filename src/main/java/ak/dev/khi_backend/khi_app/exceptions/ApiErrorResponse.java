@@ -18,6 +18,9 @@ public class ApiErrorResponse {
     private String method;
     private String traceId;
 
+    /** Same value as {@link #traceId}, exposed under the X-Request-Id name. */
+    private String requestId;
+
     private ErrorCode code;
 
     // localized message (Accept-Language)

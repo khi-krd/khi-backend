@@ -10,6 +10,9 @@ import lombok.*;
 public class ApiFieldError {
     private String field;
 
+    /** Bean-validation constraint name (e.g. NotBlank, Size) when known. */
+    private String code;
+
     // localized (based on Accept-Language)
     private String message;
 

@@ -128,7 +128,14 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private void sendErrorResponse(HttpServletResponse response, HttpStatus status, String error, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write(String.format("{\"error\":\"%s\",\"message\":\"%s\"}", error, message));
+        String requestId = org.slf4j.MDC.get(ak.dev.khi_backend.khi_app.config.TraceIdFilter.REQUEST_ID);
+        StringBuilder json = new StringBuilder(
+                String.format("{\"error\":\"%s\",\"message\":\"%s\"", error, message));
+        if (requestId != null) {
+            json.append(",\"requestId\":\"").append(requestId).append('"');
+        }
+        json.append('}');
+        response.getWriter().write(json.toString());
     }
 
     private boolean hasText(String str) {

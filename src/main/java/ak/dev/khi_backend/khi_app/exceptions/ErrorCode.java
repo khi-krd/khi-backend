@@ -16,6 +16,7 @@ public enum ErrorCode {
     BAD_REQUEST,            // Malformed input, invalid argument, illegal state
     METHOD_NOT_ALLOWED,     // Wrong HTTP verb for the endpoint
     PAYLOAD_TOO_LARGE,      // File upload exceeds size limit
+    MULTIPART_ERROR,        // Multipart request malformed or a required part absent
 
     // ── Project ───────────────────────────────────────────────────────────────
     PROJECT_NOT_FOUND,      // Project with given ID does not exist

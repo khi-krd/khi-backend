@@ -13,19 +13,25 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.Instant;
@@ -37,7 +43,8 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     /** Kurdish locale (use forLanguageTag to avoid deprecated new Locale(String)) */
     private static final Locale LOCALE_KU        = Locale.forLanguageTag("ku");
-    private static final long   MAX_UPLOAD_MB    = 5L;
+    /** Mirrors spring.servlet.multipart.max-file-size in application.yaml. */
+    private static final String MAX_UPLOAD_LABEL = "1 GB";
     private final MessageSource messageSource;
     // ═══════════════════════════════════════════════════════════════════════════
     // khi_app Domain Exceptions
@@ -267,14 +274,7 @@ public class GlobalExceptionHandler {
         body.setMessageKu(resolve(LOCALE_KU,      "error.validation", null, "هەڵەی پشکنینەوە لە کێبڕکێی یان زیاتر."));
         List<ApiFieldError> fieldErrors = new ArrayList<>();
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-            String msgKey = fe.getDefaultMessage();
-            String defEn  = fe.getDefaultMessage();
-            fieldErrors.add(ApiFieldError.builder()
-                    .field    (fe.getField())
-                    .message  (resolve(locale,         msgKey, null, defEn))
-                    .messageEn(resolve(Locale.ENGLISH, msgKey, null, defEn))
-                    .messageKu(resolve(LOCALE_KU,      msgKey, null, defEn))
-                    .build());
+            fieldErrors.add(toApiFieldError(fe, locale));
         }
         body.setFieldErrors(fieldErrors);
         log.warn("ValidationFailed path={} traceId={} fieldCount={}",
@@ -301,8 +301,12 @@ public class GlobalExceptionHandler {
                     // strip method prefix: "createResetToken.email" → "email"
                     String param = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
                     String msg   = cv.getMessage();
+                    String code  = cv.getConstraintDescriptor() != null
+                            ? cv.getConstraintDescriptor().getAnnotation().annotationType().getSimpleName()
+                            : null;
                     return ApiFieldError.builder()
                             .field    (param)
+                            .code     (code)
                             .message  (msg)
                             .messageEn(msg)
                             .messageKu(msg)
@@ -312,6 +316,69 @@ public class GlobalExceptionHandler {
         body.setFieldErrors(fieldErrors);
         log.warn("ConstraintViolation path={} traceId={} violations={}",
                 req.getRequestURI(), body.getTraceId(), ex.getConstraintViolations().size());
+        return ResponseEntity.badRequest().body(body);
+    }
+    /**
+     * 400 VALIDATION_ERROR — binding failures that are not @RequestBody
+     * validation. {@link MethodArgumentNotValidException} extends
+     * {@link BindException} since Spring 6, so JSON-body failures keep hitting
+     * the dedicated handler above; this one catches everything else (form
+     * binding, @ModelAttribute). Without it these fell through to the 500
+     * catch-all.
+     */
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiErrorResponse> handleBind(
+            BindException ex, HttpServletRequest req, Locale locale) {
+        ApiErrorResponse body = base(req, 400, ErrorCode.VALIDATION_ERROR);
+        body.setMessage  (resolve(locale,         "error.validation", null, "One or more fields failed validation."));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.validation", null, "One or more fields failed validation."));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.validation", null, "هەڵەی پشکنینەوە لە کێبڕکێی یان زیاتر."));
+        List<ApiFieldError> fieldErrors = new ArrayList<>();
+        for (FieldError fe : ex.getFieldErrors()) {
+            fieldErrors.add(toApiFieldError(fe, locale));
+        }
+        body.setFieldErrors(fieldErrors);
+        log.warn("BindException path={} traceId={} fieldCount={}",
+                req.getRequestURI(), body.getTraceId(), fieldErrors.size());
+        return ResponseEntity.badRequest().body(body);
+    }
+    /**
+     * 400 VALIDATION_ERROR — Spring 6.1+ method validation on controller
+     * signatures (@Validated groups / constraints directly on handler
+     * parameters). Answers the same fieldErrors shape as @Valid failures so
+     * the dashboard can mark the offending inputs.
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodValidation(
+            HandlerMethodValidationException ex, HttpServletRequest req, Locale locale) {
+        ApiErrorResponse body = base(req, 400, ErrorCode.VALIDATION_ERROR);
+        body.setMessage  (resolve(locale,         "error.validation", null, "One or more request parameters are invalid."));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.validation", null, "One or more request parameters are invalid."));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.validation", null, "هەڵەی پشکنینەوە لە پارامیتەرەکاندا."));
+        List<ApiFieldError> fieldErrors = new ArrayList<>();
+        for (ParameterValidationResult result : ex.getParameterValidationResults()) {
+            String paramName = result.getMethodParameter().getParameterName();
+            if (result.getContainerIndex() != null) {
+                paramName = (paramName != null ? paramName : "param")
+                        + "[" + result.getContainerIndex() + "]";
+            }
+            for (MessageSourceResolvable resolvable : result.getResolvableErrors()) {
+                FieldError fe = resolvable instanceof FieldError f ? f : null;
+                String field = fe != null ? fe.getField()
+                        : (paramName != null ? paramName : "parameter");
+                String msg = resolvable.getDefaultMessage();
+                fieldErrors.add(ApiFieldError.builder()
+                        .field    (field)
+                        .code     (fe != null ? fe.getCode() : null)
+                        .message  (msg)
+                        .messageEn(msg)
+                        .messageKu(msg)
+                        .build());
+            }
+        }
+        body.setFieldErrors(fieldErrors);
+        log.warn("MethodValidation path={} traceId={} violations={}",
+                req.getRequestURI(), body.getTraceId(), fieldErrors.size());
         return ResponseEntity.badRequest().body(body);
     }
     // ═══════════════════════════════════════════════════════════════════════════
@@ -444,6 +511,66 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
     /**
+     * 400 BAD_REQUEST — a query param or path variable cannot be coerced to the
+     * declared Java type (e.g. ?page=abc on a paged endpoint). Without this it
+     * falls through to the catch-all and answers 500, which reads as a server
+     * crash for what is only a bad parameter value.
+     *
+     * details:
+     *   parameter    → name of the badly-typed parameter
+     *   expectedType → the Java type it must coerce to
+     *   hint         → how to fix the call
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest req, Locale locale) {
+        String expected = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "the expected type";
+        ApiErrorResponse body = base(req, 400, ErrorCode.BAD_REQUEST);
+        body.setMessage  (resolve(locale,         "error.http.type_mismatch", null,
+                "Parameter '" + ex.getName() + "' has an invalid value."));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.http.type_mismatch", null,
+                "Parameter '" + ex.getName() + "' has an invalid value."));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.http.type_mismatch", null,
+                "پارامیتەری '" + ex.getName() + "' بەهای هەڵەی هەیە."));
+        body.setDetails(Map.of(
+                "parameter",    ex.getName(),
+                "expectedType", expected,
+                "hint",         "Pass a value of type " + expected + " for '" + ex.getName() + "'."
+        ));
+        log.warn("TypeMismatch param={} path={} traceId={}", ex.getName(), req.getRequestURI(), body.getTraceId());
+        return ResponseEntity.badRequest().body(body);
+    }
+    /**
+     * 400 MULTIPART_ERROR — a required {@code @RequestPart} (the JSON "data"
+     * blob or a cover file) is absent from a multipart request. It is not a
+     * {@link MultipartException} subclass, so without this it fell through to
+     * the 500 catch-all — the image-collection JSON-vs-multipart confusion was
+     * reported as a server crash.
+     *
+     * details:
+     *   missingPart → name of the absent part
+     *   hint        → what the multipart body must contain
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingPart(
+            MissingServletRequestPartException ex, HttpServletRequest req, Locale locale) {
+        ApiErrorResponse body = base(req, 400, ErrorCode.MULTIPART_ERROR);
+        body.setMessage  (resolve(locale,         "error.http.multipart_missing_part", null,
+                "Required request part '" + ex.getRequestPartName() + "' is missing."));
+        body.setMessageEn(resolve(Locale.ENGLISH, "error.http.multipart_missing_part", null,
+                "Required request part '" + ex.getRequestPartName() + "' is missing."));
+        body.setMessageKu(resolve(LOCALE_KU,      "error.http.multipart_missing_part", null,
+                "بەشی پێویستی '" + ex.getRequestPartName() + "' نەگەیشتووە."));
+        body.setDetails(Map.of(
+                "missingPart", ex.getRequestPartName(),
+                "hint",        "Send the request as 'multipart/form-data' and include the '" +
+                               ex.getRequestPartName() + "' part."
+        ));
+        log.warn("MissingRequestPart part={} path={} traceId={}",
+                ex.getRequestPartName(), req.getRequestURI(), body.getTraceId());
+        return ResponseEntity.badRequest().body(body);
+    }
+    /**
      * 413 PAYLOAD_TOO_LARGE — Uploaded file exceeds the server's configured max size.
      *
      * details:
@@ -455,16 +582,16 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException ex, HttpServletRequest req, Locale locale) {
         ApiErrorResponse body = base(req, 413, ErrorCode.PAYLOAD_TOO_LARGE);
         body.setMessage  (resolve(locale,         "error.http.payload_too_large", null,
-                "The uploaded file exceeds the maximum allowed size of " + MAX_UPLOAD_MB + " MB."));
+                "The uploaded file exceeds the maximum allowed size of " + MAX_UPLOAD_LABEL + "."));
         body.setMessageEn(resolve(Locale.ENGLISH, "error.http.payload_too_large", null,
-                "The uploaded file exceeds the maximum allowed size of " + MAX_UPLOAD_MB + " MB."));
+                "The uploaded file exceeds the maximum allowed size of " + MAX_UPLOAD_LABEL + "."));
         body.setMessageKu(resolve(LOCALE_KU,      "error.http.payload_too_large", null,
-                "قەبارەی فایلی بارکراو زیاتر لە " + MAX_UPLOAD_MB + " مێگابایت رێگەپێدراوەیە."));
+                "قەبارەی فایلی بارکراو لە " + MAX_UPLOAD_LABEL + " زیاترە."));
         body.setDetails(Map.of(
-                "maxAllowedMB", MAX_UPLOAD_MB,
-                "hint",         "Please compress or resize your file and try again. " +
-                                "Maximum file size is " + MAX_UPLOAD_MB + " MB. " +
-                                "Accepted formats: JPEG, PNG, GIF, WebP."
+                "maxAllowed", MAX_UPLOAD_LABEL,
+                "hint",       "Please compress or resize your file and try again. " +
+                              "Maximum file size is " + MAX_UPLOAD_LABEL + ". " +
+                              "Accepted formats: JPEG, PNG, GIF, WebP."
         ));
         log.warn("PayloadTooLarge path={} traceId={}", req.getRequestURI(), body.getTraceId());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
@@ -547,13 +674,18 @@ public class GlobalExceptionHandler {
     // Helpers
     // ═══════════════════════════════════════════════════════════════════════════
     private ApiErrorResponse base(HttpServletRequest req, int status, ErrorCode code) {
+        String correlationId = org.slf4j.MDC.get(TraceIdFilter.REQUEST_ID);
+        if (correlationId == null) {
+            correlationId = org.slf4j.MDC.get(TraceIdFilter.TRACE_ID);
+        }
         return ApiErrorResponse.builder()
                 .timestamp(Instant.now())
                 .status(status)
                 .code(code)
                 .path(req.getRequestURI())
                 .method(req.getMethod())
-                .traceId(org.slf4j.MDC.get(TraceIdFilter.TRACE_ID))
+                .traceId(correlationId)
+                .requestId(correlationId)
                 .build();
     }
 
@@ -577,6 +709,18 @@ public class GlobalExceptionHandler {
         log.warn("UnknownJsonField field={} path={} traceId={}",
                 propertyName, req.getRequestURI(), body.getTraceId());
         return ResponseEntity.badRequest().body(body);
+    }
+
+    private ApiFieldError toApiFieldError(FieldError fe, Locale locale) {
+        String msgKey = fe.getDefaultMessage();
+        String defEn  = fe.getDefaultMessage();
+        return ApiFieldError.builder()
+                .field    (fe.getField())
+                .code     (fe.getCode())
+                .message  (resolve(locale,         msgKey, null, defEn))
+                .messageEn(resolve(Locale.ENGLISH, msgKey, null, defEn))
+                .messageKu(resolve(LOCALE_KU,      msgKey, null, defEn))
+                .build();
     }
 
     private <T extends Throwable> T findCause(Throwable throwable, Class<T> causeType) {
