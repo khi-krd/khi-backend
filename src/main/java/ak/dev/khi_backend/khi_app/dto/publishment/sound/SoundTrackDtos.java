@@ -264,11 +264,19 @@ public final class SoundTrackDtos {
 
         private AudioChannel audioChannel;
 
-        // ── Content / style ───────────────────────────────────────────────────
+        // ── Content / style — independent per language ────────────────────────
+        private String formCkb;
+        private String formKmr;
+
+        private String genreCkb;
+        private String genreKmr;
+
+        private String recordingVenueCkb;
+        private String recordingVenueKmr;
+
+        /** Legacy shared values — routed to CKB/KMR by script when the split fields are absent. */
         private String form;
-
         private String genre;
-
         private String recordingVenue;
 
         private Integer sortOrder;
@@ -307,9 +315,12 @@ public final class SoundTrackDtos {
         private String sampleRate;
         private AudioChannel audioChannel;
 
-        private String form;
-        private String genre;
-        private String recordingVenue;
+        private String formCkb;
+        private String formKmr;
+        private String genreCkb;
+        private String genreKmr;
+        private String recordingVenueCkb;
+        private String recordingVenueKmr;
 
         private Integer sortOrder;
 
@@ -352,7 +363,11 @@ public final class SoundTrackDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        // ── Location ──────────────────────────────────────────────────────────
+        // ── Location — independent per language ───────────────────────────────
+        private Set<String> locationsCkb;
+        private Set<String> locationsKmr;
+
+        /** Legacy shared list — split by script when the per-language lists are absent. */
         private Set<String> locations;
 
         // ── People ────────────────────────────────────────────────────────────
@@ -436,7 +451,11 @@ public final class SoundTrackDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        // ── Location ──────────────────────────────────────────────────────────
+        // ── Location — independent per language; null leaves a list unchanged ─
+        private Set<String> locationsCkb;
+        private Set<String> locationsKmr;
+
+        /** Legacy shared list — split by script when the per-language lists are absent. */
         private Set<String> locations;
 
         // ── People ────────────────────────────────────────────────────────────
@@ -528,7 +547,8 @@ public final class SoundTrackDtos {
         private LanguageContentDto ckbContent;
         private LanguageContentDto kmrContent;
 
-        private Set<String> locations;
+        private Set<String> locationsCkb;
+        private Set<String> locationsKmr;
 
         /** Single reader / performer. */
         private String reader;

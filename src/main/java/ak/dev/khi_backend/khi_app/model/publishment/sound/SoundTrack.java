@@ -124,17 +124,27 @@ public class SoundTrack {
     })
     private SoundTrackContent kmrContent;
 
-    // ─── Locations ────────────────────────────────────────────────────────────
+    // ─── Locations (independent per language) ─────────────────────────────────
 
     @Builder.Default
     @BatchSize(size = 50)
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
-            name = "sound_track_locations",
+            name = "sound_track_locations_ckb",
             joinColumns = @JoinColumn(name = "sound_track_id")
     )
-    @Column(name = "location", nullable = false, length = 255)
-    private Set<String> locations = new LinkedHashSet<>();
+    @Column(name = "location_ckb", nullable = false, length = 255)
+    private Set<String> locationsCkb = new LinkedHashSet<>();
+
+    @Builder.Default
+    @BatchSize(size = 50)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+            name = "sound_track_locations_kmr",
+            joinColumns = @JoinColumn(name = "sound_track_id")
+    )
+    @Column(name = "location_kmr", nullable = false, length = 255)
+    private Set<String> locationsKmr = new LinkedHashSet<>();
 
     // ─── Reader / Performer ───────────────────────────────────────────────────
 

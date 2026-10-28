@@ -168,7 +168,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
     //
     //   Q1  : SELECT s   FROM sound_tracks                   WHERE id IN (...)
     //   Q2  : SELECT ... FROM sound_track_content_languages   WHERE sound_track_id IN (...)
-    //   Q3  : SELECT ... FROM sound_track_locations           WHERE sound_track_id IN (...)
+    //   Q3  : SELECT ... FROM sound_track_locations_ckb/_kmr WHERE sound_track_id IN (...)
     //   Q4  : SELECT ... FROM sound_track_readers             WHERE sound_track_id IN (...)
     //   Q5  : SELECT ... FROM sound_track_directors           WHERE sound_track_id IN (...)
     //   Q6  : SELECT ... FROM sound_track_keywords_ckb        WHERE sound_track_id IN (...)
@@ -195,7 +195,7 @@ public interface SoundTrackRepository extends JpaRepository<SoundTrack, Long> {
             "contentLanguages",
             "reader",
             "directors",
-            "locations",
+            "locationsCkb", "locationsKmr",
             "tagsCkb", "tagsKmr",
             "keywordsCkb", "keywordsKmr",
             "files",

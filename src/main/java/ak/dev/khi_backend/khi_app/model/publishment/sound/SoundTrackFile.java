@@ -29,9 +29,9 @@ import java.util.List;
  * ─── Content metadata (NEW) ───────────────────────────────────────────────────
  *  · title           – title of this specific file/track
  *  · publishmentYear – year the file was published
- *  · form            – musical/linguistic form (کێشدار، بێکەش، بێکێش و کێشدار …)
- *  · genre           – genre label
- *  · recordingVenue  – place where the sound was recorded
+ *  · formCkb/Kmr           – musical/linguistic form (کێشدار، بێکێش …)
+ *  · genreCkb/Kmr          – genre label
+ *  · recordingVenueCkb/Kmr – place where the sound was recorded
  *
  * ─── Brochures (NEW) ──────────────────────────────────────────────────────────
  *  · brochures – ordered list of brochure/cover images for this file.
@@ -146,27 +146,33 @@ public class SoundTrackFile {
 
     // ─── Content / Style Metadata ─────────────────────────────────────────────
 
-    /**
-     * Musical/linguistic form of the sound.
-     * Typical Kurdish values: کێشدار، بێکەش، بێکێش و کێشدار
-     * Stored as free text so it can hold any future value without a migration.
+    /*
+     * Content metadata is independent per language — the Sorani and Kurmanji
+     * values never fall back to each other. The legacy shared columns (form,
+     * genre, recording_venue) are emptied into these by
+     * SoundLanguageFieldsMigration at boot.
      */
-    @Column(name = "form", length = 150)
-    private String form;
 
-    /**
-     * Genre label.
-     * e.g. "Folk", "Classical", "Religious", "Poetry".
-     */
-    @Column(name = "genre", length = 100)
-    private String genre;
+    /** Musical/linguistic form, e.g. کێشدار، بێکێش — free text. */
+    @Column(name = "form_ckb", length = 150)
+    private String formCkb;
 
-    /**
-     * The physical or virtual location where the sound was recorded.
-     * e.g. "Studio A, Sulaymaniyah", "National Theatre – Baghdad".
-     */
-    @Column(name = "recording_venue", length = 500)
-    private String recordingVenue;
+    @Column(name = "form_kmr", length = 150)
+    private String formKmr;
+
+    /** Genre label, e.g. فۆلکلۆر / Folklor. */
+    @Column(name = "genre_ckb", length = 100)
+    private String genreCkb;
+
+    @Column(name = "genre_kmr", length = 100)
+    private String genreKmr;
+
+    /** Where the sound was recorded. */
+    @Column(name = "recording_venue_ckb", length = 500)
+    private String recordingVenueCkb;
+
+    @Column(name = "recording_venue_kmr", length = 500)
+    private String recordingVenueKmr;
 
     /**
      * Position of this file inside the parent track's file list.

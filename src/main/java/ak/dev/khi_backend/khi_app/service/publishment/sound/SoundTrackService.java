@@ -93,7 +93,10 @@ public class SoundTrackService {
                     .reader(trimOrNull(dto.getReader()))
                     .directors(new LinkedHashSet<>(cleanStrings(dto.getDirectors())))
                     .terms(trimOrNull(dto.getTerms()))
-                    .locations(new LinkedHashSet<>(cleanStrings(dto.getLocations())))
+                    .locationsCkb(new LinkedHashSet<>(cleanStrings(dto.getLocationsCkb() != null
+                            ? dto.getLocationsCkb() : byScript(dto.getLocations(), true))))
+                    .locationsKmr(new LinkedHashSet<>(cleanStrings(dto.getLocationsKmr() != null
+                            ? dto.getLocationsKmr() : byScript(dto.getLocations(), false))))
                     .thisProjectOfInstitute(dto.isThisProjectOfInstitute())
                     .tagsCkb(new LinkedHashSet<>(cleanStrings(
                             dto.getTags() != null ? dto.getTags().getCkb() : null)))
@@ -209,10 +212,18 @@ public class SoundTrackService {
             applyContentForUpdate(entity,
                     entity.getContentLanguages(), dto.getCkbContent(), dto.getKmrContent());
 
-            // ── Locations ─────────────────────────────────────────────────
-            if (dto.getLocations() != null) {
-                entity.getLocations().clear();
-                entity.getLocations().addAll(cleanStrings(dto.getLocations()));
+            // ── Locations — each language list is replaced independently ─
+            Set<String> locCkb = dto.getLocationsCkb() != null
+                    ? dto.getLocationsCkb() : byScript(dto.getLocations(), true);
+            Set<String> locKmr = dto.getLocationsKmr() != null
+                    ? dto.getLocationsKmr() : byScript(dto.getLocations(), false);
+            if (locCkb != null) {
+                entity.getLocationsCkb().clear();
+                entity.getLocationsCkb().addAll(cleanStrings(locCkb));
+            }
+            if (locKmr != null) {
+                entity.getLocationsKmr().clear();
+                entity.getLocationsKmr().addAll(cleanStrings(locKmr));
             }
 
             // ── Reader (single field) ─────────────────────────────────────
@@ -616,9 +627,14 @@ public class SoundTrackService {
                     .bitRate(fDto != null ? trimOrNull(fDto.getBitRate())      : null)
                     .sampleRate(fDto != null ? trimOrNull(fDto.getSampleRate()): null)
                     .audioChannel(fDto != null ? fDto.getAudioChannel()        : null)
-                    .form(fDto != null ? trimOrNull(fDto.getForm())            : null)
-                    .genre(fDto != null ? trimOrNull(fDto.getGenre())          : null)
-                    .recordingVenue(fDto != null ? trimOrNull(fDto.getRecordingVenue()) : null)
+                    .formCkb(fDto != null ? trimOrNull(pick(fDto.getFormCkb(), fDto.getForm(), true)) : null)
+                    .formKmr(fDto != null ? trimOrNull(pick(fDto.getFormKmr(), fDto.getForm(), false)) : null)
+                    .genreCkb(fDto != null ? trimOrNull(pick(fDto.getGenreCkb(), fDto.getGenre(), true)) : null)
+                    .genreKmr(fDto != null ? trimOrNull(pick(fDto.getGenreKmr(), fDto.getGenre(), false)) : null)
+                    .recordingVenueCkb(fDto != null
+                            ? trimOrNull(pick(fDto.getRecordingVenueCkb(), fDto.getRecordingVenue(), true)) : null)
+                    .recordingVenueKmr(fDto != null
+                            ? trimOrNull(pick(fDto.getRecordingVenueKmr(), fDto.getRecordingVenue(), false)) : null)
                     .sortOrder(fDto != null && fDto.getSortOrder() != null
                             ? fDto.getSortOrder() : i)
                     .build();
@@ -740,11 +756,18 @@ public class SoundTrackService {
         if (dto.getBitRate() != null) file.setBitRate(trimOrNull(dto.getBitRate()));
         if (dto.getSampleRate() != null) file.setSampleRate(trimOrNull(dto.getSampleRate()));
         if (dto.getAudioChannel() != null) file.setAudioChannel(dto.getAudioChannel());
-        if (dto.getForm() != null) file.setForm(trimOrNull(dto.getForm()));
-        if (dto.getGenre() != null) file.setGenre(trimOrNull(dto.getGenre()));
-        if (dto.getRecordingVenue() != null) {
-            file.setRecordingVenue(trimOrNull(dto.getRecordingVenue()));
-        }
+        String formCkb = pick(dto.getFormCkb(), dto.getForm(), true);
+        String formKmr = pick(dto.getFormKmr(), dto.getForm(), false);
+        String genreCkb = pick(dto.getGenreCkb(), dto.getGenre(), true);
+        String genreKmr = pick(dto.getGenreKmr(), dto.getGenre(), false);
+        String venueCkb = pick(dto.getRecordingVenueCkb(), dto.getRecordingVenue(), true);
+        String venueKmr = pick(dto.getRecordingVenueKmr(), dto.getRecordingVenue(), false);
+        if (formCkb != null) file.setFormCkb(trimOrNull(formCkb));
+        if (formKmr != null) file.setFormKmr(trimOrNull(formKmr));
+        if (genreCkb != null) file.setGenreCkb(trimOrNull(genreCkb));
+        if (genreKmr != null) file.setGenreKmr(trimOrNull(genreKmr));
+        if (venueCkb != null) file.setRecordingVenueCkb(trimOrNull(venueCkb));
+        if (venueKmr != null) file.setRecordingVenueKmr(trimOrNull(venueKmr));
     }
 
     private List<SoundTrackBrochure> mergeBrochures(
@@ -1450,7 +1473,8 @@ public class SoundTrackService {
                         ? new LinkedHashSet<>(s.getContentLanguages()) : new LinkedHashSet<>())
                 .ckbContent(toContentDto(s.getCkbContent()))
                 .kmrContent(toContentDto(s.getKmrContent()))
-                .locations(new LinkedHashSet<>(safeSet(s.getLocations())))
+                .locationsCkb(new LinkedHashSet<>(safeSet(s.getLocationsCkb())))
+                .locationsKmr(new LinkedHashSet<>(safeSet(s.getLocationsKmr())))
                 .reader(s.getReader())
                 .directors(new LinkedHashSet<>(safeSet(s.getDirectors())))
                 .terms(s.getTerms())
@@ -1523,8 +1547,11 @@ public class SoundTrackService {
                 .sizeBytes(f.getSizeBytes()).durationSeconds(f.getDurationSeconds())
                 .durationMinutes(f.getDurationMinutes())
                 .bitRate(f.getBitRate()).sampleRate(f.getSampleRate())
-                .audioChannel(f.getAudioChannel()).form(f.getForm())
-                .genre(f.getGenre()).recordingVenue(f.getRecordingVenue())
+                .audioChannel(f.getAudioChannel())
+                .formCkb(f.getFormCkb()).formKmr(f.getFormKmr())
+                .genreCkb(f.getGenreCkb()).genreKmr(f.getGenreKmr())
+                .recordingVenueCkb(f.getRecordingVenueCkb())
+                .recordingVenueKmr(f.getRecordingVenueKmr())
                 .sortOrder(f.getSortOrder())
                 .brochures(brochures)
                 .build();
@@ -1659,6 +1686,27 @@ public class SoundTrackService {
         LinkedHashSet<String> out = new LinkedHashSet<>();
         for (String s : in) { String t = trimOrNull(s); if (t != null) out.add(t); }
         return out;
+    }
+
+    /**
+     * Legacy shared values (one list/field for both languages) are routed by
+     * script: Arabic-script text is Sorani, anything else Kurmanji. Null in →
+     * null out, so "field absent" still means "leave unchanged" on update.
+     */
+    private Set<String> byScript(Set<String> legacy, boolean ckb) {
+        if (legacy == null) return null;
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (String s : legacy) {
+            if (s != null && SoundLanguageFieldsMigration.isSorani(s) == ckb) out.add(s);
+        }
+        return out;
+    }
+
+    /** The per-language value when sent, else the legacy shared value if its script matches. */
+    private String pick(String perLanguage, String legacy, boolean ckb) {
+        if (perLanguage != null) return perLanguage;
+        if (legacy == null) return null;
+        return SoundLanguageFieldsMigration.isSorani(legacy) == ckb ? legacy : null;
     }
 
     private MultipartFile nextNonEmpty(List<MultipartFile> files, int start) {
