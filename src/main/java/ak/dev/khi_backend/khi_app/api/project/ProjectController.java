@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.api.project;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
+import ak.dev.khi_backend.khi_app.dto.ReorderRequest;
 import ak.dev.khi_backend.khi_app.dto.project.ProjectCreateRequest;
 import ak.dev.khi_backend.khi_app.dto.project.ProjectResponse;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
@@ -65,6 +66,18 @@ public class ProjectController {
     // ============================================================
     // UPDATE
     // ============================================================
+
+    /**
+     * Bulk list-order update — JSON body: { "orderedIds": [3, 1, 2, …] }.
+     * orderedIds[i] gets sortOrder = i. Literal path wins over PUT /update/{id}.
+     */
+    @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> reorder(
+            @RequestBody(required = false) ReorderRequest request) {
+        projectService.reorder(request != null ? request.getOrderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
+    }
+
     @PutMapping(value = "/update/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ProjectResponse>> update(
             @PathVariable("id") Long id,

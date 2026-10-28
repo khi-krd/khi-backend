@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.api.publishment.writing;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
+import ak.dev.khi_backend.khi_app.dto.ReorderRequest;
 import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.*;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
@@ -34,6 +35,14 @@ import java.util.Map;
 @Slf4j
 @Tag(name = "Writings", description = "Bilingual books with multi-genre, series linking, multi-axis search")
 public class WritingController {
+
+    /**
+     * Public/admin browse order: manual sortOrder first (ASC puts NULLs last
+     * on Postgres), then the previous default (newest created).
+     */
+    private static final Sort DEFAULT_LIST_SORT =
+            Sort.by(Sort.Direction.ASC, "sortOrder")
+                    .and(Sort.by(Sort.Direction.DESC, "createdAt"));
 
     private final WritingService writingService;
     private final ObjectMapper objectMapper;
@@ -92,7 +101,7 @@ public class WritingController {
             @RequestParam(defaultValue = "20") int size) {
 
         log.info("GET /api/v1/writings | page={} size={}", page, size);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         Page<Response> result = writingService.getAllWritings(pageable);
         return ResponseEntity.ok(ApiResponse.success(result, "Writings fetched successfully"));
     }
@@ -116,6 +125,18 @@ public class WritingController {
     // ============================================================
     // UPDATE
     // ============================================================
+
+    /**
+     * Bulk list-order update — JSON body: { "orderedIds": [3, 1, 2, …] }.
+     * orderedIds[i] gets sortOrder = i. Literal path wins over PUT /{id}
+     * (which consumes multipart only).
+     */
+    @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> reorder(
+            @RequestBody(required = false) ReorderRequest request) {
+        writingService.reorder(request != null ? request.getOrderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
+    }
 
     /**
      * Update writing with files (multipart).
@@ -161,7 +182,7 @@ public class WritingController {
     public ResponseEntity<ApiResponse<Page<Response>>> getAllSeriesParents(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         return ResponseEntity.ok(ApiResponse.success(
                 writingService.getAllSeriesParents(pageable), "Series parents fetched"));
     }
@@ -191,7 +212,7 @@ public class WritingController {
             @RequestParam(defaultValue = "both") String language,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         return ResponseEntity.ok(ApiResponse.success(
                 writingService.searchByWriter(name, language, pageable), "Search completed"));
     }
@@ -202,7 +223,7 @@ public class WritingController {
             @RequestParam(defaultValue = "both") String language,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         return ResponseEntity.ok(ApiResponse.success(
                 writingService.searchByTag(tag, language, pageable), "Search completed"));
     }
@@ -213,7 +234,7 @@ public class WritingController {
             @RequestParam(defaultValue = "both") String language,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         return ResponseEntity.ok(ApiResponse.success(
                 writingService.searchByKeyword(keyword, language, pageable), "Search completed"));
     }

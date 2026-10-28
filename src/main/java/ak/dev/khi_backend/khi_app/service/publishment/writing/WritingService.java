@@ -279,6 +279,26 @@ public class WritingService {
         return writingRepository.findAllWithTopic(pageable).map(this::mapToResponse);
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<Writing> rows = writingRepository.findAllById(orderedIds);
+        Map<Long, Integer> positions = new HashMap<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+        }
+        for (Writing writing : rows) {
+            Integer position = positions.get(writing.getId());
+            if (position != null) writing.setSortOrder(position);
+        }
+        writingRepository.saveAll(rows);
+    }
+
     @Transactional(readOnly = true)
     public Page<Response> getFeatured(int page, int size) {
         Pageable pageable = PageRequest.of(
@@ -577,6 +597,7 @@ public class WritingService {
     private Response mapToResponse(Writing w) {
         Response r = Response.builder()
                 .id(w.getId())
+                .sortOrder(w.getSortOrder())
                 .contentLanguages(w.getContentLanguages() != null
                         ? new LinkedHashSet<>(w.getContentLanguages()) : new LinkedHashSet<>())
                 .ckbCoverUrl(w.getCkbCoverUrl())

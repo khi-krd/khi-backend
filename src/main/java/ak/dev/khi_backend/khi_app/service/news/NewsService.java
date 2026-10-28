@@ -246,6 +246,29 @@ public class NewsService {
         );
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @CacheEvict(value = "news", allEntries = true)
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+
+        transactionTemplate.executeWithoutResult(status -> {
+            List<News> rows = newsRepository.findAllById(orderedIds);
+            Map<Long, Integer> positions = new HashMap<>();
+            for (int i = 0; i < orderedIds.size(); i++) {
+                if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+            }
+            for (News news : rows) {
+                Integer position = positions.get(news.getId());
+                if (position != null) news.setSortOrder(position);
+            }
+            newsRepository.saveAll(rows);
+        });
+    }
+
     @Transactional(readOnly = true)
     public NewsDto getNewsById(Long id) {
         News news = newsRepository.findByIdWithGraph(id)
@@ -288,6 +311,10 @@ public class NewsService {
 
             if (payload.getDatePublished() != null) {
                 news.setDatePublished(payload.getDatePublished());
+            }
+
+            if (payload.getSortOrder() != null) {
+                news.setSortOrder(payload.getSortOrder());
             }
 
             if (payload.getCategory() != null) {
@@ -392,6 +419,7 @@ public class NewsService {
                 .coverThumbnailUrl(trimOrNull(dto.getCoverThumbnailUrl()))
                 .mediaGallery(buildGallery(dto.getMediaGallery()))
                 .datePublished(dto.getDatePublished())
+                .sortOrder(dto.getSortOrder())
                 .category(cat)
                 .subCategory(subCat)
                 .contentLanguages(new LinkedHashSet<>(safeLangs(dto.getContentLanguages())))
@@ -530,6 +558,7 @@ public class NewsService {
                         ? new ArrayList<>(news.getMediaGallery())
                         : new ArrayList<>())
                 .datePublished(news.getDatePublished())
+                .sortOrder(news.getSortOrder())
                 .createdAt(news.getCreatedAt())
                 .updatedAt(news.getUpdatedAt())
                 .contentLanguages(news.getContentLanguages() != null

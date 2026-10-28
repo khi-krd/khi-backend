@@ -1,6 +1,7 @@
 package ak.dev.khi_backend.khi_app.api.news;
 
 import ak.dev.khi_backend.khi_app.dto.ApiResponse;
+import ak.dev.khi_backend.khi_app.dto.ReorderRequest;
 import ak.dev.khi_backend.khi_app.dto.news.NewsDto;
 import ak.dev.khi_backend.khi_app.dto.site.SiteContentDtos;
 import ak.dev.khi_backend.khi_app.service.news.NewsService;
@@ -157,6 +158,17 @@ public class NewsController {
     // ============================================================
     // UPDATE
     // ============================================================
+
+    /**
+     * Bulk list-order update — JSON body: { "orderedIds": [3, 1, 2, …] }.
+     * orderedIds[i] gets sortOrder = i. Literal path wins over PUT /{id}.
+     */
+    @PutMapping(value = "/order", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<Void>> reorder(
+            @RequestBody(required = false) ReorderRequest request) {
+        newsService.reorder(request != null ? request.getOrderedIds() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Order updated"));
+    }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<NewsDto>> updateNews(

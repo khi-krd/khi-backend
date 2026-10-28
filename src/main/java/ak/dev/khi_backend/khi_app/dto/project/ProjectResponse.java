@@ -44,6 +44,10 @@ public class ProjectResponse implements Serializable {
     private ProjectStatus status;
 
     private LocalDate projectDate;
+
+    /** Manual list position — written through {@code PUT /api/v1/projects/order}. */
+    private Integer sortOrder;
+
     private Set<Language> contentLanguages;
 
     private ProjectContentBlockDto ckbContent;

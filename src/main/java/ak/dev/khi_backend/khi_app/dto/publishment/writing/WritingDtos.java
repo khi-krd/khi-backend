@@ -338,6 +338,9 @@ public final class WritingDtos {
 
         private Long id;
 
+        /** Manual list position — written through {@code PUT /api/v1/writings/order}. */
+        private Integer sortOrder;
+
         private Set<Language> contentLanguages;
 
         // ─── Cover Images (3 slots) ───────────────────────────────────────────

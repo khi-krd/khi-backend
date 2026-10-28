@@ -18,7 +18,8 @@ import java.util.*;
         name = "news",
         indexes = {
                 @Index(name = "idx_news_date_published", columnList = "datePublished DESC"),
-                @Index(name = "idx_news_created_at",    columnList = "createdAt DESC")
+                @Index(name = "idx_news_created_at",    columnList = "createdAt DESC"),
+                @Index(name = "idx_news_sort_order",    columnList = "sort_order")
         }
 )
 @Getter @Setter
@@ -165,6 +166,16 @@ public class News {
     @JoinColumn(name = "sub_category_id", nullable = false)
     private NewsSubCategory subCategory;
 
+
+    /**
+     * Manual list position set via {@code PUT /api/v1/news/order}.
+     * Null sorts last (after every explicitly ordered row) — the repository
+     * falls back to {@code datePublished DESC, createdAt DESC} for unranked
+     * records, so existing data keeps its current order until an admin
+     * reorders it.
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
 
     private boolean featured = false;
     private Integer featuredOrder;

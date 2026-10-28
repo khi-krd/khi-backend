@@ -230,6 +230,28 @@ public class ServiceService {
         );
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @CacheEvict(value = "services", allEntries = true)
+    @Transactional
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+        List<ak.dev.khi_backend.khi_app.model.service.Service> rows =
+                serviceRepository.findAllById(orderedIds);
+        Map<Long, Integer> positions = new HashMap<>();
+        for (int i = 0; i < orderedIds.size(); i++) {
+            if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+        }
+        for (ak.dev.khi_backend.khi_app.model.service.Service service : rows) {
+            Integer position = positions.get(service.getId());
+            if (position != null) service.setSortOrder(position);
+        }
+        serviceRepository.saveAll(rows);
+    }
+
     @Transactional(readOnly = true)
     public ServiceResponse getById(Long id) {
         ak.dev.khi_backend.khi_app.model.service.Service service =

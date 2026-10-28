@@ -66,7 +66,7 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
                 OR lower(s.location) LIKE lower(concat('%', :q, '%'))
                 OR lower(c.title) LIKE lower(concat('%', :q, '%'))
                 OR lower(c.description) LIKE lower(concat('%', :q, '%')))
-            ORDER BY s.publishedAt DESC, s.createdAt DESC
+            ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.publishedAt DESC, s.createdAt DESC
             """)
     Page<Long> findIdsByGlobalSearch(@Param("q") String q, Pageable pageable);
 
@@ -80,7 +80,7 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
                OR lower(s.location) LIKE lower(concat('%', :q, '%'))
                OR lower(c.title) LIKE lower(concat('%', :q, '%'))
                OR lower(c.description) LIKE lower(concat('%', :q, '%'))
-            ORDER BY s.publishedAt DESC, s.createdAt DESC
+            ORDER BY COALESCE(s.sortOrder, 2147483647) ASC, s.publishedAt DESC, s.createdAt DESC
             """)
     Page<Long> findIdsByAdminSearch(@Param("q") String q, Pageable pageable);
 
@@ -92,7 +92,7 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     //   Q2: SELECT ... FROM service_contents WHERE service_id IN (...)
     // =========================================================================
 
-    @Query("SELECT s FROM Service s WHERE s.id IN :ids ORDER BY s.publishedAt DESC, s.createdAt DESC")
+    @Query("SELECT s FROM Service s WHERE s.id IN :ids")
     List<Service> findAllByIds(@Param("ids") List<Long> ids);
 
     // =========================================================================

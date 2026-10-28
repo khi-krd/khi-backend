@@ -28,9 +28,14 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     /**
      * GET ALL — Phase 1
-     * Hits idx_news_date_published index directly.
+     * Manual sortOrder first (nulls last), then the previous default
+     * (newest published) as tiebreak.
      */
-    @Query("SELECT n.id FROM News n ORDER BY n.datePublished DESC, n.createdAt DESC")
+    @Query("""
+        SELECT n.id FROM News n
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
+        """)
     Page<Long> findAllIds(Pageable pageable);
 
     /**
@@ -48,7 +53,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         LEFT JOIN n.tagsKmr tkmr
         WHERE lower(tckb) LIKE lower(concat('%', :tag, '%'))
            OR lower(tkmr) LIKE lower(concat('%', :tag, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByTag(@Param("tag") String tag, Pageable pageable);
 
@@ -59,7 +65,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         SELECT DISTINCT n.id FROM News n
         LEFT JOIN n.tagsCkb tckb
         WHERE lower(tckb) LIKE lower(concat('%', :tag, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByTagCkb(@Param("tag") String tag, Pageable pageable);
 
@@ -70,7 +77,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         SELECT DISTINCT n.id FROM News n
         LEFT JOIN n.tagsKmr tkmr
         WHERE lower(tkmr) LIKE lower(concat('%', :tag, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByTagKmr(@Param("tag") String tag, Pageable pageable);
 
@@ -86,7 +94,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         LEFT JOIN n.keywordsKmr kkmr
         WHERE lower(kckb) LIKE lower(concat('%', :keyword, '%'))
            OR lower(kkmr) LIKE lower(concat('%', :keyword, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
@@ -97,7 +106,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         SELECT DISTINCT n.id FROM News n
         LEFT JOIN n.keywordsCkb kckb
         WHERE lower(kckb) LIKE lower(concat('%', :keyword, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByKeywordCkb(@Param("keyword") String keyword, Pageable pageable);
 
@@ -108,7 +118,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
         SELECT DISTINCT n.id FROM News n
         LEFT JOIN n.keywordsKmr kkmr
         WHERE lower(kkmr) LIKE lower(concat('%', :keyword, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByKeywordKmr(@Param("keyword") String keyword, Pageable pageable);
 
@@ -117,7 +128,7 @@ public interface NewsRepository extends JpaRepository<News, Long> {
      *
      * One search box that covers everything:
      * title, description, tags, keywords — both CKB + KMR.
-     * Returns DISTINCT IDs sorted by newest.
+     * Returns DISTINCT IDs: manual sortOrder first, newest as tiebreak.
      */
     @Query("""
         SELECT DISTINCT n.id FROM News n
@@ -133,29 +144,34 @@ public interface NewsRepository extends JpaRepository<News, Long> {
            OR lower(tkmr)                     LIKE lower(concat('%', :q, '%'))
            OR lower(kckb)                     LIKE lower(concat('%', :q, '%'))
            OR lower(kkmr)                     LIKE lower(concat('%', :q, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByGlobalSearch(@Param("q") String q, Pageable pageable);
 
     /**
      * CATEGORY SEARCH — Phase 1
+     * Manual sortOrder first (nulls last), then newest published.
      */
     @Query("""
         SELECT n.id FROM News n
         WHERE lower(n.category.nameCkb) LIKE lower(concat('%', :name, '%'))
            OR lower(n.category.nameKmr) LIKE lower(concat('%', :name, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsByCategory(@Param("name") String name, Pageable pageable);
 
     /**
      * SUBCATEGORY SEARCH — Phase 1
+     * Manual sortOrder first (nulls last), then newest published.
      */
     @Query("""
         SELECT n.id FROM News n
         WHERE lower(n.subCategory.nameCkb) LIKE lower(concat('%', :name, '%'))
            OR lower(n.subCategory.nameKmr) LIKE lower(concat('%', :name, '%'))
-        ORDER BY n.datePublished DESC, n.createdAt DESC
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
         """)
     Page<Long> findIdsBySubCategory(@Param("name") String name, Pageable pageable);
 
@@ -177,7 +193,11 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     //   9 fast IN-queries for any page size.
     // ============================================================
 
-    @Query("SELECT n FROM News n WHERE n.id IN :ids ORDER BY n.datePublished DESC, n.createdAt DESC")
+    @Query("""
+        SELECT n FROM News n WHERE n.id IN :ids
+        ORDER BY COALESCE(n.sortOrder, 2147483647) ASC,
+                 n.datePublished DESC, n.createdAt DESC
+        """)
     List<News> findAllByIds(@Param("ids") List<Long> ids);
 
     // ============================================================

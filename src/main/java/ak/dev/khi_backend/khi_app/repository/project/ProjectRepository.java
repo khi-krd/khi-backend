@@ -18,7 +18,15 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // PHASE-1: ID-ONLY QUERIES
     // ============================================================
 
-    @Query("SELECT p.id FROM Project p ORDER BY p.id DESC")
+    /**
+     * GET ALL — Phase 1
+     * Manual sortOrder first (nulls last), then the previous default
+     * (newest id) as tiebreak.
+     */
+    @Query("""
+        SELECT p.id FROM Project p
+        ORDER BY COALESCE(p.sortOrder, 2147483647) ASC, p.id DESC
+        """)
     Page<Long> findAllIds(Pageable pageable);
 
     @Query("""
@@ -27,7 +35,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
         LEFT JOIN p.tagsKmr tkmr
         WHERE lower(tckb.name) LIKE lower(concat('%', :tag, '%'))
            OR lower(tkmr.name) LIKE lower(concat('%', :tag, '%'))
-        ORDER BY p.id DESC
+        ORDER BY COALESCE(p.sortOrder, 2147483647) ASC, p.id DESC
         """)
     Page<Long> findIdsByTag(@Param("tag") String tag, Pageable pageable);
 
@@ -37,7 +45,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
         LEFT JOIN p.keywordsKmr kkmr
         WHERE lower(kckb.name) LIKE lower(concat('%', :keyword, '%'))
            OR lower(kkmr.name) LIKE lower(concat('%', :keyword, '%'))
-        ORDER BY p.id DESC
+        ORDER BY COALESCE(p.sortOrder, 2147483647) ASC, p.id DESC
         """)
     Page<Long> findIdsByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
@@ -55,7 +63,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
            OR lower(tkmr.name)                LIKE lower(concat('%', :q, '%'))
            OR lower(kckb.name)                LIKE lower(concat('%', :q, '%'))
            OR lower(kkmr.name)                LIKE lower(concat('%', :q, '%'))
-        ORDER BY p.id DESC
+        ORDER BY COALESCE(p.sortOrder, 2147483647) ASC, p.id DESC
         """)
     Page<Long> findIdsByGlobalSearch(@Param("q") String q, Pageable pageable);
 

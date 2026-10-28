@@ -9,6 +9,7 @@ import ak.dev.khi_backend.khi_app.repository.publishment.topic.PublishmentTopicR
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.WritingLogRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.WritingRepository;
 import ak.dev.khi_backend.khi_app.service.S3Service;
+import ak.dev.khi_backend.khi_app.service.media.MediaMetadataService;
 import ak.dev.khi_backend.khi_app.service.media.TiptapHtmlProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ class WritingServiceUpdateTests {
     @Mock private S3Service s3Service;
     @Mock private ObjectMapper objectMapper;
     @Mock private TiptapHtmlProcessor tiptapHtmlProcessor;
+    @Mock private MediaMetadataService mediaMetadata;
 
     @InjectMocks
     private WritingService writingService;

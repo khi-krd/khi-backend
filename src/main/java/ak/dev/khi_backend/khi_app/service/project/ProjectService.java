@@ -283,6 +283,29 @@ public class ProjectService {
         );
     }
 
+    /**
+     * Bulk list-order update (dashboard drag & drop).
+     * orderedIds[i] gets sortOrder = i; unlisted ids keep their current value
+     * and still render after the ordered ones (nulls last).
+     */
+    @CacheEvict(value = "projects", allEntries = true)
+    public void reorder(List<Long> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) return;
+
+        tx().executeWithoutResult(status -> {
+            List<Project> rows = projectRepository.findAllById(orderedIds);
+            Map<Long, Integer> positions = new HashMap<>();
+            for (int i = 0; i < orderedIds.size(); i++) {
+                if (orderedIds.get(i) != null) positions.put(orderedIds.get(i), i);
+            }
+            for (Project project : rows) {
+                Integer position = positions.get(project.getId());
+                if (position != null) project.setSortOrder(position);
+            }
+            projectRepository.saveAll(rows);
+        });
+    }
+
     private List<Project> hydrateAndSort(List<Long> ids) {
         List<Project> projects = projectRepository.findAllByIds(ids);
 
@@ -506,6 +529,7 @@ public class ProjectService {
                         : List.of())
                 .status(project.getStatus())
                 .projectDate(project.getProjectDate())
+                .sortOrder(project.getSortOrder())
                 .contentLanguages(
                         project.getContentLanguages() != null
                                 ? new LinkedHashSet<>(project.getContentLanguages())

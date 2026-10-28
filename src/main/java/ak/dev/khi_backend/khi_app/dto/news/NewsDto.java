@@ -47,6 +47,12 @@ public class NewsDto implements Serializable {
     @Builder.Default
     private List<MediaItem> mediaGallery = new ArrayList<>();
     private LocalDate datePublished;
+    /**
+     * Manual list position — written through {@code PUT /api/v1/news/order}.
+     * Read-only on responses; when supplied on create/update it is applied
+     * only when non-null, so a save never silently resets the ranking.
+     */
+    private Integer sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

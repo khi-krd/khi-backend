@@ -33,7 +33,8 @@ import java.util.Set;
                 @Index(name = "idx_projects_type_ckb", columnList = "project_type_ckb"),
                 @Index(name = "idx_projects_type_kmr", columnList = "project_type_kmr"),
                 @Index(name = "idx_projects_status",   columnList = "status"),
-                @Index(name = "idx_projects_date",     columnList = "project_date")
+                @Index(name = "idx_projects_date",     columnList = "project_date"),
+                @Index(name = "idx_projects_sort_order", columnList = "sort_order")
         }
 )
 @Getter
@@ -169,6 +170,15 @@ public class Project extends AuditableEntity {
 
     @Column(name = "project_date")
     private LocalDate projectDate;
+
+    /**
+     * Manual list position set via {@code PUT /api/v1/projects/order}.
+     * Null sorts last — the repository falls back to {@code id DESC} for
+     * unranked records, so existing data keeps its current order until an
+     * admin reorders it.
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
 
     private boolean featured = false;
     private Integer featuredOrder;

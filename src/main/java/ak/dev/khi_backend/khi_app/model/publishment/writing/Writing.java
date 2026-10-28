@@ -45,7 +45,8 @@ import java.util.List;
                 @Index(name = "idx_writing_updated_at", columnList = "updated_at"),
                 @Index(name = "idx_series_id",          columnList = "series_id"),
                 @Index(name = "idx_series_composite",   columnList = "series_id, series_order"),
-                @Index(name = "idx_parent_book",        columnList = "parent_book_id")
+                @Index(name = "idx_parent_book",        columnList = "parent_book_id"),
+                @Index(name = "idx_writing_sort_order", columnList = "sort_order")
         }
 )
 @Getter @Setter
@@ -228,6 +229,15 @@ public class Writing {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Manual list position set via {@code PUT /api/v1/writings/order}.
+     * Null sorts last (Postgres ASC puts NULLs last) — the list pageable
+     * falls back to {@code createdAt DESC} for unranked records, so existing
+     * data keeps its current order until an admin reorders it.
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
 
     private boolean featured = false;
     private Integer featuredOrder;
