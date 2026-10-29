@@ -138,6 +138,24 @@ app:
     allowed-headers: "*"
     allow-credentials: true
     max-age: 3600
+  # PNG uploads (PngCompressionService): always validated; optimised
+  # losslessly with optipng (pixels + alpha preserved, stays PNG).
+  media:
+    png:
+      optimize: ${PNG_OPTIMIZE:true}
+      # 250 KB. Below it a PNG is stored as-is; above it, optimisation runs.
+      target-bytes: ${PNG_TARGET_BYTES:256000}
+      # true → reject PNGs still over target after lossless optimisation
+      # (400 media.png.too_large). Off by default: lossless cannot guarantee
+      # the target and existing uploads must keep working.
+      enforce-target: ${PNG_ENFORCE_TARGET:false}
+      max-dimension: 20000
+      max-pixels: 100000000
+      optimize-max-bytes: 67108864
+      optimize-max-pixels: 50000000
+      optimizer-level: 2
+      optimizer-timeout-seconds: 90
+      optimizer-max-concurrent: 2
 
 # ===============================
 # AWS S3

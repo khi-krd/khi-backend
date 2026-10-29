@@ -48,16 +48,18 @@ public class MediaService {
 
         String folder = resolveFolder(type, file.getContentType());
 
-        String fileUrl = s3Service.upload(file::getInputStream, file.getSize(),
+        // Size/type come from what was actually stored — PNGs may have been
+        // losslessly optimised server-side.
+        S3Service.StoredObject stored = s3Service.uploadStream(file::getInputStream, file.getSize(),
                 file.getOriginalFilename(), file.getContentType(), folder);
 
-        log.info("Upload successful: {}", fileUrl);
+        log.info("Upload successful: {}", stored.url());
 
         return UploadResponse.builder()
-                .fileUrl(fileUrl)
+                .fileUrl(stored.url())
                 .fileName(file.getOriginalFilename())
-                .fileSize(file.getSize())
-                .contentType(file.getContentType())
+                .fileSize(stored.size())
+                .contentType(stored.contentType())
                 .build();
     }
 

@@ -12,8 +12,9 @@ RUN mvn -B -q -DskipTests package
 
 FROM eclipse-temurin:21-jre
 # ffmpeg/ffprobe: faststart remux of uploaded MP4s + automatic file metadata.
+# optipng: lossless PNG optimisation (PngCompressionService).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg optipng \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 1001 app
 WORKDIR /app

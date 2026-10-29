@@ -1,7 +1,6 @@
 package ak.dev.khi_backend.khi_app.service.media;
 
 import ak.dev.khi_backend.khi_app.dto.media.MediaDtos.UploadResponse;
-import ak.dev.khi_backend.khi_app.enums.project.ProjectMediaType;
 import ak.dev.khi_backend.khi_app.service.S3Service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,13 +43,13 @@ class MediaServiceTests {
         when(file.getContentType()).thenReturn("video/mp4");
         when(file.getSize()).thenReturn(size);
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[]{1}));
-        when(s3Service.upload(
+        when(s3Service.uploadStream(
                 any(S3Service.InputStreamProvider.class),
                 eq(size),
                 eq("Bnkay Zhin.mp4"),
                 eq("video/mp4"),
-                eq(ProjectMediaType.VIDEO)
-        )).thenReturn("https://example.test/video.mp4");
+                eq("videos")
+        )).thenReturn(new S3Service.StoredObject("https://example.test/video.mp4", size, "video/mp4"));
 
         UploadResponse response = mediaService.upload(file, "video");
 
@@ -58,12 +57,12 @@ class MediaServiceTests {
         assertThat(response.getFileSize()).isEqualTo(size);
         ArgumentCaptor<S3Service.InputStreamProvider> providerCaptor =
                 ArgumentCaptor.forClass(S3Service.InputStreamProvider.class);
-        verify(s3Service).upload(
+        verify(s3Service).uploadStream(
                 providerCaptor.capture(),
                 eq(size),
                 eq("Bnkay Zhin.mp4"),
                 eq("video/mp4"),
-                eq(ProjectMediaType.VIDEO)
+                eq("videos")
         );
         assertThat(providerCaptor.getValue().open().readAllBytes()).containsExactly(1);
         verify(file, never()).getBytes();
