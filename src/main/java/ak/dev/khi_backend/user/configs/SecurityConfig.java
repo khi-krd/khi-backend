@@ -202,6 +202,8 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(corsProperties.getAllowedOriginsList());
         configuration.setAllowedMethods(corsProperties.getAllowedMethodsList());
         configuration.setAllowedHeaders(corsProperties.getAllowedHeadersList());
+        configuration.setExposedHeaders(java.util.List.of(
+                ak.dev.khi_backend.user.jwt.JWTAuthenticationFilter.RENEWED_TOKEN_HEADER));
         configuration.setAllowCredentials(corsProperties.isAllowCredentials());
         configuration.setMaxAge(corsProperties.getMaxAge());
 

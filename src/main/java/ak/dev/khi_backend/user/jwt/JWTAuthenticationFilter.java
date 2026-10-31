@@ -32,6 +32,8 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 public class JWTAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JWTAuthenticationFilter.class);
+    public static final String RENEWED_TOKEN_HEADER = "X-Renewed-Token";
+
     private static final Set<String> PUBLIC_AUTH_ENDPOINTS = Set.of(
             "/api/auth/register",
             "/api/auth/register-with-image",
@@ -114,6 +116,20 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
                 Authentication authentication = jwtTokenProvider.getAuthentication(userDetails, authorities, request);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 logger.debug("User '{}' authenticated successfully", username);
+            }
+
+            // Sliding session: any authenticated request renews the session.
+            // The token is only re-minted once its remaining life drops below
+            // half the configured duration, so activity keeps the user logged
+            // in without issuing a fresh JWT on every call.
+            long remaining = jwtTokenProvider.getRemainingMillis(token);
+            if (remaining > 0 && remaining < jwtTokenProvider.getExpirationTime() / 2) {
+                String renewed = jwtTokenProvider.renewToken(token);
+                if (renewed != null) {
+                    jwtCookieService.addAuthCookie(response, renewed);
+                    response.setHeader(RENEWED_TOKEN_HEADER, renewed);
+                    logger.debug("Session renewed for user '{}'", username);
+                }
             }
 
         } catch (Exception ex) {

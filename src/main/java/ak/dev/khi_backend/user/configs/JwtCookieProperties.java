@@ -12,7 +12,7 @@ public class JwtCookieProperties {
     private boolean cookieHttpOnly = true;
     private String cookieSameSite = "Strict";
     private String cookiePath = "/";
-    private long cookieMaxAge = 86400;
+    private long cookieMaxAge = 604800;
 
     public String getCookieName() {
         return cookieName;

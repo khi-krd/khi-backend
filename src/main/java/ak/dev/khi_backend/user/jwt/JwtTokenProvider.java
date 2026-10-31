@@ -38,10 +38,14 @@ public class JwtTokenProvider {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration-ms:86400000}")
+    @Value("${jwt.expiration-ms:604800000}")
     private long expirationTime;
 
     private final SessionRepository sessionRepository;
+
+    public long getExpirationTime() {
+        return expirationTime;
+    }
 
     public String generateToken(User user, HttpServletRequest request) {
         try {
@@ -83,6 +87,58 @@ public class JwtTokenProvider {
         return user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toArray(String[]::new);
+    }
+
+    /**
+     * Sliding-session renewal: re-mints the incoming (still-valid) token with
+     * the same claims and sessionId but a fresh expiry, and slides the session
+     * row's expiresAt forward to match. Returns null when the token cannot be
+     * renewed (missing session, malformed claims) — callers treat null as
+     * "keep the current token".
+     */
+    public String renewToken(String token) {
+        try {
+            DecodedJWT decoded = createJWTVerifier().verify(token);
+            String sessionId = decoded.getClaim("sessionId").asString();
+            if (sessionId == null || sessionId.isBlank()) {
+                return null;
+            }
+            Instant now = Instant.now();
+            Instant expiration = now.plusMillis(expirationTime);
+            sessionRepository.findBySessionId(sessionId).ifPresent(session -> {
+                session.setExpiresAt(expiration);
+                sessionRepository.save(session);
+            });
+            String role = decoded.getClaim(ROLE).asString();
+            String[] authorities = decoded.getClaim(AUTHORITIES).asArray(String.class);
+            return JWT.create()
+                    .withIssuer(AKAR_ARKAN)
+                    .withAudience(AKAR_ARKAN_ADMINISTRATION)
+                    .withIssuedAt(Date.from(now))
+                    .withSubject(decoded.getSubject())
+                    .withClaim(ID_CLAIM, decoded.getClaim(ID_CLAIM).asLong())
+                    .withClaim(ROLE, role)
+                    .withArrayClaim(AUTHORITIES, authorities != null ? authorities : new String[0])
+                    .withClaim("sessionId", sessionId)
+                    .withExpiresAt(Date.from(expiration))
+                    .sign(Algorithm.HMAC256(secret));
+        } catch (Exception e) {
+            logger.warn("Failed to renew token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Milliseconds until the token's own exp claim, or a negative value when
+     * already expired / unreadable.
+     */
+    public long getRemainingMillis(String token) {
+        try {
+            Instant exp = decodeToken(token).getExpiresAtAsInstant();
+            return exp == null ? -1 : exp.toEpochMilli() - Instant.now().toEpochMilli();
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     /**

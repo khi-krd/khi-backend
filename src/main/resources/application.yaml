@@ -126,7 +126,7 @@ jwt:
   cookie-http-only: ${JWT_COOKIE_HTTP_ONLY}
   cookie-same-site: ${JWT_COOKIE_SAME_SITE}
   cookie-path: ${JWT_COOKIE_PATH}
-  cookie-max-age: ${JWT_COOKIE_MAX_AGE}  # 24 hours in seconds
+  cookie-max-age: ${JWT_COOKIE_MAX_AGE}  # 7 days in seconds
 
 # ===============================
 # APP CUSTOM CONFIG
@@ -193,7 +193,7 @@ server:
         secure: true          # HTTPS on Railway
         same-site: Lax        # Allows cookie on OAuth2 redirects
         path: /
-        max-age: 86400  # 24 hours
+        max-age: 604800  # 7 days
 
 # ===============================
 # LOGGING
