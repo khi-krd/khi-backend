@@ -3,7 +3,6 @@ package ak.dev.khi_backend.khi_app.service;
 import ak.dev.khi_backend.khi_app.enums.project.ProjectMediaType;
 import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
 import ak.dev.khi_backend.khi_app.service.media.MediaProcessingService;
-import ak.dev.khi_backend.khi_app.service.media.PngCompressionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,7 +47,6 @@ public class S3Service {
 
     private final S3Client s3Client;
     private final MediaProcessingService mediaProcessing;
-    private final PngCompressionService pngCompression;
 
     @Value("${aws.s3.bucket}")
     private String bucket;
@@ -117,11 +115,6 @@ public class S3Service {
      * faststart first, and every object carries the immutable cache header.
      */
     private String putBytes(String key, byte[] fileBytes, String originalFilename, String contentType) {
-        if (PngCompressionService.isCandidate(fileBytes, contentType, originalFilename)) {
-            PngCompressionService.PngBytesResult png = pngCompression.process(fileBytes);
-            fileBytes = png.bytes();
-            contentType = PngCompressionService.PNG_CONTENT_TYPE;
-        }
         if (mediaProcessing.isFaststartCandidate(contentType, originalFilename)) {
             Path tmp = null;
             try {
@@ -174,16 +167,6 @@ public class S3Service {
                 .cacheControl(CACHE_CONTROL);
         if (contentLength != null) builder.contentLength(contentLength);
         return builder.build();
-    }
-
-    /** Sniff the first 8 bytes (signature) without consuming the upload. */
-    private static boolean isPngStream(InputStreamProvider provider, String contentType, String filename) {
-        if (PngCompressionService.claimsPng(contentType, filename)) return true;
-        try (InputStream in = provider.open()) {
-            return PngCompressionService.hasPngSignature(in.readNBytes(8));
-        } catch (IOException e) {
-            return false;
-        }
     }
 
     private static void deleteQuietly(Path path) {
@@ -240,9 +223,9 @@ public class S3Service {
     }
 
     /**
-     * Streaming upload that reports what was actually stored — PNGs may be
-     * losslessly optimised, so the stored size/type can differ from the
-     * client's claim.
+     * Streaming upload that reports what was actually stored — the returned
+     * size/type is what the bucket accepted, which for MP4 faststart can
+     * differ from the client's claim.
      */
     public StoredObject uploadStream(InputStreamProvider streamProvider, long contentLength,
                                      String originalFilename, String contentType, String folder) {
@@ -258,26 +241,6 @@ public class S3Service {
 
         log.info("⬆️ Streaming to S3: bucket={}, folder={}, key={}, contentType={}, size={}",
                 bucket, resolvedFolder, key, resolvedContentType, contentLength);
-
-        // PNG (by signature, or claimed by MIME/extension): buffer to a temp
-        // file, validate, optimise losslessly, store the final bytes.
-        if (isPngStream(streamProvider, resolvedContentType, originalFilename)) {
-            Path tmp = null;
-            try (InputStream in = streamProvider.open()) {
-                tmp = Files.createTempFile("khi-upload-", ".png");
-                Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                deleteQuietly(tmp);
-                throw new BadRequestException("s3.upload.failed",
-                        "Failed to read uploaded file: " + e.getMessage());
-            }
-            try (PngCompressionService.PngResult png = pngCompression.process(tmp)) {
-                String url = putFile(key, png.file(), originalFilename, PngCompressionService.PNG_CONTENT_TYPE);
-                return new StoredObject(url, png.finalSize(), PngCompressionService.PNG_CONTENT_TYPE);
-            } finally {
-                deleteQuietly(tmp);
-            }
-        }
 
         // MP4-family media goes through a temp file so the moov index can be
         // moved to the front (faststart) before the object is written.
@@ -337,10 +300,6 @@ public class S3Service {
 
         log.info("⬆️ Uploading album cover ({}): {}", isCkb ? "CKB" : "KMR", key);
 
-        if (PngCompressionService.isCandidate(fileBytes, contentType, originalFilename)) {
-            fileBytes = pngCompression.process(fileBytes).bytes();
-            contentType = PngCompressionService.PNG_CONTENT_TYPE;
-        }
         try {
             s3Client.putObject(putRequest(key, contentType, null), RequestBody.fromBytes(fileBytes));
 
@@ -362,10 +321,6 @@ public class S3Service {
 
         log.info("⬆️ Uploading album hover image: {}", key);
 
-        if (PngCompressionService.isCandidate(fileBytes, contentType, originalFilename)) {
-            fileBytes = pngCompression.process(fileBytes).bytes();
-            contentType = PngCompressionService.PNG_CONTENT_TYPE;
-        }
         try {
             s3Client.putObject(putRequest(key, contentType, null), RequestBody.fromBytes(fileBytes));
 

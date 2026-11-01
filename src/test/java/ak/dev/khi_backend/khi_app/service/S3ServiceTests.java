@@ -2,7 +2,6 @@ package ak.dev.khi_backend.khi_app.service;
 
 import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
 import ak.dev.khi_backend.khi_app.service.media.MediaProcessingService;
-import ak.dev.khi_backend.khi_app.service.media.PngCompressionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +39,7 @@ class S3ServiceTests {
 
     @BeforeEach
     void setUp() throws Exception {
-        s3Service = new S3Service(s3Client, mediaProcessing, PngCompressionService.withDefaults());
+        s3Service = new S3Service(s3Client, mediaProcessing);
         setField("bucket", "my-bucket");
         setField("baseFolder", "khi-web-folders");
         setField("region", "eu-central-1");
@@ -107,8 +106,6 @@ class S3ServiceTests {
         assertThat(url).endsWith(".mp4");
     }
 
-    // ── PNG gate ────────────────────────────────────────────────────────────
-
     /** Captures what was PUT — read inside the call, because temp files that
      * back the body are cleaned up as soon as the upload returns. */
     private final java.util.List<PutObjectRequest> putRequests = new java.util.ArrayList<>();
@@ -125,52 +122,8 @@ class S3ServiceTests {
         });
     }
 
-    private static byte[] unoptimisedPng() {
-        return ak.dev.khi_backend.khi_app.service.media.PngFixturesAccess.rawTransparentGradient(600, 400);
-    }
-
     @Test
-    void pngBytesUploadStoresOptimisedValidPngWithPngContentType() throws Exception {
-        org.junit.jupiter.api.Assumptions.assumeTrue(PngCompressionService.withDefaults().isOptipngAvailable());
-        capturePuts();
-        byte[] png = unoptimisedPng();
-
-        String url = s3Service.upload(png, "logo.png", "image/png", "about/images");
-
-        assertThat(putRequests.get(0).contentType()).isEqualTo("image/png");
-        assertThat(putBodies.get(0).length).isLessThan(png.length);
-        assertThat(PngCompressionService.hasPngSignature(putBodies.get(0))).isTrue();
-        assertThat(url).endsWith(".png");
-    }
-
-    @Test
-    void streamedPngWithWrongMimeIsDetectedByContentAndStoredAsImagePng() throws Exception {
-        org.junit.jupiter.api.Assumptions.assumeTrue(PngCompressionService.withDefaults().isOptipngAvailable());
-        capturePuts();
-        byte[] png = unoptimisedPng();
-
-        S3Service.StoredObject stored = s3Service.uploadStream(
-                () -> new ByteArrayInputStream(png), png.length, "scan.png", "application/octet-stream", "about/images");
-
-        assertThat(putRequests.get(0).contentType()).isEqualTo("image/png");
-        assertThat(stored.contentType()).isEqualTo("image/png");
-        assertThat(stored.size()).isEqualTo(putBodies.get(0).length).isLessThan(png.length);
-    }
-
-    @Test
-    void fakePngIsRejectedAndNothingIsStored() {
-        byte[] fake = "<html>not an image</html>".getBytes();
-        assertThatThrownBy(() -> s3Service.upload(fake, "evil.png", "image/png", "about/images"))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("media.png.invalid");
-        assertThatThrownBy(() -> s3Service.uploadStream(
-                () -> new ByteArrayInputStream(fake), fake.length, "evil.png", "image/png", "about/images"))
-                .isInstanceOf(BadRequestException.class);
-        org.mockito.Mockito.verifyNoInteractions(s3Client);
-    }
-
-    @Test
-    void nonPngUploadsAreUntouched() throws Exception {
+    void uploadsAreStoredAsIsWithClaimedContentType() throws Exception {
         capturePuts();
         byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3, 4, 5};
 
@@ -178,6 +131,19 @@ class S3ServiceTests {
 
         assertThat(putRequests.get(0).contentType()).isEqualTo("image/jpeg");
         assertThat(putBodies.get(0)).isEqualTo(jpeg);
+    }
+
+    @Test
+    void pngUploadsAreStoredUntouched() throws Exception {
+        capturePuts();
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47, 1, 2, 3, 4, 5};
+
+        S3Service.StoredObject stored = s3Service.uploadStream(
+                () -> new ByteArrayInputStream(png), png.length, "logo.png", "image/png", "about/images");
+
+        assertThat(putRequests.get(0).contentType()).isEqualTo("image/png");
+        assertThat(putBodies.get(0)).isEqualTo(png);
+        assertThat(stored.size()).isEqualTo(png.length);
     }
 
     private void setField(String name, Object value) throws Exception {
