@@ -30,7 +30,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
     @Query("""
         SELECT ic.id FROM ImageCollection ic
         ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
-                 ic.publishmentDate DESC, ic.createdAt DESC
+                 ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findAllIds(Pageable pageable);
 
@@ -44,7 +44,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
         SELECT ic.id FROM ImageCollection ic
         WHERE ic.collectionType = :type
         ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
-                 ic.publishmentDate DESC, ic.createdAt DESC
+                 ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findIdsByType(
             @Param("type") ak.dev.khi_backend.khi_app.enums.publishment.ImageCollectionType type,
@@ -63,7 +63,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
         LEFT JOIN ic.tagsKmr tkmr
         WHERE lower(tckb) LIKE lower(concat('%', :tag, '%'))
            OR lower(tkmr) LIKE lower(concat('%', :tag, '%'))
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findIdsByTag(@Param("tag") String tag, Pageable pageable);
 
@@ -80,7 +80,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
         LEFT JOIN ic.keywordsKmr kkmr
         WHERE lower(kckb) LIKE lower(concat('%', :keyword, '%'))
            OR lower(kkmr) LIKE lower(concat('%', :keyword, '%'))
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findIdsByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
@@ -112,7 +112,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
            OR lower(kkmr)                      LIKE lower(concat('%', :q, '%'))
            OR lower(tp.nameCkb)                LIKE lower(concat('%', :q, '%'))
            OR lower(tp.nameKmr)                LIKE lower(concat('%', :q, '%'))
-        ORDER BY ic.publishmentDate DESC, ic.createdAt DESC
+        ORDER BY ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findIdsByGlobalSearch(@Param("q") String q, Pageable pageable);
 
@@ -123,7 +123,7 @@ public interface ImageCollectionRepository extends JpaRepository<ImageCollection
         SELECT ic.id FROM ImageCollection ic
         WHERE EXISTS (SELECT tp FROM ic.topics tp WHERE tp.id = :topicId)
         ORDER BY COALESCE(ic.sortOrder, 2147483647) ASC,
-                 ic.publishmentDate DESC, ic.createdAt DESC
+                 ic.createdAt DESC, ic.publishmentDate DESC
         """)
     Page<Long> findIdsByTopic(@Param("topicId") Long topicId, Pageable pageable);
 
