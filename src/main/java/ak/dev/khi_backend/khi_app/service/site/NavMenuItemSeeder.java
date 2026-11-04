@@ -44,7 +44,9 @@ public class NavMenuItemSeeder implements ApplicationRunner {
             new SectionSeed("services", "خزمەتگوزاری",  "Xizmet",     "/services"),
             new SectionSeed("about",    "ئێمە",        "Em",         "/about"),
             new SectionSeed("contact",  "پەیوەندی",     "Têkilî",     "/contact"),
-            new SectionSeed("donate",   "بەخشین",      "Bexşîn",     "/donate"));
+            new SectionSeed("donate",   "بەخشین",      "Bexşîn",     "/donate"),
+            // Not a nav section — the CMS photo behind the search overlay.
+            new SectionSeed("search",   "گەڕان",       "Lêgerîn",    "/search"));
 
     @Override
     @Transactional
