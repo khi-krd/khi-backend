@@ -90,14 +90,20 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     List<Writing> findBySeriesIdOrderBySeriesOrderAsc(@Param("seriesId") String seriesId);
 
     /**
-     * Find series root books (parentBook IS NULL and has a seriesId), paged.
+     * Every parentless book — candidate series roots for the dashboard picker.
+     * Standalone books are included (linking a child to one promotes it);
+     * children are excluded since every member must point at the root.
      * Separated countQuery avoids re-running the ORDER BY on the count pass.
      */
     @Query(
-            value      = "SELECT w FROM Writing w WHERE w.parentBook IS NULL AND w.seriesId IS NOT NULL ORDER BY w.createdAt DESC",
-            countQuery = "SELECT COUNT(w) FROM Writing w WHERE w.parentBook IS NULL AND w.seriesId IS NOT NULL"
+            value      = "SELECT w FROM Writing w WHERE w.parentBook IS NULL ORDER BY w.createdAt DESC",
+            countQuery = "SELECT COUNT(w) FROM Writing w WHERE w.parentBook IS NULL"
     )
     Page<Writing> findSeriesParents(Pageable pageable);
+
+    /** Distinct series keys still referenced — the startup migrator's worklist. */
+    @Query("SELECT DISTINCT w.seriesId FROM Writing w WHERE w.seriesId IS NOT NULL")
+    List<String> findDistinctSeriesIds();
 
     /**
      * Count books in a series — O(log n) via idx_series_id.

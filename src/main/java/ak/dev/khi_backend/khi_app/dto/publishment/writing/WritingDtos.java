@@ -165,7 +165,12 @@ public final class WritingDtos {
         private String  seriesName;
         private Double  seriesOrder;
         private Long    parentBookId;
+        /** Effective total — max(root's plannedTotal, memberCount). */
         private Integer totalBooks;
+        /** Editor-declared total kept on the ROOT book only. */
+        private Integer plannedTotal;
+        /** How many member rows the series actually has right now. */
+        private Integer memberCount;
         private boolean isParent;
     }
 
@@ -177,6 +182,11 @@ public final class WritingDtos {
         private String        titleCkb;
         private String        titleKmr;
         private Double        seriesOrder;
+        private String        ckbCoverUrl;
+        private String        kmrCoverUrl;
+        private String        hoverCoverUrl;
+        /** True on the primary/root book of the chain. */
+        private boolean       isParent;
         private LocalDateTime createdAt;
     }
 
@@ -242,11 +252,18 @@ public final class WritingDtos {
 
         private String seriesId;
 
+        /** Ignored — the series name always derives from the root book's title. */
         private String seriesName;
 
         private Double seriesOrder;
 
         private Long parentBookId;
+
+        /** Declares this book the PRIMARY (first) book of a new series. */
+        private Boolean startSeries;
+
+        /** Root-only: the editor's declared "N books" total for the chain. */
+        private Integer seriesTotalBooks;
 
         // ─── People ───────────────────────────────────────────────────────────
 
@@ -312,11 +329,21 @@ public final class WritingDtos {
 
         // ─── Series ───────────────────────────────────────────────────────────
 
+        /** Ignored — the series name always derives from the root book's title. */
         private String seriesName;
 
         private Double seriesOrder;
 
         private Long parentBookId;
+
+        /** Promote this book to the PRIMARY (first) book of a series. */
+        private Boolean startSeries;
+
+        /** Root-only: the editor's declared "N books" total for the chain. */
+        private Integer seriesTotalBooks;
+
+        /** Detach this book from its series entirely (explicit — unlike parentBookId:null). */
+        private Boolean unlinkFromSeries;
 
         // ─── People ───────────────────────────────────────────────────────────
 
@@ -436,7 +463,10 @@ public final class WritingDtos {
     public static class SeriesResponse {
         private String              seriesId;
         private String              seriesName;
+        /** Effective total — max(root's plannedTotal, memberCount). */
         private Integer             totalBooks;
+        /** Actual member rows right now. */
+        private Integer             memberCount;
         private List<SeriesBookSummary> books;
     }
 

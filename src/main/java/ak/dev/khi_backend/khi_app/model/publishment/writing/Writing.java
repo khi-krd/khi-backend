@@ -129,6 +129,14 @@ public class Writing {
     @Column(name = "series_total_books")
     private Integer seriesTotalBooks;
 
+    /** Editor-declared total on the ROOT book ("1 of 5" → 5); null = count as you go. */
+    @Column(name = "series_planned_total")
+    private Integer seriesPlannedTotal;
+
+    /** Actual member rows in this series — denormalized by the service refresh. */
+    @Column(name = "series_member_count")
+    private Integer seriesMemberCount;
+
     // ─── Bilingual Support ────────────────────────────────────────────────────
 
     @BatchSize(size = 25)
@@ -250,8 +258,8 @@ public class Writing {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (seriesId == null)    seriesId    = "series-" + System.currentTimeMillis();
-        if (seriesOrder == null) seriesOrder = 1.0;
+        // Series fields are assigned by WritingService — a standalone book
+        // carries no series key at all.
     }
 
     @PreUpdate
@@ -262,7 +270,7 @@ public class Writing {
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     public boolean isPartOfSeries() {
-        return seriesId != null && (seriesTotalBooks == null || seriesTotalBooks > 1);
+        return seriesId != null && seriesTotalBooks != null && seriesTotalBooks > 1;
     }
 
     public boolean isSeriesParent() {

@@ -77,13 +77,18 @@ public class WritingService {
         Double  seriesOrder = request.getSeriesOrder();
 
         if (request.getParentBookId() != null) {
-            parentBook  = findOrThrow(request.getParentBookId(), "parent_book.not_found");
+            // Always resolve to the chain's ROOT — children never parent other
+            // children, no matter which member the editor picked.
+            parentBook  = resolveRoot(findOrThrow(request.getParentBookId(), "parent_book.not_found"));
+            ensureSeriesId(parentBook);
             seriesId    = parentBook.getSeriesId();
             if (seriesOrder == null) {
                 Double maxOrder = writingRepository.findMaxSeriesOrder(seriesId);
                 seriesOrder = (maxOrder != null ? maxOrder : 0.0) + 1.0;
             }
         }
+        boolean startSeries = Boolean.TRUE.equals(request.getStartSeries()) && parentBook == null;
+        Integer plannedTotal = parentBook == null ? request.getSeriesTotalBooks() : null;
 
         Writing writing = Writing.builder()
                 .ckbCoverUrl(ckbCoverUrl)
@@ -100,9 +105,9 @@ public class WritingService {
                 .keywordsCkb(new LinkedHashSet<>(safeSet(request.getKeywords() != null ? request.getKeywords().getCkb() : null)))
                 .keywordsKmr(new LinkedHashSet<>(safeSet(request.getKeywords() != null ? request.getKeywords().getKmr() : null)))
                 .seriesId(seriesId)
-                .seriesName(request.getSeriesName())
                 .seriesOrder(seriesOrder)
                 .parentBook(parentBook)
+                .seriesPlannedTotal(plannedTotal)
                 .persons(new ArrayList<>())
                 .build();
 
@@ -111,7 +116,11 @@ public class WritingService {
 
         mediaMetadata.safely(() -> mediaMetadata.applyToWriting(writing));
         Writing saved = writingRepository.save(writing);
-        updateSeriesCount(saved.getSeriesId());
+
+        if (startSeries && saved.getSeriesId() == null) {
+            saved.setSeriesId("series-" + saved.getId());
+        }
+        refreshSeries(saved.getSeriesId());
 
         logAction(saved, "CREATED", "نووسراو '" + getCombinedTitle(saved) + "' دروستکرا");
         log.info("نووسراو دروستکرا — id={}, زنجیرە={}", saved.getId(), saved.getSeriesId());
@@ -193,20 +202,47 @@ public class WritingService {
         if (request.getBookLanguageKmr() != null) writing.setBookLanguageKmr(request.getBookLanguageKmr());
 
         String oldSeriesId = writing.getSeriesId();
-        if (request.getSeriesName()  != null) writing.setSeriesName(request.getSeriesName());
-        if (request.getSeriesOrder() != null) writing.setSeriesOrder(request.getSeriesOrder());
+
+        // 1) Explicit detach — a detached ROOT hands the chain to its next
+        //    child, which keeps the seriesId and the declared total.
+        if (Boolean.TRUE.equals(request.getUnlinkFromSeries())) {
+            detachFromSeries(writing);
+        }
+
+        // 2) Reparent — resolved to the ROOT so membership stays flat. A moved
+        //    root takes its whole chain along (the two series merge).
         if (resolvedParent != null) {
-            writing.setParentBook(resolvedParent);
-            writing.setSeriesId(resolvedParent.getSeriesId());
+            Writing root = resolveRoot(resolvedParent);
+            if (Objects.equals(root.getId(), writing.getId())) {
+                throw Errors.badRequest("series.cyclic", Map.of("bookId", writing.getId()));
+            }
+            ensureSeriesId(root);
+            adoptChildren(writing, root);
+            writing.setParentBook(root);
+            writing.setSeriesId(root.getSeriesId());
+        }
+
+        // 3) Declare a series primary — only a parentless book can be a root.
+        if (Boolean.TRUE.equals(request.getStartSeries()) && writing.getParentBook() == null) {
+            if (writing.getSeriesId() == null) {
+                writing.setSeriesId("series-" + writing.getId());
+            }
+        }
+
+        if (request.getSeriesOrder() != null && writing.getSeriesId() != null) {
+            writing.setSeriesOrder(request.getSeriesOrder());
+        }
+        if (request.getSeriesTotalBooks() != null && writing.getParentBook() == null) {
+            writing.setSeriesPlannedTotal(request.getSeriesTotalBooks());
         }
 
         mediaMetadata.safely(() -> mediaMetadata.applyToWriting(writing));
         Writing updated = writingRepository.save(writing);
 
         if (oldSeriesId != null && !oldSeriesId.equals(updated.getSeriesId())) {
-            updateSeriesCount(oldSeriesId);
+            refreshSeries(oldSeriesId);
         }
-        updateSeriesCount(updated.getSeriesId());
+        refreshSeries(updated.getSeriesId());
 
         logAction(updated, "UPDATED", "نووسراو '" + getCombinedTitle(updated) + "' نوێکرایەوە");
         return mapToResponse(updated);
@@ -233,11 +269,20 @@ public class WritingService {
         Long   writingId = writing.getId();
 
         // A writing can be referenced by both its audit history and child books.
-        // Detach those nullable relationships before issuing the hard delete so
-        // PostgreSQL does not reject it with a foreign-key conflict.
+        // When the deleted book is the chain's ROOT, the next-in-line child is
+        // promoted to primary — it keeps the seriesId and the declared total,
+        // and the remaining children are repointed straight at it.
         List<Writing> childBooks = new ArrayList<>(writing.getSeriesBooks());
-        childBooks.forEach(child -> child.setParentBook(null));
+        childBooks.sort(Comparator
+                .comparing((Writing c) -> c.getSeriesOrder() != null ? c.getSeriesOrder() : Double.MAX_VALUE)
+                .thenComparing(c -> c.getCreatedAt() != null ? c.getCreatedAt() : LocalDateTime.MIN));
         if (!childBooks.isEmpty()) {
+            Writing newRoot = childBooks.get(0);
+            newRoot.setParentBook(null);
+            newRoot.setSeriesPlannedTotal(writing.getSeriesPlannedTotal());
+            for (int i = 1; i < childBooks.size(); i++) {
+                childBooks.get(i).setParentBook(newRoot);
+            }
             writingRepository.saveAll(childBooks);
             writingRepository.flush();
         }
@@ -267,7 +312,7 @@ public class WritingService {
         if (writing.getKmrContent() != null) urls.add(writing.getKmrContent().getFileUrl());
         s3Service.deleteFiles(urls);
 
-        updateSeriesCount(seriesId);
+        refreshSeries(seriesId);
     }
 
     // =========================================================================
@@ -325,14 +370,26 @@ public class WritingService {
         Writing book   = findOrThrow(request.getBookId(),       "writing.not_found");
         Writing parent = findOrThrow(request.getParentBookId(), "parent_book.not_found");
 
-        book.setParentBook(parent);
-        book.setSeriesId(parent.getSeriesId());
+        // Resolve to the chain's ROOT — linking against a child attaches the
+        // book to that child's root, never to the child itself.
+        Writing root = resolveRoot(parent);
+        if (Objects.equals(root.getId(), book.getId())) {
+            throw Errors.badRequest("series.cyclic", Map.of("bookId", book.getId()));
+        }
+        ensureSeriesId(root);
+
+        String oldSeriesId = book.getSeriesId();
+        adoptChildren(book, root);
+        book.setParentBook(root);
+        book.setSeriesId(root.getSeriesId());
         book.setSeriesOrder(request.getSeriesOrder());
-        book.setSeriesName(request.getSeriesName() != null ? request.getSeriesName() : parent.getSeriesName());
 
         Writing updated = writingRepository.save(book);
-        updateSeriesCount(updated.getSeriesId());
-        logAction(updated, "LINKED_TO_SERIES", "لکێندراوە بە زنجیرە " + parent.getSeriesId());
+        if (oldSeriesId != null && !oldSeriesId.equals(updated.getSeriesId())) {
+            refreshSeries(oldSeriesId);
+        }
+        refreshSeries(updated.getSeriesId());
+        logAction(updated, "LINKED_TO_SERIES", "لکێندراوە بە زنجیرە " + root.getSeriesId());
         return mapToResponse(updated);
     }
 
@@ -343,25 +400,40 @@ public class WritingService {
             throw new NotFoundException("series.not_found", Map.of("seriesId", seriesId));
         }
 
+        Writing root = books.stream()
+                .filter(b -> b.getParentBook() == null)
+                .findFirst()
+                .orElse(books.get(0));
+
         String seriesName = books.stream()
                 .map(Writing::getSeriesName)
                 .filter(n -> n != null && !n.isBlank())
                 .findFirst()
-                .orElseGet(() -> books.get(0).getEffectiveSeriesName());
+                .orElseGet(root::getEffectiveSeriesName);
         List<SeriesBookSummary> summaries = books.stream()
                 .map(b -> SeriesBookSummary.builder()
                         .id(b.getId())
                         .titleCkb(b.getCkbContent() != null ? b.getCkbContent().getTitle() : null)
                         .titleKmr(b.getKmrContent() != null ? b.getKmrContent().getTitle() : null)
                         .seriesOrder(b.getSeriesOrder())
+                        .ckbCoverUrl(b.getCkbCoverUrl())
+                        .kmrCoverUrl(b.getKmrCoverUrl())
+                        .hoverCoverUrl(b.getHoverCoverUrl())
+                        .isParent(b.getParentBook() == null)
                         .createdAt(b.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
 
+        int memberCount = books.size();
+        int effectiveTotal = Math.max(
+                root.getSeriesPlannedTotal() != null ? root.getSeriesPlannedTotal() : 0,
+                memberCount);
+
         return SeriesResponse.builder()
                 .seriesId(seriesId)
                 .seriesName(seriesName)
-                .totalBooks(books.size())
+                .totalBooks(effectiveTotal)
+                .memberCount(memberCount)
                 .books(summaries)
                 .build();
     }
@@ -465,17 +537,152 @@ public class WritingService {
         return created;
     }
 
+    /**
+     * Walks a book's parent chain to the chain's ROOT (the primary first book).
+     * Legacy data may nest children under other children; the hop limit keeps a
+     * corrupt cycle from spinning forever.
+     */
+    private Writing resolveRoot(Writing book) {
+        Writing current = book;
+        int hops = 0;
+        while (current.getParentBook() != null && hops++ < 25) {
+            current = current.getParentBook();
+        }
+        return current;
+    }
+
+    /** A standalone book picked as a parent becomes the root of a new series. */
+    private void ensureSeriesId(Writing root) {
+        if (root.getSeriesId() == null) {
+            root.setSeriesId("series-" + root.getId());
+            writingRepository.save(root);
+        }
+    }
+
+    /**
+     * When a ROOT is itself linked under another root (series merge), its
+     * children move along — they are repointed at the new root and rekeyed into
+     * the new series.
+     */
+    private void adoptChildren(Writing from, Writing to) {
+        if (from.getSeriesBooks() == null || from.getSeriesBooks().isEmpty()) return;
+        List<Writing> children = new ArrayList<>(from.getSeriesBooks());
+        for (Writing child : children) {
+            child.setParentBook(to);
+            child.setSeriesId(to.getSeriesId());
+        }
+        writingRepository.saveAll(children);
+    }
+
+    /**
+     * Removes a book from its series. Detaching a ROOT promotes the lowest-
+     * ordered child to primary — it inherits the seriesId and the declared
+     * total, and the remaining children repoint at it.
+     */
+    private void detachFromSeries(Writing book) {
+        if (book.getParentBook() == null
+                && book.getSeriesBooks() != null
+                && !book.getSeriesBooks().isEmpty()) {
+            List<Writing> children = new ArrayList<>(book.getSeriesBooks());
+            children.sort(Comparator
+                    .comparing((Writing c) -> c.getSeriesOrder() != null ? c.getSeriesOrder() : Double.MAX_VALUE)
+                    .thenComparing(c -> c.getCreatedAt() != null ? c.getCreatedAt() : LocalDateTime.MIN));
+            Writing newRoot = children.get(0);
+            newRoot.setParentBook(null);
+            newRoot.setSeriesPlannedTotal(book.getSeriesPlannedTotal());
+            for (int i = 1; i < children.size(); i++) {
+                children.get(i).setParentBook(newRoot);
+            }
+            writingRepository.saveAll(children);
+        }
+        clearSeriesFields(book);
+    }
+
+    private void clearSeriesFields(Writing book) {
+        book.setParentBook(null);
+        book.setSeriesId(null);
+        book.setSeriesName(null);
+        book.setSeriesOrder(null);
+        book.setSeriesTotalBooks(null);
+        book.setSeriesPlannedTotal(null);
+        book.setSeriesMemberCount(null);
+    }
+
     // =========================================================================
     // ژماری زنجیرە
     // =========================================================================
 
+    /**
+     * Canonical series maintenance — one flat chain under a single root:
+     *
+     *   1. The parentless member with the lowest position is the ROOT. A series
+     *      reduced to one undeclared book collapses back to a plain standalone
+     *      record (no stray series key left behind).
+     *   2. Every other member points straight at the root — legacy chains
+     *      (A → B → C) and stray parent pointers flatten.
+     *   3. Orders renumber contiguously: root = 1, children = 2..n keeping
+     *      their relative declared order.
+     *   4. The series name is re-derived from the root's title and the totals
+     *      recomputed (effective = max(planned, members)) on every member.
+     */
     @Transactional
-    protected void updateSeriesCount(String seriesId) {
+    public void refreshSeries(String seriesId) {
         if (isBlank(seriesId)) return;
-        Long count = writingRepository.countBySeriesId(seriesId);
         List<Writing> books = writingRepository.findBySeriesIdOrderBySeriesOrderAsc(seriesId);
-        books.forEach(b -> b.setSeriesTotalBooks(count.intValue()));
+        if (books.isEmpty()) return;
+
+        Writing root = books.stream()
+                .filter(b -> b.getParentBook() == null)
+                .findFirst()
+                .orElse(books.get(0));
+
+        int count = books.size();
+        if (count == 1 && root.getSeriesPlannedTotal() == null) {
+            clearSeriesFields(root);
+            writingRepository.save(root);
+            return;
+        }
+
+        String seriesName;
+        if (root.getCkbContent() != null && !isBlank(root.getCkbContent().getTitle())) {
+            seriesName = root.getCkbContent().getTitle();
+        } else if (root.getKmrContent() != null && !isBlank(root.getKmrContent().getTitle())) {
+            seriesName = root.getKmrContent().getTitle();
+        } else {
+            seriesName = root.getEffectiveSeriesName();
+        }
+
+        int effectiveTotal = Math.max(
+                root.getSeriesPlannedTotal() != null ? root.getSeriesPlannedTotal() : 0,
+                count);
+
+        List<Writing> children = books.stream()
+                .filter(b -> b != root)
+                .sorted(Comparator
+                        .comparing((Writing b) -> b.getSeriesOrder() != null ? b.getSeriesOrder() : Double.MAX_VALUE)
+                        .thenComparing(b -> b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN)
+                        .thenComparing(Writing::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+
+        applySeriesFields(root, null, 1.0, seriesName, effectiveTotal, count);
+        double order = 1.0;
+        for (Writing child : children) {
+            order += 1.0;
+            applySeriesFields(child, root, order, seriesName, effectiveTotal, count);
+        }
         writingRepository.saveAll(books);
+    }
+
+    private void applySeriesFields(Writing book, Writing parent, double order,
+                                   String seriesName, int effectiveTotal, int memberCount) {
+        book.setParentBook(parent);
+        book.setSeriesOrder(order);
+        book.setSeriesName(seriesName);
+        book.setSeriesTotalBooks(effectiveTotal);
+        book.setSeriesMemberCount(memberCount);
+        if (parent != null) {
+            book.setSeriesPlannedTotal(null);
+        }
     }
 
     // =========================================================================
@@ -671,6 +878,8 @@ public class WritingService {
                     .seriesOrder(w.getSeriesOrder())
                     .parentBookId(w.getParentBook() != null ? w.getParentBook().getId() : null)
                     .totalBooks(w.getSeriesTotalBooks())
+                    .plannedTotal(w.getSeriesPlannedTotal())
+                    .memberCount(w.getSeriesMemberCount())
                     .isParent(w.isSeriesParent())
                     .build());
         }
