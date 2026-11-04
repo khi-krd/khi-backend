@@ -148,6 +148,33 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     Page<Writing> findByWriterInBothLanguages(@Param("writer") String writer, Pageable pageable);
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // ── TITLE SEARCH ── (embedded fields — no JOIN needed)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Search book titles in CKB only. */
+    @Query(
+            value      = "SELECT w FROM Writing w WHERE LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%'))",
+            countQuery = "SELECT COUNT(w) FROM Writing w WHERE LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%'))"
+    )
+    Page<Writing> findByTitleCkb(@Param("title") String title, Pageable pageable);
+
+    /** Search book titles in KMR only. */
+    @Query(
+            value      = "SELECT w FROM Writing w WHERE LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%'))",
+            countQuery = "SELECT COUNT(w) FROM Writing w WHERE LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%'))"
+    )
+    Page<Writing> findByTitleKmr(@Param("title") String title, Pageable pageable);
+
+    /** Search book titles in BOTH languages. */
+    @Query(
+            value      = "SELECT w FROM Writing w WHERE LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%')) " +
+                    "   OR LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%'))",
+            countQuery = "SELECT COUNT(w) FROM Writing w WHERE LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%')) " +
+                    "   OR LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%'))"
+    )
+    Page<Writing> findByTitleInBothLanguages(@Param("title") String title, Pageable pageable);
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // ── TAG SEARCH ── (EXISTS replaces LEFT JOIN + DISTINCT)
     // ═══════════════════════════════════════════════════════════════════════════
 

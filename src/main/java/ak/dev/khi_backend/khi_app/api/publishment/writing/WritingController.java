@@ -217,6 +217,17 @@ public class WritingController {
                 writingService.searchByWriter(name, language, pageable), "Search completed"));
     }
 
+    @GetMapping("/search/title")
+    public ResponseEntity<ApiResponse<Page<Response>>> searchByTitle(
+            @RequestParam String title,
+            @RequestParam(defaultValue = "both") String language,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
+        return ResponseEntity.ok(ApiResponse.success(
+                writingService.searchByTitle(title, language, pageable), "Search completed"));
+    }
+
     @GetMapping("/search/tag")
     public ResponseEntity<ApiResponse<Page<Response>>> searchByTag(
             @RequestParam String tag,

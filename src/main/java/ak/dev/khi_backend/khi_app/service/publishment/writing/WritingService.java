@@ -459,6 +459,17 @@ public class WritingService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Response> searchByTitle(String title, String language, Pageable pageable) {
+        if (isBlank(title)) throw new BadRequestException("search.title.required", Map.of("field", "title"));
+        String q = title.trim();
+        Page<Writing> results;
+        if ("ckb".equalsIgnoreCase(language))      results = writingRepository.findByTitleCkb(q, pageable);
+        else if ("kmr".equalsIgnoreCase(language)) results = writingRepository.findByTitleKmr(q, pageable);
+        else                                       results = writingRepository.findByTitleInBothLanguages(q, pageable);
+        return results.map(this::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<Response> searchByTag(String tag, String language, Pageable pageable) {
         if (isBlank(tag)) throw new BadRequestException("search.tag.required", Map.of("field", "tag"));
         String q = tag.trim();
