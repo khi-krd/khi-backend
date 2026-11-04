@@ -158,6 +158,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/services/**").permitAll()
                         .requestMatchers("/api/v1/services/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
+                        // ── Location vocabulary: public reads, employee+ writes ───
+                        .requestMatchers(HttpMethod.GET, "/api/v1/locations").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/locations")
+                        .hasAnyRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/locations/**")
+                        .hasAnyRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/locations/**")
+                        .hasAnyRole("ADMIN", "SUPER_ADMIN")
+
                         // ── Content: public reads ─────────────────────────────────
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
 
