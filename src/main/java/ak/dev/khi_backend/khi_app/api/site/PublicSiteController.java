@@ -249,6 +249,39 @@ public class PublicSiteController {
         return ApiResponse.success(null, "Donation type card deleted");
     }
 
+    // Archive-donor videos — the clips of people handing over their archive
+    // material, drawn between the participation cards and the closing note on
+    // the donate page. `videoUrl` may be an uploaded file or a YouTube link.
+
+    /** @param includeInactive dashboard only — the website never sends it. */
+    @GetMapping("/donations/archive-videos")
+    public ApiResponse<List<DonationArchiveVideoResponse>> getDonationArchiveVideos(
+            @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ApiResponse.success(siteContentService.getDonationArchiveVideos(includeInactive),
+                "Donation archive videos fetched");
+    }
+
+    @PostMapping("/donations/archive-videos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<DonationArchiveVideoResponse> createDonationArchiveVideo(
+            @Valid @RequestBody(required = false) DonationArchiveVideoRequest request) {
+        return ApiResponse.success(siteContentService.createDonationArchiveVideo(request),
+                "Donation archive video created");
+    }
+
+    @PutMapping("/donations/archive-videos/{id}")
+    public ApiResponse<DonationArchiveVideoResponse> updateDonationArchiveVideo(
+            @PathVariable Long id, @Valid @RequestBody(required = false) DonationArchiveVideoRequest request) {
+        return ApiResponse.success(siteContentService.updateDonationArchiveVideo(id, request),
+                "Donation archive video updated");
+    }
+
+    @DeleteMapping("/donations/archive-videos/{id}")
+    public ApiResponse<Void> deleteDonationArchiveVideo(@PathVariable Long id) {
+        siteContentService.deleteDonationArchiveVideo(id);
+        return ApiResponse.success(null, "Donation archive video deleted");
+    }
+
     @PutMapping("/donations/settings")
     public ApiResponse<DonationSettingsResponse> saveDonationSettings(
             @Valid @RequestBody(required = false) DonationSettingsRequest request) {

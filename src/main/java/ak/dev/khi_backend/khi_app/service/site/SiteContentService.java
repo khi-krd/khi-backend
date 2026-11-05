@@ -20,6 +20,7 @@ import ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundTrackReposit
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.WritingRepository;
 import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
+import ak.dev.khi_backend.khi_app.repository.site.DonationArchiveVideoRepository;
 import ak.dev.khi_backend.khi_app.repository.site.*;
 import ak.dev.khi_backend.khi_app.service.S3Service;
 import jakarta.persistence.EntityNotFoundException;
@@ -58,6 +59,7 @@ public class SiteContentService {
     private final SocialLinkRepository socialLinkRepository;
     private final DonationSettingsRepository donationSettingsRepository;
     private final DonationTypeCardRepository donationTypeCardRepository;
+    private final DonationArchiveVideoRepository donationArchiveVideoRepository;
     private final FinancialDonationRepository financialDonationRepository;
     private final ArchiveDonationRepository archiveDonationRepository;
     private final SiteSettingsRepository siteSettingsRepository;
@@ -1095,6 +1097,73 @@ public class SiteContentService {
                 .imageUrl(card.getImageUrl())
                 .displayOrder(card.getDisplayOrder())
                 .active(card.isActive())
+                .build();
+    }
+
+    // Archive-donor videos — the clips shown between the participation cards and
+    // the closing note on the donate page. Same contract as the type cards:
+    // sorted by displayOrder, `active` hides without deleting, `videoUrl` may be
+    // an uploaded file or a YouTube link.
+
+    @Transactional(readOnly = true)
+    public List<DonationArchiveVideoResponse> getDonationArchiveVideos(boolean includeInactive) {
+        List<DonationArchiveVideo> videos = includeInactive
+                ? donationArchiveVideoRepository.findAllByOrderByDisplayOrderAsc()
+                : donationArchiveVideoRepository.findAllByActiveTrueOrderByDisplayOrderAsc();
+        return videos.stream().map(this::donationArchiveVideoResponse).toList();
+    }
+
+    @Transactional
+    public DonationArchiveVideoResponse createDonationArchiveVideo(DonationArchiveVideoRequest request) {
+        if (request == null) request = new DonationArchiveVideoRequest();
+        DonationArchiveVideo video = new DonationArchiveVideo();
+        applyDonationArchiveVideo(video, request);
+        return donationArchiveVideoResponse(donationArchiveVideoRepository.save(video));
+    }
+
+    @Transactional
+    public DonationArchiveVideoResponse updateDonationArchiveVideo(Long id, DonationArchiveVideoRequest request) {
+        if (request == null) request = new DonationArchiveVideoRequest();
+        DonationArchiveVideo video = donationArchiveVideoRepository.findById(id)
+                .orElseThrow(() -> notFound("Donation archive video", id));
+        applyDonationArchiveVideo(video, request);
+        return donationArchiveVideoResponse(donationArchiveVideoRepository.save(video));
+    }
+
+    @Transactional
+    public void deleteDonationArchiveVideo(Long id) {
+        DonationArchiveVideo video = donationArchiveVideoRepository.findById(id)
+                .orElseThrow(() -> notFound("Donation archive video", id));
+        donationArchiveVideoRepository.deleteById(id);
+        // deleteFile is a no-op for non-bucket URLs (e.g. YouTube), so it is
+        // safe to call unconditionally on both stored URLs.
+        s3Service.deleteFile(video.getVideoUrl());
+        s3Service.deleteFile(video.getPosterUrl());
+    }
+
+    private void applyDonationArchiveVideo(DonationArchiveVideo video, DonationArchiveVideoRequest request) {
+        video.setTitleCkb(trimToNull(request.getTitleCkb()));
+        video.setTitleKmr(trimToNull(request.getTitleKmr()));
+        video.setDescriptionCkb(trimToNull(request.getDescriptionCkb()));
+        video.setDescriptionKmr(trimToNull(request.getDescriptionKmr()));
+        String videoUrl = trimToNull(request.getVideoUrl());
+        video.setVideoUrl(videoUrl == null ? "" : videoUrl); // column is NOT NULL
+        video.setPosterUrl(trimToNull(request.getPosterUrl()));
+        video.setDisplayOrder(defaultOrder(request.getDisplayOrder()));
+        video.setActive(request.getActive() == null || request.getActive());
+    }
+
+    private DonationArchiveVideoResponse donationArchiveVideoResponse(DonationArchiveVideo video) {
+        return DonationArchiveVideoResponse.builder()
+                .id(video.getId())
+                .titleCkb(video.getTitleCkb())
+                .titleKmr(video.getTitleKmr())
+                .descriptionCkb(video.getDescriptionCkb())
+                .descriptionKmr(video.getDescriptionKmr())
+                .videoUrl(video.getVideoUrl())
+                .posterUrl(video.getPosterUrl())
+                .displayOrder(video.getDisplayOrder())
+                .active(video.isActive())
                 .build();
     }
 

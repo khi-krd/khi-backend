@@ -347,6 +347,35 @@ public final class SiteContentDtos {
         private Boolean active;
     }
 
+    /**
+     * One archive-donor clip on the donate page. `videoUrl` may hold an uploaded
+     * file URL or a YouTube link — the site resolves both with the same player.
+     */
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class DonationArchiveVideoRequest {
+        private String titleCkb;
+        private String titleKmr;
+        private String descriptionCkb;
+        private String descriptionKmr;
+        private String videoUrl;
+        private String posterUrl;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class DonationArchiveVideoResponse {
+        private Long id;
+        private String titleCkb;
+        private String titleKmr;
+        private String descriptionCkb;
+        private String descriptionKmr;
+        private String videoUrl;
+        private String posterUrl;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class FinancialDonationRequest {
         private String donorName;
