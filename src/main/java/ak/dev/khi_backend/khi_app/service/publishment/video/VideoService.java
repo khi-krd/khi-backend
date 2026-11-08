@@ -358,7 +358,7 @@ public class VideoService {
         // Validate nested clip identities and sources before any cover/video or
         // Tiptap upload. Existing clips may retain their persisted source.
         if (targetType == VideoType.VIDEO_CLIP && dto.getVideoClipItems() != null) {
-            validateClipUpdate(video, dto.getVideoClipItems());
+            validateClipUpdate(video, dto.getVideoClipItems(), videoFiles);
         }
 
         boolean updatesTopics = !dto.isClearTopic()
@@ -628,7 +628,8 @@ public class VideoService {
 
     private void validateClipUpdate(
             Video video,
-            List<VideoDTO.VideoClipItemDTO> clipDtos
+            List<VideoDTO.VideoClipItemDTO> clipDtos,
+            List<MultipartFile> videoFiles
     ) {
         Map<Long, VideoClipItem> existingById = video.getVideoClipItems().stream()
                 .filter(Objects::nonNull)
@@ -647,7 +648,11 @@ public class VideoService {
 
             VideoClipItem existing = resolveExistingClip(
                     existingById, requestedIds, dto, i);
+            MultipartFile file =
+                    (videoFiles != null && i < videoFiles.size())
+                            ? videoFiles.get(i) : null;
             if (!hasClipSource(dto)
+                    && (file == null || file.isEmpty())
                     && (existing == null || !hasClipSource(existing))) {
                 throw clipSourceRequired(i);
             }
