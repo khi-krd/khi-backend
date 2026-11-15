@@ -97,7 +97,7 @@ class SiteContentServiceDonationTests {
     }
 
     @Test
-    void archiveDonationAcceptsMissingOptionalFields() {
+    void archiveDonationAcceptsMissingOptionalFields() throws Exception {
         when(archiveDonationRepository.save(any(ArchiveDonation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -117,7 +117,7 @@ class SiteContentServiceDonationTests {
     }
 
     @Test
-    void archiveDonationRejectsUnsupportedMaterialType() {
+    void archiveDonationRejectsUnsupportedMaterialType() throws Exception {
         assertThatThrownBy(() -> siteContentService.submitArchiveDonation(
                 ArchiveDonationRequest.builder()
                         .donorName("Ahmed")
@@ -131,7 +131,7 @@ class SiteContentServiceDonationTests {
     }
 
     @Test
-    void archiveSubmissionBlockedWhenArchiveDisabled() {
+    void archiveSubmissionBlockedWhenArchiveDisabled() throws Exception {
         lenient().when(donationSettingsRepository.findAll()).thenReturn(java.util.List.of(
                 ak.dev.khi_backend.khi_app.model.site.DonationSettings.builder()
                         .archiveDonationsEnabled(false)
