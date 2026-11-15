@@ -2,12 +2,16 @@
 
     import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
     import ak.dev.khi_backend.khi_app.repository.publishment.topic.PublishmentTopicRepository;
+    import jakarta.persistence.EntityManager;
+    import jakarta.persistence.PersistenceContext;
     import lombok.RequiredArgsConstructor;
     import lombok.extern.slf4j.Slf4j;
     import org.springframework.stereotype.Service;
     import org.springframework.transaction.annotation.Transactional;
 
+    import java.util.HashMap;
     import java.util.List;
+    import java.util.Map;
 
     @Slf4j
     @Service
@@ -15,6 +19,33 @@
     public class PublishmentTopicService {
 
         private final PublishmentTopicRepository topicRepository;
+
+        @PersistenceContext
+        private EntityManager entityManager;
+
+        /**
+         * Record count per topic for the filter dropdowns — one grouped query
+         * on the join table, no per-topic round trips.
+         */
+        @Transactional(readOnly = true)
+        public Map<Long, Long> getTopicCounts(String entityType) {
+            String sql = switch (entityType == null ? "" : entityType.toUpperCase()) {
+                case "VIDEO" -> "SELECT topic_id, COUNT(DISTINCT video_id) FROM video_topics GROUP BY topic_id";
+                case "SOUND" -> "SELECT topic_id, COUNT(DISTINCT sound_track_id) FROM sound_track_topics GROUP BY topic_id";
+                case "WRITING" -> "SELECT topic_id, COUNT(DISTINCT writing_id) FROM writing_topics GROUP BY topic_id";
+                case "IMAGE" -> "SELECT topic_id, COUNT(DISTINCT collection_id) FROM image_collection_topics GROUP BY topic_id";
+                default -> null;
+            };
+            if (sql == null) {
+                return Map.of();
+            }
+            Map<Long, Long> counts = new HashMap<>();
+            for (Object row : entityManager.createNativeQuery(sql).getResultList()) {
+                Object[] pair = (Object[]) row;
+                counts.put(((Number) pair[0]).longValue(), ((Number) pair[1]).longValue());
+            }
+            return counts;
+        }
 
         // ─── GET ALL BY TYPE ──────────────────────────────────────────────────────
 

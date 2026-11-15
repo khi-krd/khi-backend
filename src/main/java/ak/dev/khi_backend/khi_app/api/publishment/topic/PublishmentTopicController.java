@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * PublishmentTopicController
@@ -51,6 +52,18 @@ public class PublishmentTopicController {
             @PathVariable String entityType
     ) {
         return ResponseEntity.ok(topicService.getAllByType(entityType));
+    }
+
+    /**
+     * GET /api/v1/topics/{entityType}/counts
+     * Record count per topic id — powers the "N items" badges in filter
+     * dropdowns. Literal path, so it wins over /{entityType}/{id}.
+     */
+    @GetMapping("/{entityType}/counts")
+    public ResponseEntity<Map<Long, Long>> getCounts(
+            @PathVariable String entityType
+    ) {
+        return ResponseEntity.ok(topicService.getTopicCounts(entityType));
     }
 
     // ─── GET ONE ──────────────────────────────────────────────────────────────

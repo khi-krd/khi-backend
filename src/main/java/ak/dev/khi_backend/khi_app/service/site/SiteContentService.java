@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -1327,7 +1328,68 @@ public class SiteContentService {
         if (!DONATION_ATTACHMENT_EXTENSIONS.contains(ext)) {
             throw Errors.badRequest("donation.attachment.invalidType");
         }
+        if (!contentMatchesExtension(ext, file)) {
+            throw Errors.badRequest("donation.attachment.invalidType");
+        }
         return mediaService.upload(file, "donations").getFileUrl();
+    }
+
+    /**
+     * Content-aware check: the file's magic bytes must agree with its
+     * extension, so a renamed executable/script cannot pass as a document.
+     * Reads only the first 512 bytes; the stream is reopened for the upload.
+     */
+    private boolean contentMatchesExtension(String ext, MultipartFile file) {
+        byte[] head;
+        try (InputStream in = file.getInputStream()) {
+            head = in.readNBytes(512);
+        } catch (IOException e) {
+            return false;
+        }
+        if (head.length == 0) {
+            return false;
+        }
+        return switch (ext) {
+            case "jpg", "jpeg" -> startsWith(head, 0xFF, 0xD8, 0xFF);
+            case "png" -> startsWith(head, 0x89, 0x50, 0x4E, 0x47);
+            case "webp" -> asciiAt(head, 0, "RIFF") && asciiAt(head, 8, "WEBP");
+            case "gif" -> asciiAt(head, 0, "GIF8");
+            case "mp3" -> asciiAt(head, 0, "ID3") || (head.length > 1 && (head[0] & 0xFF) == 0xFF && (head[1] & 0xE0) == 0xE0);
+            case "wav" -> asciiAt(head, 0, "RIFF") && asciiAt(head, 8, "WAVE");
+            case "ogg" -> asciiAt(head, 0, "OggS");
+            case "mp4" -> head.length > 8 && asciiAt(head, 4, "ftyp");
+            case "webm" -> startsWith(head, 0x1A, 0x45, 0xDF, 0xA3);
+            case "pdf" -> asciiAt(head, 0, "%PDF");
+            case "doc", "xls" -> startsWith(head, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1);
+            case "docx", "xlsx" -> startsWith(head, 0x50, 0x4B, 0x03, 0x04);
+            case "txt" -> looksLikeText(head);
+            default -> false;
+        };
+    }
+
+    private static boolean startsWith(byte[] head, int... sig) {
+        if (head.length < sig.length) return false;
+        for (int i = 0; i < sig.length; i++) {
+            if ((head[i] & 0xFF) != sig[i]) return false;
+        }
+        return true;
+    }
+
+    private static boolean asciiAt(byte[] head, int offset, String s) {
+        if (head.length < offset + s.length()) return false;
+        for (int i = 0; i < s.length(); i++) {
+            if (head[offset + i] != (byte) s.charAt(i)) return false;
+        }
+        return true;
+    }
+
+    /** Plain-text attachments: reject binary payloads smuggled as .txt. */
+    private static boolean looksLikeText(byte[] head) {
+        for (byte b : head) {
+            int v = b & 0xFF;
+            if (v == 0) return false;
+        }
+        return true;
     }
 
     @Transactional(readOnly = true)
