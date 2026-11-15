@@ -19,6 +19,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -373,6 +377,51 @@ public class UserService implements UserDetailsService {
         return userRepository.findAll().stream().map(this::toResponse).toList();
     }
 
+    /** Admin user-management search with keyword + optional role filter. */
+    @Transactional(readOnly = true)
+    public Page<UserResponseDTO> searchUsers(String keyword, Role role, int page, int size) {
+        String kw = keyword == null ? "" : keyword.trim();
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        return userRepository.searchUsers(kw.isEmpty() ? null : kw, role, pageable)
+                .map(this::toResponse);
+    }
+
+    /**
+     * Change a user's role. Guards: an admin cannot demote themselves, and the
+     * last remaining SUPER_ADMIN can never lose the role.
+     */
+    @Transactional
+    public UserResponseDTO changeRole(Long userId, Role newRole, Long actorId) {
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with ID: " + userId));
+        if (actorId != null && actorId.equals(userId) && u.getRole() == Role.SUPER_ADMIN
+                && newRole != Role.SUPER_ADMIN) {
+            throw new IllegalStateException("cannot.demote.self");
+        }
+        if (u.getRole() == Role.SUPER_ADMIN && newRole != Role.SUPER_ADMIN
+                && userRepository.countByRole(Role.SUPER_ADMIN) <= 1) {
+            throw new IllegalStateException("cannot.remove.last.superadmin");
+        }
+        u.setRole(newRole);
+        u.setUpdatedAt(Instant.now());
+        return toResponse(userRepository.save(u));
+    }
+
+    /** Activate/deactivate an account. Same last-SUPER_ADMIN guard as role changes. */
+    @Transactional
+    public UserResponseDTO setActivated(Long userId, boolean activated, Long actorId) {
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with ID: " + userId));
+        if (!activated && u.getRole() == Role.SUPER_ADMIN
+                && userRepository.countByRole(Role.SUPER_ADMIN) <= 1) {
+            throw new IllegalStateException("cannot.deactivate.last.superadmin");
+        }
+        u.setIsActivated(activated);
+        u.setUpdatedAt(Instant.now());
+        return toResponse(userRepository.save(u));
+    }
+
     public UserResponseDTO getUserById(Long userId) {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with ID: " + userId));
@@ -435,9 +484,17 @@ public class UserService implements UserDetailsService {
         return toResponse(userRepository.save(u));
     }
 
-    public void deleteUser(Long userId) {
+    public void deleteUser(Long userId, Long actorId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with ID: " + userId));
+
+        if (actorId != null && actorId.equals(userId)) {
+            throw new IllegalStateException("cannot.delete.self");
+        }
+        if (user.getRole() == Role.SUPER_ADMIN
+                && userRepository.countByRole(Role.SUPER_ADMIN) <= 1) {
+            throw new IllegalStateException("cannot.delete.last.superadmin");
+        }
 
         // Clean up profile image file
         deleteOldProfileImage(user.getProfileImage());

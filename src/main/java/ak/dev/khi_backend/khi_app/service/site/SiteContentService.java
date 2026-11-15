@@ -23,6 +23,8 @@ import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
 import ak.dev.khi_backend.khi_app.repository.site.DonationArchiveVideoRepository;
 import ak.dev.khi_backend.khi_app.repository.site.*;
 import ak.dev.khi_backend.khi_app.service.S3Service;
+import ak.dev.khi_backend.khi_app.service.media.MediaService;
+import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -31,7 +33,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -53,6 +57,20 @@ public class SiteContentService {
     /** Allowed financial donation currencies (spec §5). */
     private static final Set<String> DONATION_CURRENCIES = Set.of("IQD", "USD");
 
+    /**
+     * Public donation attachments get a hard cap well below the global
+     * multipart limit — this endpoint is unauthenticated, so a donor must not
+     * be able to push arbitrary-size objects into the bucket.
+     */
+    private static final long MAX_DONATION_ATTACHMENT_BYTES = 25L * 1024 * 1024;
+
+    /** Extensions the public donate form accepts (mirrors the site schema). */
+    private static final Set<String> DONATION_ATTACHMENT_EXTENSIONS = Set.of(
+            "jpg", "jpeg", "png", "webp", "gif",
+            "mp3", "wav", "ogg",
+            "mp4", "webm",
+            "pdf", "doc", "docx", "xls", "xlsx", "txt");
+
     private final TeamMemberRepository teamRepository;
     private final PartnerRepository partnerRepository;
     private final ContactMessageRepository contactMessageRepository;
@@ -73,6 +91,7 @@ public class SiteContentService {
     private final ImageCollectionRepository imageCollectionRepository;
     private final AboutRepository aboutRepository;
     private final ServiceRepository serviceRepository;
+    private final MediaService mediaService;
 
     // =========================================================================================
     // Featured
@@ -1262,8 +1281,23 @@ public class SiteContentService {
     }
 
     @Transactional
-    public ArchiveDonationResponse submitArchiveDonation(ArchiveDonationRequest request) {
+    public ArchiveDonationResponse submitArchiveDonation(ArchiveDonationRequest request) throws IOException {
+        return submitArchiveDonation(request, null);
+    }
+
+    /**
+     * Multipart variant used by the public donate form: the attachment file is
+     * validated, stored through the shared media pipeline under the
+     * {@code donations} folder, and its public URL becomes
+     * {@code attachmentUrl} on the donation record.
+     */
+    @Transactional
+    public ArchiveDonationResponse submitArchiveDonation(
+            ArchiveDonationRequest request, MultipartFile file) throws IOException {
         if (request == null) request = new ArchiveDonationRequest();
+        if (file != null && !file.isEmpty()) {
+            request.setAttachmentUrl(uploadDonationAttachment(file));
+        }
         ensureArchiveDonationsEnabled();
         ArchiveDonation donation = ArchiveDonation.builder()
                 .donorName(orEmpty(request.getDonorName()).trim())
@@ -1277,6 +1311,23 @@ public class SiteContentService {
                 .status("PENDING")
                 .build();
         return archiveResponse(archiveDonationRepository.save(donation));
+    }
+
+    /**
+     * Validates a public donation attachment (size + extension) and stores it
+     * through the shared media pipeline. Returns the public object URL.
+     */
+    private String uploadDonationAttachment(MultipartFile file) throws IOException {
+        if (file.getSize() > MAX_DONATION_ATTACHMENT_BYTES) {
+            throw Errors.badRequest("donation.attachment.tooLarge");
+        }
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        int dot = original.lastIndexOf('.');
+        String ext = dot >= 0 ? original.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
+        if (!DONATION_ATTACHMENT_EXTENSIONS.contains(ext)) {
+            throw Errors.badRequest("donation.attachment.invalidType");
+        }
+        return mediaService.upload(file, "donations").getFileUrl();
     }
 
     @Transactional(readOnly = true)

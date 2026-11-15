@@ -9,10 +9,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -313,9 +316,38 @@ public class PublicSiteController {
 
     @PostMapping("/donations/archive")
     public ResponseEntity<ApiResponse<ArchiveDonationResponse>> submitArchiveDonation(
-            @Valid @RequestBody(required = false) ArchiveDonationRequest request) {
+            @Valid @RequestBody(required = false) ArchiveDonationRequest request) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
                 siteContentService.submitArchiveDonation(request), "Archive donation offer received"));
+    }
+
+    /**
+     * Multipart variant of the archive-donation submission — the public donate
+     * form sends its attachment as a file part; the service stores it and
+     * links the resulting URL on the record. Shares the path with the JSON
+     * variant; Spring dispatches on the request content type.
+     */
+    @PostMapping(value = "/donations/archive", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ArchiveDonationResponse>> submitArchiveDonationMultipart(
+            @RequestParam(required = false) String donorName,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String materialType,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String estimatedDate,
+            @RequestParam(required = false) MultipartFile file) throws IOException {
+        ArchiveDonationRequest request = new ArchiveDonationRequest();
+        request.setDonorName(donorName);
+        request.setEmail(email);
+        request.setPhone(phone);
+        request.setMaterialType(materialType);
+        request.setTitle(title);
+        request.setDescription(description);
+        request.setEstimatedDate(estimatedDate);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                siteContentService.submitArchiveDonation(request, file),
+                "Archive donation offer received"));
     }
 
     @GetMapping("/donations/financial")

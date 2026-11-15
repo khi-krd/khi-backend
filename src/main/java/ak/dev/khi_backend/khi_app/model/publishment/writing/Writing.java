@@ -3,6 +3,7 @@ package ak.dev.khi_backend.khi_app.model.publishment.writing;
 import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
 
@@ -249,6 +250,9 @@ public class Writing {
 
     private boolean featured = false;
     private Integer featuredOrder;
+    @Column(name = "is_popular", nullable = false)
+    @JsonProperty("isPopular")
+    private boolean isPopular = false;
 
     /** Optional wide picture for the homepage hero; falls back to the cover when null. */
     @Column(name = "feature_image_url", columnDefinition = "TEXT")

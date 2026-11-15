@@ -4,6 +4,7 @@ import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.enums.publishment.TrackState;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
 
@@ -299,6 +300,9 @@ public class SoundTrack {
 
     @Column(name = "featured_order")
     private Integer featuredOrder;
+    @Column(name = "is_popular", nullable = false)
+    @JsonProperty("isPopular")
+    private boolean isPopular = false;
 
     /** Manual position of this track in list views; lower renders first. */
     @Column(name = "sort_order")
