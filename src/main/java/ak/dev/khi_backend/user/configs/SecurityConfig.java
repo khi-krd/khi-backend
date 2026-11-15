@@ -170,6 +170,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/locations/**")
                         .hasAnyRole("ADMIN", "SUPER_ADMIN")
 
+                        // ── Dashboard statistics: admin-only (must precede the
+                        //    public GET /api/v1/** read rule below) ──────────────
+                        .requestMatchers("/api/v1/dashboard/**")
+                        .hasAnyRole("ADMIN", "SUPER_ADMIN")
+
                         // ── Content: public reads ─────────────────────────────────
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
 
