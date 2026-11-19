@@ -5,6 +5,7 @@ import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.ManagedOpt
 import ak.dev.khi_backend.khi_app.model.publishment.writing.ManagedOption;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.ManagedOptionRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
@@ -65,6 +66,7 @@ public abstract class ManagedOptionService<T extends ManagedOption> {
      * then deletes the row. Hiding an option without touching books is
      * {@code active: false} — always the recommendation.
      */
+    @Transactional // detach + delete must run in one transaction
     public void delete(Long id) {
         if (!repository().existsById(id)) throw notFound(id);
         repository().detachFromBooks(id);
