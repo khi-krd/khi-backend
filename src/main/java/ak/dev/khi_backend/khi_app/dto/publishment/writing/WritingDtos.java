@@ -123,6 +123,60 @@ public final class WritingDtos {
     }
 
     // =========================================================================
+    // MANAGED OPTION DTOS (writing types / editions / book languages)
+    // =========================================================================
+
+    /**
+     * Shared create/replace body for the three single-select vocabularies —
+     * same fields as {@link BookGenreRequest}.
+     */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class ManagedOptionRequest {
+        private String slug;
+        private String nameCkb;
+        private String nameKmr;
+        private Integer displayOrder;
+        private Boolean active;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class ManagedOptionResponse {
+        private Long    id;
+        private String  slug;
+        private String  nameCkb;
+        private String  nameKmr;
+        private Integer displayOrder;
+        private Boolean active;
+        /** How many writings point at this row — the dashboard's delete warning. */
+        private Long    bookCount;
+    }
+
+    /** The option row as it appears embedded on a writing response. */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class ManagedOptionInfo {
+        private Long   id;
+        private String slug;
+        private String nameCkb;
+        private String nameKmr;
+    }
+
+    /** Compact book reference — original-book / later-edition links. */
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
+    public static class BookLinkInfo {
+        private Long   id;
+        private String titleCkb;
+        private String titleKmr;
+    }
+
+    // =========================================================================
     // SERIES DTOS
     // =========================================================================
 
@@ -243,7 +297,29 @@ public final class WritingDtos {
 
         private String bookLanguageKmr;
 
+        /** Managed زمانی کتێب row id — takes precedence over the text fields. */
+        private Long bookLanguageId;
+
+        // ─── Classification + edition chain ───────────────────────────────────
+
+        /** جۆری نووسین row id; absent → the seeded BOOK row when it exists. */
+        private Long writingTypeId;
+
+        /** چاپ row id; absent → the seeded FIRST_EDITION row when it exists. */
+        private Long editionId;
+
+        /** First-edition book this record is a later چاپ of. */
+        private Long originalBookId;
+
         private boolean publishedByInstitute = true;
+
+        // ─── Audio + CD cover ─────────────────────────────────────────────────
+
+        /** External audio URL — ignored when the audioFile part is sent. */
+        private String audioUrl;
+
+        /** External CD-cover URL — ignored when the cdCoverImage part is sent. */
+        private String cdCoverUrl;
 
         private BilingualSet tags;
         private BilingualSet keywords;
@@ -322,7 +398,36 @@ public final class WritingDtos {
 
         private String bookLanguageKmr;
 
+        /**
+         * Managed زمانی کتێب row id — replaces the linked row. Null leaves the
+         * link unchanged; {@code clearBookLanguage} detaches it.
+         */
+        private Long bookLanguageId;
+        private Boolean clearBookLanguage;
+
+        // ─── Classification + edition chain ───────────────────────────────────
+
+        /** جۆری نووسین row id — replaces the linked row. */
+        private Long writingTypeId;
+        private Boolean clearWritingType;
+
+        /** چاپ row id — replaces the linked row. */
+        private Long editionId;
+        private Boolean clearEdition;
+
+        /** Re-link this record to a different original (first-edition) book. */
+        private Long originalBookId;
+
+        /** Explicit detach from the original book — like unlinkFromSeries. */
+        private Boolean clearOriginalBook;
+
         private Boolean publishedByInstitute;
+
+        // ─── Audio + CD cover ─────────────────────────────────────────────────
+
+        /** "" clears, a URL replaces, null keeps — same merge as cover urls. */
+        private String audioUrl;
+        private String cdCoverUrl;
 
         private BilingualSet tags;
         private BilingualSet keywords;
@@ -412,7 +517,26 @@ public final class WritingDtos {
 
         private String bookLanguageKmr;
 
+        /** Managed زمانی کتێب row, when linked. */
+        private ManagedOptionInfo bookLanguage;
+
+        // ─── Classification + edition chain ───────────────────────────────────
+
+        private ManagedOptionInfo writingType;
+        private ManagedOptionInfo edition;
+
+        /** The original (first-edition) book this record is a later چاپ of. */
+        private BookLinkInfo originalBook;
+
+        /** Later editions that point back at this original. */
+        private List<BookLinkInfo> editionBooks;
+
         private boolean publishedByInstitute;
+
+        // ─── Audio + CD cover ─────────────────────────────────────────────────
+
+        private String audioUrl;
+        private String cdCoverUrl;
 
         private BilingualSet tags;
         private BilingualSet keywords;

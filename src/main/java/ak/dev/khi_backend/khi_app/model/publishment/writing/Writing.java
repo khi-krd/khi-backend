@@ -47,7 +47,8 @@ import java.util.List;
                 @Index(name = "idx_series_id",          columnList = "series_id"),
                 @Index(name = "idx_series_composite",   columnList = "series_id, series_order"),
                 @Index(name = "idx_parent_book",        columnList = "parent_book_id"),
-                @Index(name = "idx_writing_sort_order", columnList = "sort_order")
+                @Index(name = "idx_writing_sort_order", columnList = "sort_order"),
+                @Index(name = "idx_writing_original",   columnList = "original_book_id")
         }
 )
 @Getter @Setter
@@ -137,6 +138,54 @@ public class Writing {
     /** Actual member rows in this series — denormalized by the service refresh. */
     @Column(name = "series_member_count")
     private Integer seriesMemberCount;
+
+    // ─── Edition Chain (چاپ) ──────────────────────────────────────────────────
+
+    /**
+     * The ORIGINAL (first-edition) book this record is a later edition of.
+     * Independent of the series chain — a reprint may belong to no series at
+     * all. NULL means this book IS an original (or simply has no edition
+     * link). Children never point at other children: the service resolves
+     * every pick to the root original, so the chain stays one level deep.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "original_book_id")
+    private Writing originalBook;
+
+    /** Later editions that point back at this original. */
+    @OneToMany(mappedBy = "originalBook", fetch = FetchType.LAZY)
+    @OrderBy("createdAt ASC")
+    @Builder.Default
+    private List<Writing> editionBooks = new ArrayList<>();
+
+    /** چاپ — which printing this record is (چاپی یەکەم, …); managed row. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "edition_id")
+    private Edition edition;
+
+    /** جۆری نووسین — کتێب / بەڵگەنامە / توێژینەوە / …; managed row. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "writing_type_id")
+    private WritingType writingType;
+
+    /**
+     * زمانی کتێب — managed Kurdish-variety row. The legacy
+     * {@code bookLanguageCkb}/{@code bookLanguageKmr} text fields below are
+     * kept in sync from this row's names so older clients keep reading them.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "book_language_id")
+    private BookLanguage bookLanguage;
+
+    // ─── Audio + CD Cover (دەنگی کتێب / وێنەی سی دی) ──────────────────────────
+
+    /** Attached audio recording — uploaded file or external URL. Optional. */
+    @Column(name = "audio_url", columnDefinition = "TEXT")
+    private String audioUrl;
+
+    /** CD cover art for the audio recording — uploaded file or external URL. */
+    @Column(name = "cd_cover_url", columnDefinition = "TEXT")
+    private String cdCoverUrl;
 
     // ─── Bilingual Support ────────────────────────────────────────────────────
 

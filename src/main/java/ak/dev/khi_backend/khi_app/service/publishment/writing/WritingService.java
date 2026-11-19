@@ -39,6 +39,9 @@ public class WritingService {
     private final WritingLogRepository       writingLogRepository;
     private final PublishmentTopicRepository topicRepository;
     private final BookGenreService           bookGenreService;
+    private final WritingTypeService         writingTypeService;
+    private final EditionService             editionService;
+    private final BookLanguageService        bookLanguageService;
     private final S3Service                  s3Service;
     private final ObjectMapper               objectMapper;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
@@ -54,7 +57,9 @@ public class WritingService {
                                MultipartFile kmrCoverImage,
                                MultipartFile hoverCoverImage,
                                MultipartFile ckbBookFile,
-                               MultipartFile kmrBookFile) {
+                               MultipartFile kmrBookFile,
+                               MultipartFile audioFile,
+                               MultipartFile cdCoverImage) {
         if (request == null) request = new CreateRequest();
 
         log.info("دروستکردنی نووسراو: {}", getCombinedTitle(request));
@@ -67,6 +72,9 @@ public class WritingService {
 
         String ckbFileUrl = uploadFile(ckbBookFile, "فایلی کتێبی CKB");
         String kmrFileUrl = uploadFile(kmrBookFile, "فایلی کتێبی KMR");
+
+        String audioUrl   = uploadOrFallback(audioFile,     request.getAudioUrl(),   "دەنگی کتێب");
+        String cdCoverUrl = uploadOrFallback(cdCoverImage,  request.getCdCoverUrl(), "وێنەی سی دی");
 
         Set<PublishmentTopic> topics = resolveTopics(
                 request.getTopicIds(), request.getNewTopics(),
@@ -90,15 +98,45 @@ public class WritingService {
         boolean startSeries = Boolean.TRUE.equals(request.getStartSeries()) && parentBook == null;
         Integer plannedTotal = parentBook == null ? request.getSeriesTotalBooks() : null;
 
+        // ─── Managed options ─────────────────────────────────────────────────
+        // Defaults apply only when no explicit id was sent: کتێب for the type,
+        // چاپی یەکەم for the edition. Both resolve to null when the seeded row
+        // was deleted — the fields simply stay empty.
+        var writingType = request.getWritingTypeId() != null
+                ? writingTypeService.resolve(request.getWritingTypeId())
+                : writingTypeService.resolveDefault(WritingTypeService.DEFAULT_SLUG);
+        var edition = request.getEditionId() != null
+                ? editionService.resolve(request.getEditionId())
+                : editionService.resolveDefault(EditionService.DEFAULT_SLUG);
+        var bookLanguage = request.getBookLanguageId() != null
+                ? bookLanguageService.resolve(request.getBookLanguageId())
+                : null;
+
+        // ─── Original book (چاپ chain) ───────────────────────────────────────
+        Writing originalBook = resolveOriginalBook(request.getOriginalBookId(), null);
+
+        // The managed language row feeds the legacy text fields unless the
+        // request overrode them explicitly.
+        String langCkb = request.getBookLanguageCkb() != null ? request.getBookLanguageCkb()
+                : (bookLanguage != null ? bookLanguage.getNameCkb() : null);
+        String langKmr = request.getBookLanguageKmr() != null ? request.getBookLanguageKmr()
+                : (bookLanguage != null ? bookLanguage.getNameKmr() : null);
+
         Writing writing = Writing.builder()
                 .ckbCoverUrl(ckbCoverUrl)
                 .kmrCoverUrl(kmrCoverUrl)
                 .hoverCoverUrl(hoverCoverUrl)
+                .audioUrl(audioUrl)
+                .cdCoverUrl(cdCoverUrl)
+                .writingType(writingType)
+                .edition(edition)
+                .bookLanguage(bookLanguage)
+                .originalBook(originalBook)
                 .topics(topics)
                 .genres(bookGenreService.resolve(request.getGenreIds(), request.getBookGenres()))
                 .contentLanguages(new LinkedHashSet<>(safeLangs(request.getContentLanguages())))
-                .bookLanguageCkb(request.getBookLanguageCkb())
-                .bookLanguageKmr(request.getBookLanguageKmr())
+                .bookLanguageCkb(langCkb)
+                .bookLanguageKmr(langKmr)
                 .publishedByInstitute(request.isPublishedByInstitute())
                 .tagsCkb(new LinkedHashSet<>(safeSet(request.getTags()     != null ? request.getTags().getCkb()     : null)))
                 .tagsKmr(new LinkedHashSet<>(safeSet(request.getTags()     != null ? request.getTags().getKmr()     : null)))
@@ -138,7 +176,9 @@ public class WritingService {
                                   MultipartFile kmrCoverImage,
                                   MultipartFile hoverCoverImage,
                                   MultipartFile ckbBookFile,
-                                  MultipartFile kmrBookFile) {
+                                  MultipartFile kmrBookFile,
+                                  MultipartFile audioFile,
+                                  MultipartFile cdCoverImage) {
         if (request == null) request = new UpdateRequest();
 
         log.info("نوێکردنەوەی نووسراو id={}", id);
@@ -162,9 +202,21 @@ public class WritingService {
                 ? findOrThrow(request.getParentBookId(), "parent_book.not_found")
                 : null;
 
+        // Same pre-upload rule as topics/parent: a bad option or original-book
+        // id must fail before any S3 object is written.
+        var resolvedWritingType = request.getWritingTypeId() != null
+                ? writingTypeService.resolve(request.getWritingTypeId()) : null;
+        var resolvedEdition = request.getEditionId() != null
+                ? editionService.resolve(request.getEditionId()) : null;
+        var resolvedBookLanguage = request.getBookLanguageId() != null
+                ? bookLanguageService.resolve(request.getBookLanguageId()) : null;
+        Writing resolvedOriginal = resolveOriginalBook(request.getOriginalBookId(), id);
+
         writing.setCkbCoverUrl(resolveUpdate(ckbCoverImage,   request.getCkbCoverUrl(),   writing.getCkbCoverUrl()));
         writing.setKmrCoverUrl(resolveUpdate(kmrCoverImage,   request.getKmrCoverUrl(),   writing.getKmrCoverUrl()));
         writing.setHoverCoverUrl(resolveUpdate(hoverCoverImage, request.getHoverCoverUrl(), writing.getHoverCoverUrl()));
+        writing.setAudioUrl(resolveUpdate(audioFile,   request.getAudioUrl(),   writing.getAudioUrl()));
+        writing.setCdCoverUrl(resolveUpdate(cdCoverImage, request.getCdCoverUrl(), writing.getCdCoverUrl()));
 
         String ckbFileUrl = uploadFile(ckbBookFile, "فایلی کتێبی CKB");
         String kmrFileUrl = uploadFile(kmrBookFile, "فایلی کتێبی KMR");
@@ -197,6 +249,25 @@ public class WritingService {
         }
 
         replaceBilingualSets(writing, request);
+
+        // ─── Managed options ─────────────────────────────────────────────────
+        // Null leaves untouched; explicit clear flags detach. A re-linked
+        // language row also refreshes the denormalized text fields.
+        if (Boolean.TRUE.equals(request.getClearWritingType())) writing.setWritingType(null);
+        else if (resolvedWritingType != null) writing.setWritingType(resolvedWritingType);
+
+        if (Boolean.TRUE.equals(request.getClearEdition())) writing.setEdition(null);
+        else if (resolvedEdition != null) writing.setEdition(resolvedEdition);
+
+        if (Boolean.TRUE.equals(request.getClearBookLanguage())) writing.setBookLanguage(null);
+        else if (resolvedBookLanguage != null) {
+            writing.setBookLanguage(resolvedBookLanguage);
+            if (request.getBookLanguageCkb() == null) writing.setBookLanguageCkb(resolvedBookLanguage.getNameCkb());
+            if (request.getBookLanguageKmr() == null) writing.setBookLanguageKmr(resolvedBookLanguage.getNameKmr());
+        }
+
+        if (Boolean.TRUE.equals(request.getClearOriginalBook())) writing.setOriginalBook(null);
+        else if (resolvedOriginal != null) writing.setOriginalBook(resolvedOriginal);
 
         if (request.getBookLanguageCkb() != null) writing.setBookLanguageCkb(request.getBookLanguageCkb());
         if (request.getBookLanguageKmr() != null) writing.setBookLanguageKmr(request.getBookLanguageKmr());
@@ -269,6 +340,17 @@ public class WritingService {
         Long   writingId = writing.getId();
 
         // A writing can be referenced by both its audit history and child books.
+        // Later editions pointing at this book are detached first — a چاپ
+        // chain never dangles at a deleted row.
+        List<Writing> editionChildren = writingRepository.findByOriginalBookId(writingId);
+        for (Writing edition : editionChildren) {
+            edition.setOriginalBook(null);
+        }
+        if (!editionChildren.isEmpty()) {
+            writingRepository.saveAll(editionChildren);
+            writingRepository.flush();
+        }
+
         // When the deleted book is the chain's ROOT, the next-in-line child is
         // promoted to primary — it keeps the seriesId and the declared total,
         // and the remaining children are repointed straight at it.
@@ -308,6 +390,8 @@ public class WritingService {
         urls.add(writing.getKmrCoverUrl());
         urls.add(writing.getHoverCoverUrl());
         urls.add(writing.getFeatureImageUrl());
+        urls.add(writing.getAudioUrl());
+        urls.add(writing.getCdCoverUrl());
         if (writing.getCkbContent() != null) urls.add(writing.getCkbContent().getFileUrl());
         if (writing.getKmrContent() != null) urls.add(writing.getKmrContent().getFileUrl());
         s3Service.deleteFiles(urls);
@@ -439,8 +523,12 @@ public class WritingService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Response> getAllSeriesParents(Pageable pageable) {
-        return writingRepository.findSeriesParents(pageable).map(this::mapToResponse);
+    public Page<Response> getAllSeriesParents(String title, Pageable pageable) {
+        String q = isBlank(title) ? null : title.trim();
+        return (q == null
+                ? writingRepository.findSeriesParents(pageable)
+                : writingRepository.findSeriesParentsByTitle(q, pageable))
+                .map(this::mapToResponse);
     }
 
     // =========================================================================
@@ -546,6 +634,28 @@ public class WritingService {
         log.info("بابەتی inline دروستکرا — id={}, ckb='{}', kmr='{}'",
                 created.getId(), created.getNameCkb(), created.getNameKmr());
         return created;
+    }
+
+    /**
+     * Resolves a چاپ-chain pick to a first-edition ROOT. The candidate must
+     * itself be an original (originalBook IS NULL) — editions cannot parent
+     * other editions, which keeps the chain one level deep and makes cycles
+     * impossible. Self-links are rejected.
+     */
+    private Writing resolveOriginalBook(Long originalBookId, Long selfId) {
+        if (originalBookId == null) return null;
+        if (selfId != null && originalBookId.equals(selfId)) {
+            throw Errors.badRequest("edition.self_original", Map.of("bookId", selfId));
+        }
+        Writing candidate = findOrThrow(originalBookId, "original_book.not_found");
+        if (candidate.getOriginalBook() != null) {
+            // An edition was picked — point at ITS original instead.
+            candidate = candidate.getOriginalBook();
+            if (selfId != null && Objects.equals(candidate.getId(), selfId)) {
+                throw Errors.badRequest("edition.cyclic", Map.of("bookId", selfId));
+            }
+        }
+        return candidate;
     }
 
     /**
@@ -804,6 +914,22 @@ public class WritingService {
         return toTopicInfo(t);
     }
 
+    private ManagedOptionInfo toOptionInfo(ak.dev.khi_backend.khi_app.model.publishment.writing.ManagedOption o) {
+        if (o == null) return null;
+        return ManagedOptionInfo.builder()
+                .id(o.getId()).slug(o.getSlug())
+                .nameCkb(o.getNameCkb()).nameKmr(o.getNameKmr())
+                .build();
+    }
+
+    private BookLinkInfo toBookLink(Writing book) {
+        return BookLinkInfo.builder()
+                .id(book.getId())
+                .titleCkb(book.getCkbContent() != null ? book.getCkbContent().getTitle() : null)
+                .titleKmr(book.getKmrContent() != null ? book.getKmrContent().getTitle() : null)
+                .build();
+    }
+
     private TopicInfo toTopicInfo(PublishmentTopic t) {
         return TopicInfo.builder()
                 .id(t.getId())
@@ -838,6 +964,11 @@ public class WritingService {
                         : List.of())
                 .bookLanguageCkb(w.getBookLanguageCkb())
                 .bookLanguageKmr(w.getBookLanguageKmr())
+                .bookLanguage(toOptionInfo(w.getBookLanguage()))
+                .writingType(toOptionInfo(w.getWritingType()))
+                .edition(toOptionInfo(w.getEdition()))
+                .audioUrl(w.getAudioUrl())
+                .cdCoverUrl(w.getCdCoverUrl())
                 .publishedByInstitute(w.isPublishedByInstitute())
                 .persons(w.getPersons() != null
                         ? w.getPersons().stream().map(p -> PersonDto.builder()
@@ -881,6 +1012,15 @@ public class WritingService {
                 .ckb(new LinkedHashSet<>(safeSet(w.getKeywordsCkb())))
                 .kmr(new LinkedHashSet<>(safeSet(w.getKeywordsKmr())))
                 .build());
+
+        if (w.getOriginalBook() != null) {
+            r.setOriginalBook(toBookLink(w.getOriginalBook()));
+        }
+        if (w.getEditionBooks() != null && !w.getEditionBooks().isEmpty()) {
+            r.setEditionBooks(w.getEditionBooks().stream().map(this::toBookLink).toList());
+        } else {
+            r.setEditionBooks(List.of());
+        }
 
         if (w.getSeriesId() != null) {
             r.setSeriesInfo(SeriesInfoDto.builder()

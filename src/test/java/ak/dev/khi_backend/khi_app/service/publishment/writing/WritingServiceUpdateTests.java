@@ -67,7 +67,7 @@ class WritingServiceUpdateTests {
                 .build();
 
         Response response = writingService.updateWriting(
-                8L, request, null, null, null, null, null);
+                8L, request, null, null, null, null, null, null, null);
 
         assertThat(response.getCkbContent().getTitle()).isEqualTo("updated title");
         assertThat(response.getCkbContent().getFileUrl())

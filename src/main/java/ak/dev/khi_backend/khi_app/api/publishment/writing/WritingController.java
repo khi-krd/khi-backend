@@ -75,16 +75,20 @@ public class WritingController {
             @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
             @RequestPart(value = "hoverCoverImage", required = false) MultipartFile hoverCoverImage,
             @RequestPart(value = "ckbBookFile", required = false) MultipartFile ckbBookFile,
-            @RequestPart(value = "kmrBookFile", required = false) MultipartFile kmrBookFile) throws IOException {
+            @RequestPart(value = "kmrBookFile", required = false) MultipartFile kmrBookFile,
+            @RequestPart(value = "audioFile", required = false) MultipartFile audioFile,
+            @RequestPart(value = "cdCoverImage", required = false) MultipartFile cdCoverImage) throws IOException {
 
         CreateRequest request = parseJson(dataJson, CreateRequest.class);
 
-        int fileCount = countFiles(ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile);
+        int fileCount = countFiles(ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile,
+                audioFile, cdCoverImage);
         log.info("POST /api/v1/writings | langs={} | genres={} | files={}",
                 request.getContentLanguages(), request.getBookGenres(), fileCount);
 
         Response response = writingService.addWriting(
-                request, ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile
+                request, ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile,
+                audioFile, cdCoverImage
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -150,14 +154,18 @@ public class WritingController {
             @RequestPart(value = "kmrCoverImage", required = false) MultipartFile kmrCoverImage,
             @RequestPart(value = "hoverCoverImage", required = false) MultipartFile hoverCoverImage,
             @RequestPart(value = "ckbBookFile", required = false) MultipartFile ckbBookFile,
-            @RequestPart(value = "kmrBookFile", required = false) MultipartFile kmrBookFile) throws IOException {
+            @RequestPart(value = "kmrBookFile", required = false) MultipartFile kmrBookFile,
+            @RequestPart(value = "audioFile", required = false) MultipartFile audioFile,
+            @RequestPart(value = "cdCoverImage", required = false) MultipartFile cdCoverImage) throws IOException {
 
         UpdateRequest request = parseJson(dataJson, UpdateRequest.class);
-        int fileCount = countFiles(ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile);
+        int fileCount = countFiles(ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile,
+                audioFile, cdCoverImage);
         log.info("PUT /api/v1/writings/{} | files={} | genres={}", id, fileCount, request.getBookGenres());
 
         Response response = writingService.updateWriting(
-                id, request, ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile
+                id, request, ckbCoverImage, kmrCoverImage, hoverCoverImage, ckbBookFile, kmrBookFile,
+                audioFile, cdCoverImage
         );
 
         return ResponseEntity.ok(ApiResponse.success(response, "Writing updated successfully"));
@@ -180,11 +188,12 @@ public class WritingController {
 
     @GetMapping("/series/parents")
     public ResponseEntity<ApiResponse<Page<Response>>> getAllSeriesParents(
+            @RequestParam(required = false) String title,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
         Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
         return ResponseEntity.ok(ApiResponse.success(
-                writingService.getAllSeriesParents(pageable), "Series parents fetched"));
+                writingService.getAllSeriesParents(title, pageable), "Series parents fetched"));
     }
 
     @PostMapping("/series/link")

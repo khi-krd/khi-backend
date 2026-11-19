@@ -101,6 +101,24 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
     )
     Page<Writing> findSeriesParents(Pageable pageable);
 
+    /**
+     * Same candidate set as {@link #findSeriesParents} filtered by title —
+     * the dashboard's searchable series picker. Blank title → all parents.
+     */
+    @Query(
+            value      = "SELECT w FROM Writing w WHERE w.parentBook IS NULL " +
+                    "AND (:title IS NULL OR LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%')) " +
+                    "              OR LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+                    "ORDER BY w.createdAt DESC",
+            countQuery = "SELECT COUNT(w) FROM Writing w WHERE w.parentBook IS NULL " +
+                    "AND (:title IS NULL OR LOWER(w.ckbContent.title) LIKE LOWER(CONCAT('%', :title, '%')) " +
+                    "              OR LOWER(w.kmrContent.title) LIKE LOWER(CONCAT('%', :title, '%')))"
+    )
+    Page<Writing> findSeriesParentsByTitle(@Param("title") String title, Pageable pageable);
+
+    /** Later editions pointing at an original — the edition-chain picker and delete cleanup. */
+    List<Writing> findByOriginalBookId(Long originalBookId);
+
     /** Distinct series keys still referenced — the startup migrator's worklist. */
     @Query("SELECT DISTINCT w.seriesId FROM Writing w WHERE w.seriesId IS NOT NULL")
     List<String> findDistinctSeriesIds();
