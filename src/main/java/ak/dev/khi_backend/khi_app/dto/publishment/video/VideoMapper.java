@@ -1,5 +1,7 @@
 package ak.dev.khi_backend.khi_app.dto.publishment.video;
 
+import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos;
+
 
 import ak.dev.khi_backend.khi_app.model.publishment.video.Video;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoClipItem;
@@ -156,6 +158,14 @@ public final class VideoMapper {
                 .featureImageUrl(video.getFeatureImageUrl())
                 .videoType(video.getVideoType())
                 .albumOfMemories(video.isAlbumOfMemories())
+                .category(video.getCategory() != null
+                        ? WritingDtos.ManagedOptionInfo.builder()
+                                .id(video.getCategory().getId())
+                                .slug(video.getCategory().getSlug())
+                                .nameCkb(video.getCategory().getNameCkb())
+                                .nameKmr(video.getCategory().getNameKmr())
+                                .build()
+                        : null)
                 // topics — singular fields keep the first entry for compatibility
                 .topicId(primaryTopic(video) != null ? primaryTopic(video).getId() : null)
                 .topicNameCkb(primaryTopic(video) != null ? primaryTopic(video).getNameCkb() : null)

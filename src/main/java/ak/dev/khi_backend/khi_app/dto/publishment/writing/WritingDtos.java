@@ -166,7 +166,8 @@ public final class WritingDtos {
         private String nameKmr;
     }
 
-    /** Compact book reference — original-book / later-edition links. */
+    /** Compact book reference — original-book / later-edition links, now
+     *  carrying the display fields the public editions block needs. */
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
@@ -174,6 +175,12 @@ public final class WritingDtos {
         private Long   id;
         private String titleCkb;
         private String titleKmr;
+        /** That book's own edition row (چاپی دووەم…). */
+        private ManagedOptionInfo edition;
+        private String coverUrl;
+        private String ckbFileUrl;
+        private String kmrFileUrl;
+        private java.time.LocalDateTime createdAt;
     }
 
     // =========================================================================

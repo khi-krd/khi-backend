@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -104,6 +105,31 @@ public class HomePopularService {
             }
             default -> List.of();
         };
+    }
+
+    /**
+     * Random selection from the same published section lists the popular feed
+     * draws from — shuffled per request, capped at {@code limit}, no
+     * duplicates. Unpublished rows never reach these list services, so a
+     * plain shuffle over them is safe.
+     */
+    public List<?> random(String section, VideoType videoType, int limit) {
+        List<?> all = switch (section) {
+            case "news" -> newsService.getAllNews(0, FETCH_ALL).getContent();
+            case "projects" -> projectService.getAllResponse(0, FETCH_ALL).getContent();
+            case "writings" -> writingService.getAllWritings(PageRequest.of(0, FETCH_ALL)).getContent();
+            case "sounds" -> soundTrackService.getAll(0, FETCH_ALL).getContent();
+            case "collections" -> imageCollectionService.getAll(0, FETCH_ALL).getContent();
+            case "videos" -> videoService.getAllVideos(0, FETCH_ALL).getContent().stream()
+                    .filter(v -> videoType == null || v.getVideoType() == videoType).toList();
+            default -> List.of();
+        };
+        if (limit <= 0 || all.isEmpty()) {
+            return List.of();
+        }
+        List<Object> shuffled = new ArrayList<>(all);
+        Collections.shuffle(shuffled);
+        return shuffled.subList(0, Math.min(limit, shuffled.size()));
     }
 
     private static <E> Set<Long> popularIds(List<E> all,

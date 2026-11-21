@@ -1,5 +1,6 @@
 package ak.dev.khi_backend.khi_app.dto.publishment.video;
 
+import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos;
 import ak.dev.khi_backend.khi_app.enums.Language;
 import java.io.Serializable;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
@@ -37,6 +38,18 @@ public class VideoDTO {
     // ─── Video Type & Album Flag ──────────────────────────────────────────────
     private VideoType videoType;
     private Boolean albumOfMemories;
+
+    // ─── Category (پۆلی ڤیدیۆ — managed vocabulary) ───────────────────────────
+
+    /** Assign an existing video category by id (create/update). */
+    private Long categoryId;
+
+    /** On update only — set true to detach the category. */
+    @Builder.Default
+    private boolean clearCategory = false;
+
+    /** Response only — the resolved category row. */
+    private WritingDtos.ManagedOptionInfo category;
 
     // ─── Topics (FK) ──────────────────────────────────────────────────────────
 

@@ -22,8 +22,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * REST Controller for Writing/Book management.
@@ -43,6 +45,14 @@ public class WritingController {
     private static final Sort DEFAULT_LIST_SORT =
             Sort.by(Sort.Direction.ASC, "sortOrder")
                     .and(Sort.by(Sort.Direction.DESC, "createdAt"));
+
+    /**
+     * Properties a caller may sort {@link #getAll} by — a whitelist so a bogus
+     * {@code sort=foo,desc} can never reach JPQL. Newest-first is
+     * {@code createdAt,desc} (and {@code id,desc} as a stable tiebreak).
+     */
+    private static final Set<String> SORTABLE_PROPERTIES =
+            Set.of("createdAt", "updatedAt", "sortOrder", "id");
 
     private final WritingService writingService;
     private final ObjectMapper objectMapper;
@@ -102,12 +112,41 @@ public class WritingController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Response>>> getAll(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) List<String> sort) {
 
-        log.info("GET /api/v1/writings | page={} size={}", page, size);
-        Pageable pageable = PageRequest.of(page, size, DEFAULT_LIST_SORT);
+        log.info("GET /api/v1/writings | page={} size={} sort={}", page, size, sort);
+        Pageable pageable = PageRequest.of(page, size, resolveListSort(sort));
         Page<Response> result = writingService.getAllWritings(pageable);
         return ResponseEntity.ok(ApiResponse.success(result, "Writings fetched successfully"));
+    }
+
+    /**
+     * Parses {@code sort=prop,dir} params (repeatable) against
+     * {@link #SORTABLE_PROPERTIES}; unknown properties and any direction other
+     * than asc/desc are dropped, and an empty result falls back to
+     * {@link #DEFAULT_LIST_SORT}. The dashboard passes
+     * {@code sort=createdAt,desc} to browse newest-first; the public default
+     * keeps the manual {@code sortOrder} sequence.
+     */
+    private static Sort resolveListSort(List<String> sort) {
+        if (sort == null || sort.isEmpty()) return DEFAULT_LIST_SORT;
+        List<Sort.Order> orders = new ArrayList<>();
+        for (String entry : sort) {
+            if (entry == null || entry.isBlank()) continue;
+            String[] parts = entry.split(",", -1);
+            String property = parts[0].trim();
+            String canonical = SORTABLE_PROPERTIES.stream()
+                    .filter(p -> p.equalsIgnoreCase(property))
+                    .findFirst().orElse(null);
+            if (canonical == null) continue;
+            Sort.Direction direction = parts.length > 1
+                    && parts[1].trim().equalsIgnoreCase("asc")
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+            orders.add(new Sort.Order(direction, canonical));
+        }
+        return orders.isEmpty() ? DEFAULT_LIST_SORT : Sort.by(orders);
     }
 
     @GetMapping("/featured")

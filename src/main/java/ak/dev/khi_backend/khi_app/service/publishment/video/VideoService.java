@@ -6,6 +6,7 @@ import ak.dev.khi_backend.khi_app.exceptions.BadRequestException;
 import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import ak.dev.khi_backend.khi_app.model.publishment.topic.PublishmentTopic;
 import ak.dev.khi_backend.khi_app.model.publishment.video.Video;
+import ak.dev.khi_backend.khi_app.model.publishment.video.VideoCategory;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoClipItem;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoLog;
 import ak.dev.khi_backend.khi_app.model.publishment.video.VideoSourceFile;
@@ -13,6 +14,7 @@ import ak.dev.khi_backend.khi_app.model.publishment.video.VideoType;
 import ak.dev.khi_backend.khi_app.model.publishment.video.FilmReklamVideo;
 import ak.dev.khi_backend.khi_app.repository.publishment.topic.PublishmentTopicRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.FilmReklamVideoRepository;
+import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoCategoryRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoLogRepository;
 import ak.dev.khi_backend.khi_app.repository.publishment.video.VideoRepository;
 import ak.dev.khi_backend.khi_app.service.S3Service;
@@ -79,6 +81,7 @@ public class VideoService {
 
     private final VideoRepository            videoRepository;
     private final VideoLogRepository         videoLogRepository;
+    private final VideoCategoryRepository    videoCategoryRepository;
     private final PublishmentTopicRepository topicRepository;
     private final FilmReklamVideoRepository  filmReklamVideoRepository;
     private final S3Service                  s3Service;
@@ -198,6 +201,11 @@ public class VideoService {
         video.setTopics(resolveOrCreateTopics(
                 dto.getTopicIds(), dto.getNewTopics(), dto.getTopicId(), dto.getNewTopic()));
 
+        // پۆلی ڤیدیۆ — resolved before the save; unknown ids reject the create
+        if (dto.getCategoryId() != null) {
+            video.setCategory(resolveCategory(dto.getCategoryId()));
+        }
+
         enforceAlbumRule(video, dto);
 
         if (video.getVideoType() == VideoType.FILM) {
@@ -244,8 +252,11 @@ public class VideoService {
 
     @Transactional(readOnly = true)
     public Page<VideoDTO> getVideoListing(VideoType videoType, Boolean albumOfMemories,
-                                          Long topicId, int page, int size) {
+                                          Long topicId, Long categoryId, int page, int size) {
         Pageable pageable = buildPageable(page, size);
+        if (categoryId != null) {
+            return videoRepository.findAllByCategoryId(categoryId, pageable).map(VideoMapper::toDTO);
+        }
         if (topicId != null) {
             return videoRepository.findAllByTopicId(topicId, pageable).map(VideoMapper::toDTO);
         }
@@ -382,6 +393,13 @@ public class VideoService {
             video.getTopics().addAll(resolvedTopics);
         }
 
+        // پۆل: clearCategory > categoryId > leave untouched
+        if (dto.isClearCategory()) {
+            video.setCategory(null);
+        } else if (dto.getCategoryId() != null) {
+            video.setCategory(resolveCategory(dto.getCategoryId()));
+        }
+
         enforceAlbumRule(video, dto);
 
         if (video.getVideoType() == VideoType.FILM) {
@@ -458,6 +476,17 @@ public class VideoService {
         if (topicId != null) return findTopicOrThrow(topicId);
         if (newTopic != null) return createInlineTopic(newTopic);
         return null;
+    }
+
+    /**
+     * Resolves a {@code video_categories} row for create/update — unknown ids
+     * reject the request (400), a null id stays unassigned. Resolved before
+     * any cover/video upload so a bad id never orphans an object in S3.
+     */
+    private VideoCategory resolveCategory(Long categoryId) {
+        if (categoryId == null) return null;
+        return videoCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BadRequestException("video.category.not_found"));
     }
 
     /**

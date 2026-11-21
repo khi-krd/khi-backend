@@ -23,10 +23,12 @@ import ak.dev.khi_backend.khi_app.repository.service.ServiceRepository;
 import ak.dev.khi_backend.khi_app.repository.site.DonationArchiveVideoRepository;
 import ak.dev.khi_backend.khi_app.repository.site.*;
 import ak.dev.khi_backend.khi_app.service.S3Service;
+import ak.dev.khi_backend.khi_app.service.media.ClamAvScanner;
 import ak.dev.khi_backend.khi_app.service.media.MediaService;
 import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +46,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SiteContentService {
@@ -93,6 +96,7 @@ public class SiteContentService {
     private final AboutRepository aboutRepository;
     private final ServiceRepository serviceRepository;
     private final MediaService mediaService;
+    private final ClamAvScanner clamAvScanner;
 
     // =========================================================================================
     // Featured
@@ -1331,7 +1335,31 @@ public class SiteContentService {
         if (!contentMatchesExtension(ext, file)) {
             throw Errors.badRequest("donation.attachment.invalidType");
         }
+        scanDonationAttachment(file, original);
         return mediaService.upload(file, "donations").getFileUrl();
+    }
+
+    /**
+     * Streams the attachment through clamd before it touches the bucket —
+     * the file is rejected, never stored, when a signature matches. When a
+     * scanner is configured but unreachable the upload fails closed: an
+     * unverified public attachment must not become accessible. Scanning is
+     * a no-op unless {@code app.scan.clamav.enabled=true}.
+     */
+    private void scanDonationAttachment(MultipartFile file, String originalName) {
+        if (!clamAvScanner.isEnabled()) {
+            return;
+        }
+        try (InputStream in = file.getInputStream()) {
+            String verdict = clamAvScanner.scan(in);
+            if (verdict != null) {
+                log.warn("Donation attachment rejected by virus scanner: {} ({})", verdict, originalName);
+                throw Errors.badRequest("donation.attachment.unsafe");
+            }
+        } catch (IOException e) {
+            log.error("Virus scanner unreachable — rejecting donation attachment ({})", originalName, e);
+            throw Errors.badRequest("donation.attachment.scanUnavailable");
+        }
     }
 
     /**

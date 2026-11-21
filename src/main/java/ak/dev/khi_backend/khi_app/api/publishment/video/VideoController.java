@@ -238,11 +238,12 @@ public class VideoController {
             @RequestParam(required = false) VideoType videoType,
             @RequestParam(required = false, name = "memories") Boolean albumOfMemories,
             @RequestParam(required = false) Long topicId,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(videoService.getVideoListing(
-                videoType, albumOfMemories, topicId, page, size));
+                videoType, albumOfMemories, topicId, categoryId, page, size));
     }
 
     @Operation(summary = "List featured videos ordered by featuredOrder ASC")

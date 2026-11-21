@@ -99,6 +99,16 @@ public class Video {
     @Column(name = "is_album_of_memories", nullable = false)
     private boolean albumOfMemories = false;
 
+    /**
+     * پۆلی ڤیدیۆ — the public-facing classification (film, clip, folklore
+     * program, interview, documentary, …). Editor-managed via
+     * {@code /api/v1/video-categories}; nullable, and unset rows still list
+     * and play normally — it is a label, not a structure like videoType.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private VideoCategory category;
+
     // ─── Topic (ManyToOne → PublishmentTopic) ─────────────────────────────────
 
     /**

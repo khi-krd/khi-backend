@@ -927,6 +927,11 @@ public class WritingService {
                 .id(book.getId())
                 .titleCkb(book.getCkbContent() != null ? book.getCkbContent().getTitle() : null)
                 .titleKmr(book.getKmrContent() != null ? book.getKmrContent().getTitle() : null)
+                .edition(toOptionInfo(book.getEdition()))
+                .coverUrl(book.getCkbCoverUrl() != null ? book.getCkbCoverUrl() : book.getKmrCoverUrl())
+                .ckbFileUrl(book.getCkbContent() != null ? book.getCkbContent().getFileUrl() : null)
+                .kmrFileUrl(book.getKmrContent() != null ? book.getKmrContent().getFileUrl() : null)
+                .createdAt(book.getCreatedAt())
                 .build();
     }
 

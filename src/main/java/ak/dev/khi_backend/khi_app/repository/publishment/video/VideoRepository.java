@@ -112,6 +112,15 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     )
     Page<Video> findAllByTopicId(@Param("topicId") Long topicId, Pageable pageable);
 
+    /**
+     * All videos of a managed category (video_categories row), paged.
+     */
+    @Query(
+            value      = "SELECT v FROM Video v WHERE v.category.id = :categoryId",
+            countQuery = "SELECT COUNT(v) FROM Video v WHERE v.category.id = :categoryId"
+    )
+    Page<Video> findAllByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
+
     // ═══════════════════════════════════════════════════════════════════════════
     // ── KEYWORD SEARCH ── (EXISTS replaces LEFT JOIN + DISTINCT)
     // ═══════════════════════════════════════════════════════════════════════════

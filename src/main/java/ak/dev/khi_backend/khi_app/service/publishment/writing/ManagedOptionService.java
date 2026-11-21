@@ -24,6 +24,15 @@ public abstract class ManagedOptionService<T extends ManagedOption> {
 
     private static final Pattern SLUG_PATTERN = Pattern.compile("[A-Z0-9_]+");
 
+    /** "چاپی یەکەم" / "چاپ دووەم" → ordinal word for KMR edition naming. */
+    private static final Pattern EDITION_PATTERN = Pattern.compile("^چاپی?\\s+(.+)$");
+
+    private static final Map<String, String> ORDINAL_KMR = Map.of(
+            "یەکەم", "Yekem", "دووەم", "Duyem", "سێیەم", "Sêyem",
+            "چوارەم", "Çarem", "پێنجەم", "Pêncem", "شەشەم", "Şeşem",
+            "حەوتەم", "Heftem", "هەشتەم", "Heştem", "نۆیەم", "Neyem",
+            "دەهەم", "Dehem");
+
     protected abstract ManagedOptionRepository<T> repository();
     protected abstract T newRow();
     /** Slug prefix for auto-generated rows, e.g. {@code "TYPE"} → TYPE_XXXX. */
@@ -94,11 +103,25 @@ public abstract class ManagedOptionService<T extends ManagedOption> {
             nameKmr = row.getNameKmr();
             if (nameCkb == null && nameKmr == null) nameCkb = "-";
         }
+        // Blank KMR derives from CKB ("چاپی یەکەم" → "Çapa Yekem"); explicit
+        // Kurmanji text is never touched.
+        if (nameKmr == null) nameKmr = deriveKmrName(nameCkb);
         row.setSlug(normalizeSlug(request != null ? request.getSlug() : null));
         row.setNameCkb(nameCkb);
         row.setNameKmr(nameKmr);
         row.setDisplayOrder(request == null || request.getDisplayOrder() == null ? 0 : request.getDisplayOrder());
         row.setActive(request == null || request.getActive() == null || request.getActive());
+    }
+
+    private String deriveKmrName(String nameCkb) {
+        String value = trimToNull(nameCkb);
+        if (value == null) return null;
+        var matcher = EDITION_PATTERN.matcher(value);
+        if (matcher.matches()) {
+            String kmr = ORDINAL_KMR.get(matcher.group(1).trim());
+            if (kmr != null) return "Çapa " + kmr;
+        }
+        return value;
     }
 
     private String normalizeSlug(String slug) {

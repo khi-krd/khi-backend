@@ -139,6 +139,16 @@ app:
     allow-credentials: true
     max-age: 3600
 
+  # clamd INSTREAM scanning for public uploads (donation attachments).
+  # Off by default; production sets CLAMAV_ENABLED=true with a clamd
+  # container reachable at CLAMAV_HOST:CLAMAV_PORT. When enabled but
+  # unreachable, uploads fail closed.
+  scan:
+    clamav:
+      enabled: ${CLAMAV_ENABLED:false}
+      host: ${CLAMAV_HOST:clamav}
+      port: ${CLAMAV_PORT:3310}
+
 # ===============================
 # AWS S3
 # ===============================
