@@ -278,6 +278,9 @@ public class SiteContentService {
         if (request.getLogoUrl() != null) {
             settings.setLogoUrl(trimToNull(request.getLogoUrl()));
         }
+        if (request.getAboutLogoUrl() != null) {
+            settings.setAboutLogoUrl(trimToNull(request.getAboutLogoUrl()));
+        }
         if (request.getDonateImageUrl() != null) {
             settings.setDonateImageUrl(trimToNull(request.getDonateImageUrl()));
         }
@@ -335,6 +338,7 @@ public class SiteContentService {
         return SiteSettingsResponse.builder()
                 .id(settings.getId())
                 .logoUrl(settings.getLogoUrl())
+                .aboutLogoUrl(settings.getAboutLogoUrl())
                 .donateImageUrl(settings.getDonateImageUrl())
                 .ckbFontUrl(settings.getCkbFontUrl())
                 .ckbFontName(settings.getCkbFontName())

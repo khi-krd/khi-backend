@@ -44,6 +44,10 @@ public class SiteSettings {
     @Column(name = "logo_url", length = 1200)
     private String logoUrl;
 
+    /** Logo beside the about-page text; null falls back to {@link #logoUrl}. */
+    @Column(name = "about_logo_url", length = 1200)
+    private String aboutLogoUrl;
+
     /**
      * Photograph for the donate band above the footer.
      *

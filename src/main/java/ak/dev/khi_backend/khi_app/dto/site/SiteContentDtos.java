@@ -83,6 +83,9 @@ public final class SiteContentDtos {
         /** Header and footer logo. Transparent PNG — it sits on cream and on near-black. */
         private String logoUrl;
 
+        /** Logo beside the about-page text. Empty string clears (falls back to logoUrl). */
+        private String aboutLogoUrl;
+
         /** Photograph for the donate band above the footer. */
         private String donateImageUrl;
 
@@ -144,6 +147,7 @@ public final class SiteContentDtos {
     public static class SiteSettingsResponse {
         private Long id;
         private String logoUrl;
+        private String aboutLogoUrl;
         private String donateImageUrl;
         private String ckbFontUrl;
         private String ckbFontName;
