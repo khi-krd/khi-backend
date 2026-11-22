@@ -551,12 +551,7 @@ public class ImageCollectionService {
         if (isBlank(newTopic.getNameCkb()) && isBlank(newTopic.getNameKmr())) {
             return null;
         }
-        PublishmentTopic created = topicRepository.save(
-                PublishmentTopic.builder()
-                        .entityType(TOPIC_ENTITY_TYPE)
-                        .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                        .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                        .build());
+        PublishmentTopic created = topicRepository.findOrCreate(TOPIC_ENTITY_TYPE, trimOrNull(newTopic.getNameCkb()), trimOrNull(newTopic.getNameKmr()));
         log.info("بابەتی IMAGE دروستکرا inline id={}", created.getId());
         return created;
     }

@@ -100,12 +100,7 @@ public class VideoService {
     @Transactional
     public VideoDTO.TopicView createTopic(String nameCkb, String nameKmr) {
         // All fields optional — an unnamed topic is accepted as-is.
-        PublishmentTopic topic = PublishmentTopic.builder()
-                .entityType(TOPIC_ENTITY_TYPE)
-                .nameCkb(trimOrNull(nameCkb))
-                .nameKmr(trimOrNull(nameKmr))
-                .build();
-        PublishmentTopic saved = topicRepository.save(topic);
+        PublishmentTopic saved = topicRepository.findOrCreate(TOPIC_ENTITY_TYPE, nameCkb, nameKmr);
         log.info("بابەتی VIDEO دروستکرا id={} ckb='{}' kmr='{}'", saved.getId(), saved.getNameCkb(), saved.getNameKmr());
         return toTopicView(saved);
     }
@@ -530,13 +525,7 @@ public class VideoService {
             // No usable name — link no topic instead of rejecting the save.
             return null;
         }
-        PublishmentTopic created = topicRepository.save(
-                PublishmentTopic.builder()
-                        .entityType(TOPIC_ENTITY_TYPE)
-                        .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                        .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                        .build()
-        );
+        PublishmentTopic created = topicRepository.findOrCreate(TOPIC_ENTITY_TYPE, trimOrNull(newTopic.getNameCkb()), trimOrNull(newTopic.getNameKmr()));
         log.info("بابەتی VIDEO دروستکرا inline id={}", created.getId());
         return created;
     }

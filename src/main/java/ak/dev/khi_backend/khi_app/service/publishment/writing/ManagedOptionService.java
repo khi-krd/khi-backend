@@ -4,6 +4,7 @@ import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.ManagedOpt
 import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.ManagedOptionResponse;
 import ak.dev.khi_backend.khi_app.model.publishment.writing.ManagedOption;
 import ak.dev.khi_backend.khi_app.repository.publishment.writing.ManagedOptionRepository;
+import ak.dev.khi_backend.khi_app.exceptions.Errors;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,15 @@ public abstract class ManagedOptionService<T extends ManagedOption> {
     }
 
     public ManagedOptionResponse create(ManagedOptionRequest request) {
+        // Names are unique per vocabulary: re-adding an existing name hands
+        // back that row (the dashboard quick-add then simply selects it).
+        T existing = findByName(request.getNameCkb(), request.getNameKmr(), null);
+        if (existing != null) {
+            long count = repository().countBooksPerOption().stream()
+                    .filter(r -> existing.getId().equals(r[0]))
+                    .map(r -> (Long) r[1]).findFirst().orElse(0L);
+            return response(existing, count);
+        }
         T row = newRow();
         apply(row, request);
         // saveAndFlush so a duplicate slug surfaces here as a 409, not at commit.
@@ -66,8 +76,23 @@ public abstract class ManagedOptionService<T extends ManagedOption> {
                 .filter(r -> id.equals(r[0]))
                 .map(r -> (Long) r[1])
                 .findFirst().orElse(0L);
+        if (findByName(request.getNameCkb(), request.getNameKmr(), id) != null) {
+            throw Errors.conflict("option.name_taken", Map.of("kind", kind()));
+        }
         apply(row, request);
         return response(repository().saveAndFlush(row), bookCount);
+    }
+
+    /** Case/space-insensitive name match on Sorani, else Kurmanji; skips {@code exceptId}. */
+    private T findByName(String nameCkb, String nameKmr, Long exceptId) {
+        String ckb = NameKey.of(nameCkb);
+        String kmr = NameKey.of(nameKmr);
+        if (ckb == null && kmr == null) return null;
+        return repository().findAll().stream()
+                .filter(r -> exceptId == null || !exceptId.equals(r.getId()))
+                .filter(r -> ckb != null ? ckb.equals(NameKey.of(r.getNameCkb()))
+                        : kmr.equals(NameKey.of(r.getNameKmr())))
+                .findFirst().orElse(null);
     }
 
     /**

@@ -24,6 +24,38 @@ import java.util.List;
 public interface PublishmentTopicRepository extends JpaRepository<PublishmentTopic, Long> {
     List<PublishmentTopic> findByEntityType(String entityType);
 
+    @Query("select t from PublishmentTopic t where t.entityType = :type"
+            + " and lower(trim(t.nameCkb)) = lower(trim(:name)) order by t.id")
+    List<PublishmentTopic> findByTypeAndNameCkb(@Param("type") String type, @Param("name") String name);
+
+    @Query("select t from PublishmentTopic t where t.entityType = :type"
+            + " and lower(trim(t.nameKmr)) = lower(trim(:name)) order by t.id")
+    List<PublishmentTopic> findByTypeAndNameKmr(@Param("type") String type, @Param("name") String name);
+
+    /**
+     * Topic names are unique per entity type: an inline or explicit create
+     * whose Sorani (or, failing that, Kurmanji) name already exists returns
+     * the existing row instead of adding a duplicate. A blank Kurmanji name
+     * on the match is filled from the request.
+     */
+    default PublishmentTopic findOrCreate(String entityType, String nameCkb, String nameKmr) {
+        String type = entityType.toUpperCase();
+        String ckb = nameCkb == null || nameCkb.isBlank() ? null : nameCkb.trim();
+        String kmr = nameKmr == null || nameKmr.isBlank() ? null : nameKmr.trim();
+        List<PublishmentTopic> hits = ckb != null
+                ? findByTypeAndNameCkb(type, ckb)
+                : kmr != null ? findByTypeAndNameKmr(type, kmr) : List.of();
+        if (!hits.isEmpty()) {
+            PublishmentTopic existing = hits.get(0);
+            if (kmr != null && (existing.getNameKmr() == null || existing.getNameKmr().isBlank())) {
+                existing.setNameKmr(kmr);
+                return save(existing);
+            }
+            return existing;
+        }
+        return save(PublishmentTopic.builder().entityType(type).nameCkb(ckb).nameKmr(kmr).build());
+    }
+
     /**
      * Removes every many-to-many link to this topic across all four entity
      * join tables. The Hibernate-generated FKs are NO ACTION, so linked

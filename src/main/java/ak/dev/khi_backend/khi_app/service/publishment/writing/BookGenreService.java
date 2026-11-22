@@ -50,6 +50,8 @@ public class BookGenreService {
 
     @Transactional
     public BookGenreResponse createGenre(BookGenreRequest request) {
+        BookGenre existing = findByName(request.getNameCkb(), request.getNameKmr(), null);
+        if (existing != null) return response(existing, bookGenreRepository.countBooks(existing.getId()));
         BookGenre genre = new BookGenre();
         apply(genre, request);
         // saveAndFlush so a duplicate slug surfaces here as a 409, not at commit.
@@ -62,6 +64,9 @@ public class BookGenreService {
                 .orElseThrow(() -> notFound(id));
         long bookCount = bookGenreRepository.countBooks(id);
         String newSlug = normalizeSlug(request.getSlug());
+        if (findByName(request.getNameCkb(), request.getNameKmr(), id) != null) {
+            throw ak.dev.khi_backend.khi_app.exceptions.Errors.conflict("genre.name_taken", Map.of());
+        }
         // Slug changes are always allowed — books link by id, not slug.
         apply(genre, request);
         return response(bookGenreRepository.saveAndFlush(genre), bookCount);
@@ -156,5 +161,17 @@ public class BookGenreService {
 
     private EntityNotFoundException notFound(Long id) {
         return new EntityNotFoundException("Book genre not found: " + id);
+    }
+
+    /** Genre names are unique: case/space-insensitive Sorani, else Kurmanji match. */
+    private BookGenre findByName(String nameCkb, String nameKmr, Long exceptId) {
+        String ckb = NameKey.of(nameCkb);
+        String kmr = NameKey.of(nameKmr);
+        if (ckb == null && kmr == null) return null;
+        return bookGenreRepository.findAll().stream()
+                .filter(g -> exceptId == null || !exceptId.equals(g.getId()))
+                .filter(g -> ckb != null ? ckb.equals(NameKey.of(g.getNameCkb()))
+                        : kmr.equals(NameKey.of(g.getNameKmr())))
+                .findFirst().orElse(null);
     }
 }

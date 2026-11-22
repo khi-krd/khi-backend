@@ -61,13 +61,7 @@
         public PublishmentTopic create(String entityType, String nameCkb, String nameKmr) {
             log.info("Creating topic entityType={} nameCkb={} nameKmr={}", entityType, nameCkb, nameKmr);
 
-            PublishmentTopic topic = PublishmentTopic.builder()
-                    .entityType(entityType.toUpperCase())
-                    .nameCkb(nameCkb)
-                    .nameKmr(nameKmr)
-                    .build();
-
-            return topicRepository.save(topic);
+            return topicRepository.findOrCreate(entityType, nameCkb, nameKmr);
         }
 
         // ─── UPDATE ───────────────────────────────────────────────────────────────
@@ -79,6 +73,11 @@
             PublishmentTopic topic = topicRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Topic not found: " + id));
 
+            if (nameCkb != null && !nameCkb.isBlank()
+                    && topicRepository.findByTypeAndNameCkb(topic.getEntityType(), nameCkb).stream()
+                            .anyMatch(t -> !t.getId().equals(id))) {
+                throw ak.dev.khi_backend.khi_app.exceptions.Errors.conflict("topic.name_taken", java.util.Map.of());
+            }
             if (nameCkb != null) topic.setNameCkb(nameCkb);
             if (nameKmr != null) topic.setNameKmr(nameKmr);
 

@@ -625,12 +625,7 @@ public class WritingService {
     }
 
     private PublishmentTopic createInlineTopic(TopicPayload newTopic) {
-        PublishmentTopic created = PublishmentTopic.builder()
-                .entityType(ENTITY_TYPE)
-                .nameCkb(trimOrNull(newTopic.getNameCkb()))
-                .nameKmr(trimOrNull(newTopic.getNameKmr()))
-                .build();
-        created = topicRepository.save(created);
+        PublishmentTopic created = topicRepository.findOrCreate(ENTITY_TYPE, newTopic.getNameCkb(), newTopic.getNameKmr());
         log.info("بابەتی inline دروستکرا — id={}, ckb='{}', kmr='{}'",
                 created.getId(), created.getNameCkb(), created.getNameKmr());
         return created;
