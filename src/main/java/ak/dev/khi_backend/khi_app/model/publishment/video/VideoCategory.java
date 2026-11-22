@@ -8,8 +8,8 @@ import lombok.*;
  * پۆلی ڤیدیۆ — the editor-managed classification of a video (فیلم, کلیپ,
  * بەرنامەی فۆلکلۆری, چاوپێکەوتن, بەڵگەفیلم, …). Distinct from
  * {@link VideoType}, which stays structural (single FILM vs a VIDEO_CLIP set);
- * this vocabulary is what the public catalog filters and badges show. Seeded
- * by {@code VideoCategorySeeder}; admins extend the list without code changes.
+ * this vocabulary is what the public catalog filters and badges show. It
+ * starts empty — admins build the list from the dashboard.
  */
 @Entity
 @Table(name = "video_categories", uniqueConstraints = {
