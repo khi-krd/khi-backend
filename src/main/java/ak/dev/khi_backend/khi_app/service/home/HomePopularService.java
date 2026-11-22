@@ -31,7 +31,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,19 +44,17 @@ import java.util.function.Function;
  *
  * Each module's existing list service supplies the DTOs (identical shape to
  * the public listing endpoints), while the repositories supply the set of
- * {@code isPopular} ids. Popular records are rotated through a fixed time
- * bucket so different popular items surface over time without a random query
- * per request; remaining slots are filled with regular records in the order
- * the listings already return. Never more than {@code limit} items, never a
- * duplicate.
+ * {@code isPopular} ids. The popular subset is shuffled per request, so when
+ * admins mark more items popular than a section can show, every load surfaces
+ * a different random selection from the whole pool; remaining slots are
+ * filled with regular records in the order the listings already return.
+ * Never more than {@code limit} items, never a duplicate.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class HomePopularService {
 
-    /** Popular rotation bucket — selections shift every 6 hours. */
-    private static final long ROTATE_BUCKET_MS = Duration.ofHours(6).toMillis();
     private static final int FETCH_ALL = 1000;
 
     private final NewsService newsService;
@@ -145,8 +142,9 @@ public class HomePopularService {
     }
 
     /**
-     * Popular-first selection with time-bucketed rotation over the popular
-     * subset; regular records fill the remaining slots in listing order.
+     * Popular-first selection: the popular subset is shuffled per request so
+     * an oversized pool rotates randomly on every load; regular records fill
+     * the remaining slots in listing order.
      */
     private <T> List<T> pick(List<T> all, Set<Long> popularIds,
                              Function<T, Long> id, int limit) {
@@ -165,11 +163,11 @@ public class HomePopularService {
         Set<Long> seen = new LinkedHashSet<>();
 
         if (!popular.isEmpty()) {
-            int take = Math.min(limit, popular.size());
-            long bucket = System.currentTimeMillis() / ROTATE_BUCKET_MS;
-            int offset = (int) Math.floorMod(bucket, popular.size());
-            for (int i = 0; i < take; i++) {
-                T item = popular.get((offset + i) % popular.size());
+            Collections.shuffle(popular);
+            for (T item : popular) {
+                if (selected.size() >= limit) {
+                    break;
+                }
                 if (seen.add(id.apply(item))) {
                     selected.add(item);
                 }
