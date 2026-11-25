@@ -855,6 +855,10 @@ public class VideoService {
                         .label(labelCkb != null ? labelCkb : labelKmr)
                         .labelCkb(labelCkb)
                         .labelKmr(labelKmr)
+                        .titleCkb(trimOrNull(s.getTitleCkb()))
+                        .titleKmr(trimOrNull(s.getTitleKmr()))
+                        .descriptionCkb(trimOrNull(s.getDescriptionCkb()))
+                        .descriptionKmr(trimOrNull(s.getDescriptionKmr()))
                         .durationSeconds(s.getDurationSeconds())
                         .main(Boolean.TRUE.equals(s.getMain()))
                         .build());

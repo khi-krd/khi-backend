@@ -208,6 +208,10 @@ public class VideoDTO {
         private String label;
         private String labelCkb;
         private String labelKmr;
+        private String titleCkb;
+        private String titleKmr;
+        private String descriptionCkb;
+        private String descriptionKmr;
         private Integer durationSeconds;
     }
 

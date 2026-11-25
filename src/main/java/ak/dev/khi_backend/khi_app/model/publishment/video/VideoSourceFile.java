@@ -57,6 +57,23 @@ public class VideoSourceFile {
     @Column(name = "label_kmr", length = 300)
     private String labelKmr;
 
+    /**
+     * Per-part title for a film series (زنجیرە): a documentary film carrying
+     * several parts/episodes gives each source its own title, like a clip item.
+     */
+    @Column(name = "title_ckb", length = 300)
+    private String titleCkb;
+
+    @Column(name = "title_kmr", length = 300)
+    private String titleKmr;
+
+    /** Per-part description for a film series — rich HTML like clip items. */
+    @Column(name = "description_ckb", columnDefinition = "TEXT")
+    private String descriptionCkb;
+
+    @Column(name = "description_kmr", columnDefinition = "TEXT")
+    private String descriptionKmr;
+
     /** Optional per-source runtime in seconds. */
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
