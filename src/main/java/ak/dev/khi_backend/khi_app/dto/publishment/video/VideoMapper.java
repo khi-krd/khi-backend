@@ -251,6 +251,9 @@ public final class VideoMapper {
                 .descriptionCkb(s.getDescriptionCkb())
                 .descriptionKmr(s.getDescriptionKmr())
                 .durationSeconds(s.getDurationSeconds())
+                .resolution(s.getResolution())
+                .fileFormat(s.getFileFormat())
+                .fileSizeMb(s.getFileSizeMb())
                 .build();
     }
 

@@ -77,4 +77,16 @@ public class VideoSourceFile {
     /** Optional per-source runtime in seconds. */
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
+
+    /** Resolution, e.g. "1080p" — manual for links/embeds, probed for files. */
+    @Column(name = "resolution", length = 20)
+    private String resolution;
+
+    /** File format, e.g. "mp4", "webm". */
+    @Column(name = "file_format", length = 20)
+    private String fileFormat;
+
+    /** File size in MB. */
+    @Column(name = "file_size_mb")
+    private Double fileSizeMb;
 }

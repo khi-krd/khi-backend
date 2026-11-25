@@ -55,7 +55,11 @@ public class MediaMetadataService {
     public void applyToSource(VideoSourceFile source) {
         if (source == null) return;
         MediaProbe p = processing.probe(source.getUrl());
+        if (p.isEmpty()) return;
         if (p.getDurationSeconds() != null) source.setDurationSeconds(p.getDurationSeconds());
+        if (p.resolution() != null) source.setResolution(p.resolution());
+        if (p.getFileFormat() != null) source.setFileFormat(p.getFileFormat());
+        if (p.sizeMb() != null) source.setFileSizeMb(p.sizeMb());
     }
 
     public void applyToClip(VideoClipItem clip) {

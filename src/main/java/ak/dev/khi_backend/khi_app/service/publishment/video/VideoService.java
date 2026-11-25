@@ -860,6 +860,9 @@ public class VideoService {
                         .descriptionCkb(trimOrNull(s.getDescriptionCkb()))
                         .descriptionKmr(trimOrNull(s.getDescriptionKmr()))
                         .durationSeconds(s.getDurationSeconds())
+                        .resolution(trimOrNull(s.getResolution()))
+                        .fileFormat(trimOrNull(s.getFileFormat()))
+                        .fileSizeMb(s.getFileSizeMb())
                         .main(Boolean.TRUE.equals(s.getMain()))
                         .build());
             }

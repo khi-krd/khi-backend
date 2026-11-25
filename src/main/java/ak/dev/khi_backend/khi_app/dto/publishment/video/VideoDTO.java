@@ -213,6 +213,9 @@ public class VideoDTO {
         private String descriptionCkb;
         private String descriptionKmr;
         private Integer durationSeconds;
+        private String resolution;
+        private String fileFormat;
+        private Double fileSizeMb;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
