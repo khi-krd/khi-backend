@@ -44,6 +44,7 @@ public class SoundTrackService {
     private final SoundTrackLogRepository    soundTrackLogRepository;
     private final PublishmentTopicRepository topicRepository;
     private final SoundTrackTypeService      soundTrackTypeService;
+    private final ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundStateRepository soundStateRepository;
     private final S3Service                  s3Service;
     private final TiptapHtmlProcessor        tiptapHtmlProcessor;
     private final ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
@@ -87,6 +88,7 @@ public class SoundTrackService {
                     .soundType(primaryType)
                     .soundTypes(new LinkedHashSet<>(soundTypes))
                     .trackState(dto.getTrackState())
+                    .stateOption(resolveStateOption(dto.getStateOptionId(), dto.getTrackState()))
                     .albumOfMemories(dto.getAlbumOfMemories() != null && dto.getAlbumOfMemories())
                     .topics(topics)
                     .contentLanguages(new LinkedHashSet<>(safeLangs(dto.getContentLanguages())))
@@ -194,6 +196,9 @@ public class SoundTrackService {
                 entity.setSoundType(types.iterator().next());
             }
             if (dto.getTrackState()      != null)  entity.setTrackState(dto.getTrackState());
+            if (dto.getStateOptionId() != null || entity.getStateOption() == null) {
+                entity.setStateOption(resolveStateOption(dto.getStateOptionId(), entity.getTrackState()));
+            }
             if (dto.getAlbumOfMemories() != null)  entity.setAlbumOfMemories(dto.getAlbumOfMemories());
 
             // ── Topics ────────────────────────────────────────────────────
@@ -1408,6 +1413,19 @@ public class SoundTrackService {
     // VALIDATION
     // =========================================================================
 
+    /**
+     * جۆری دەنگ for a save: the requested row, else the seeded row matching
+     * the structural state, so every record carries exactly one type.
+     */
+    private ak.dev.khi_backend.khi_app.model.publishment.sound.SoundState resolveStateOption(
+            Long id, TrackState state) {
+        if (id != null) {
+            return soundStateRepository.findById(id).orElseThrow(() ->
+                    Errors.soundValidation("soundTrack.stateOption.not_found", Map.of("field", "stateOptionId")));
+        }
+        return state == null ? null : soundStateRepository.findBySlug(state.name()).orElse(null);
+    }
+
     /** All fields optional — missing values fall back to safe defaults. */
     private void validateCreate(CreateRequest dto) {
         if (dto == null) return;
@@ -1457,6 +1475,13 @@ public class SoundTrackService {
                 .hoverCoverUrl(s.getHoverCoverUrl())
                 .featureImageUrl(s.getFeatureImageUrl())
                 .soundType(s.getSoundType()).trackState(s.getTrackState())
+                .stateOption(s.getStateOption() == null ? null
+                        : ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos.ManagedOptionInfo.builder()
+                                .id(s.getStateOption().getId())
+                                .slug(s.getStateOption().getSlug())
+                                .nameCkb(s.getStateOption().getNameCkb())
+                                .nameKmr(s.getStateOption().getNameKmr())
+                                .build())
                 .soundTypes(s.getSoundTypes() == null
                         ? new LinkedHashSet<>() : new LinkedHashSet<>(s.getSoundTypes()))
                 .albumOfMemories(s.isAlbumOfMemories())

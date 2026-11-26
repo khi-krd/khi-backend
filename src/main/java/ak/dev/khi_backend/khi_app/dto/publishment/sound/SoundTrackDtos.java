@@ -4,6 +4,7 @@ import ak.dev.khi_backend.khi_app.enums.Language;
 import ak.dev.khi_backend.khi_app.enums.publishment.AttachmentType;
 import ak.dev.khi_backend.khi_app.enums.publishment.AudioChannel;
 import ak.dev.khi_backend.khi_app.enums.publishment.FileType;
+import ak.dev.khi_backend.khi_app.dto.publishment.writing.WritingDtos;
 import ak.dev.khi_backend.khi_app.enums.publishment.TrackState;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -341,6 +342,8 @@ public final class SoundTrackDtos {
         private Set<String> soundTypes;
 
         private TrackState trackState;
+        /** جۆری دەنگ row id — the managed type bar. */
+        private Long stateOptionId;
 
         private Boolean albumOfMemories;
 
@@ -430,6 +433,8 @@ public final class SoundTrackDtos {
         private Set<String> soundTypes;
 
         private TrackState trackState;
+        /** جۆری دەنگ row id — the managed type bar. */
+        private Long stateOptionId;
         private Boolean albumOfMemories;
 
         // ── Cover URLs (multipart image wins when both are supplied) ──────────
@@ -536,6 +541,7 @@ public final class SoundTrackDtos {
         private String soundType;
         private Set<String> soundTypes;
         private TrackState trackState;
+        private WritingDtos.ManagedOptionInfo stateOption;
         private Boolean albumOfMemories;
 
         private Long topicId;

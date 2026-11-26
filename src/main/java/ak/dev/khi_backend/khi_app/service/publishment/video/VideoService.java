@@ -200,6 +200,9 @@ public class VideoService {
         if (dto.getCategoryId() != null) {
             video.setCategory(resolveCategory(dto.getCategoryId()));
         }
+        if (video.getCategory() == null) {
+            video.setCategory(defaultCategory(video.getVideoType()));
+        }
 
         enforceAlbumRule(video, dto);
 
@@ -394,6 +397,11 @@ public class VideoService {
         } else if (dto.getCategoryId() != null) {
             video.setCategory(resolveCategory(dto.getCategoryId()));
         }
+        // جۆر is required: a record never ends up without exactly one type.
+        if (video.getCategory() == null) {
+            video.setCategory(defaultCategory(dto.getVideoType() != null
+                    ? dto.getVideoType() : video.getVideoType()));
+        }
 
         enforceAlbumRule(video, dto);
 
@@ -478,6 +486,12 @@ public class VideoService {
      * reject the request (400), a null id stays unassigned. Resolved before
      * any cover/video upload so a bad id never orphans an object in S3.
      */
+    /** The seeded جۆر row whose slug matches the structural type (FILM / VIDEO_CLIP). */
+    private VideoCategory defaultCategory(VideoType type) {
+        if (type == null) return null;
+        return videoCategoryRepository.findBySlug(type.name()).orElse(null);
+    }
+
     private VideoCategory resolveCategory(Long categoryId) {
         if (categoryId == null) return null;
         return videoCategoryRepository.findById(categoryId)

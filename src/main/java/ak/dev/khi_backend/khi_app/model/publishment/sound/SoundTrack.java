@@ -68,6 +68,14 @@ public class SoundTrack {
     @Column(name = "track_state", nullable = false, length = 10)
     private TrackState trackState;
 
+    /**
+     * جۆری دەنگ — the editor-managed type (تاک, ئەلبووم, …). Exactly one per
+     * record; the structural {@link #trackState} still drives the layout.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "state_option_id")
+    private SoundState stateOption;
+
     @Builder.Default
     @Column(name = "is_album_of_memories", nullable = false)
     private boolean albumOfMemories = false;

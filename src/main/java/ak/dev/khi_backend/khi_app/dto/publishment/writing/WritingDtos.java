@@ -159,7 +159,8 @@ public final class WritingDtos {
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
-    public static class ManagedOptionInfo {
+    public static class ManagedOptionInfo implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
         private Long   id;
         private String slug;
         private String nameCkb;

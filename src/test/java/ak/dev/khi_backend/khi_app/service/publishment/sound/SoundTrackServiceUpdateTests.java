@@ -36,10 +36,12 @@ import static org.mockito.Mockito.when;
 class SoundTrackServiceUpdateTests {
 
     @Mock private SoundTrackRepository soundTrackRepository;
+    @Mock private ak.dev.khi_backend.khi_app.repository.publishment.sound.SoundStateRepository soundStateRepository;
     @Mock private SoundTrackLogRepository soundTrackLogRepository;
     @Mock private PublishmentTopicRepository topicRepository;
     @Mock private S3Service s3Service;
     @Mock private TiptapHtmlProcessor tiptapHtmlProcessor;
+    @Mock private ak.dev.khi_backend.khi_app.service.media.MediaMetadataService mediaMetadata;
 
     @InjectMocks
     private SoundTrackService soundTrackService;

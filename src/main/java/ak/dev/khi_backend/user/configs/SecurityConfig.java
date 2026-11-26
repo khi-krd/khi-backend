@@ -122,6 +122,7 @@ public class SecurityConfig {
                                 "/api/v1/editions/**",
                                 "/api/v1/book-languages/**",
                                 "/api/v1/video-categories/**",
+                                "/api/v1/sound-states/**",
                                 "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PUT,
@@ -137,6 +138,7 @@ public class SecurityConfig {
                                 "/api/v1/editions/**",
                                 "/api/v1/book-languages/**",
                                 "/api/v1/video-categories/**",
+                                "/api/v1/sound-states/**",
                                 "/api/v1/site-settings",
                                 "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
@@ -152,6 +154,7 @@ public class SecurityConfig {
                                 "/api/v1/editions/**",
                                 "/api/v1/book-languages/**",
                                 "/api/v1/video-categories/**",
+                                "/api/v1/sound-states/**",
                                 "/api/v1/nav-menu/**"
                         ).hasAnyRole("ADMIN", "SUPER_ADMIN")
 
